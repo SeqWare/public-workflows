@@ -18,10 +18,9 @@ import net.sourceforge.seqware.pipeline.workflowV2.model.SqwFile;
  * 5. buildWorkflow
  * 
  * See the SeqWare API for 
- * <a href="http://seqware.github.io/javadoc/stable/apidocs/net/sourceforge/seqware/pipeline/workflowV2/AbstractWorkflowDataModel.html#setupDirectory%28%29">AbstractWorkflowDataModel</a> 
  * for more information.
  */
-public class DKFZ-SNV-CallingWorkflow extends AbstractWorkflowDataModel {
+public class DKFZSNVCallingWorkflow extends AbstractWorkflowDataModel {
 
     private boolean manualOutput=false;
     private String catPath, echoPath;
