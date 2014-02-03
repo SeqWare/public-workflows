@@ -73,40 +73,44 @@ public class DKFZSNVCallingWorkflow extends AbstractWorkflowDataModel {
    
     @Override
     public void buildWorkflow() {
-
-        // a simple bash job to call mkdir
-	// note that this job uses the system's mkdir (which depends on the system being *nix)
-        Job GNOSDownload = this.getWorkflow().createBashJob("GNOSDownload");
-        GNOSDownload.getCommand().addArgument(this.getWorkflowBaseDir()+"/bin/download_gnos.pl "+getProperty("GNOSDonorID")+" [tumor|control]_{GNOSDonorID}_merged.bam.[rmdup|dupmarked].bam");      
-       
-        // The directory: analysis/DKFZ/SNV/panCancer/{GNOSDonorID}/alignment/[tumor|control]_{GNOSDonorID}_merged.bam.[rmdup|dupmarked].bam
-        
-        Job SNVCalling = this.getWorkflow().createBashJob("SNVCalling");
-        SNVCalling.addParent(GNOSDownload);
-        SNVCalling.getCommand().addArgument(this.getWorkflowBaseDir()+"/lib/roddy/roddy.sh run config "+getProperty("GNOSDonorID"));
-        
-        // TODO: look at Kerien's code for generating GNOS metadata
-        
-        // The directory: analysis/DKFZ/SNV/panCancer/{GNOSDonorID}/mpileup[_indel]/[snvs|indels]_{GNOSDonorID}.vcf.gz
-        Job GNOSUpload = this.getWorkflow().createBashJob("GNOSUpload");
-        GNOSDownload.getCommand().addArgument(this.getWorkflowBaseDir()+"/bin/upload_gnos.pl "+getProperty("GNOSDonorID")+" analysis/DKFZ/SNV/panCancer/{GNOSDonorID}/mpileup[_indel]/[snvs|indels]_{GNOSDonorID}.vcf.gz");      
-               
-	String inputFilePath = this.getFiles().get("file_in_0").getProvisionedPath();
-	 
-        // a simple bash job to cat a file into a test file
-	// the file is not saved to the metadata database
-        /*Job copyJob1 = this.getWorkflow().createBashJob("bash_cp");
-        copyJob1.setCommand(catPath + " " + inputFilePath + "> test1/test.out");
-        copyJob1.addParent(mkdirJob);*/
-        
-        // a simple bash job to echo to an output file and concat an input file
-	// the file IS saved to the metadata database
-        /*Job copyJob2 = this.getWorkflow().createBashJob("bash_cp");
-	copyJob2.getCommand().addArgument(echoPath).addArgument(greeting).addArgument(" > ").addArgument("dir1/output");
-	copyJob2.getCommand().addArgument(";");
-	copyJob2.getCommand().addArgument(catPath + " " +inputFilePath+ " >> dir1/output");
-        copyJob2.addParent(mkdirJob);
-	copyJob2.addFile(createOutputFile("dir1/output", "txt/plain", manualOutput));       */ 
+        try {
+            // a simple bash job to call mkdir
+            // note that this job uses the system's mkdir (which depends on the system being *nix)
+            Job GNOSDownload = this.getWorkflow().createBashJob("GNOSDownload");
+            GNOSDownload.getCommand().addArgument(this.getWorkflowBaseDir()+"/bin/download_gnos.pl "+getProperty("GNOSDonorID")+" [tumor|control]_{GNOSDonorID}_merged.bam.[rmdup|dupmarked].bam");
+            
+            // The directory: analysis/DKFZ/SNV/panCancer/{GNOSDonorID}/alignment/[tumor|control]_{GNOSDonorID}_merged.bam.[rmdup|dupmarked].bam
+            
+            Job SNVCalling = this.getWorkflow().createBashJob("SNVCalling");
+            SNVCalling.addParent(GNOSDownload);
+            SNVCalling.getCommand().addArgument(this.getWorkflowBaseDir()+"/lib/roddy/roddy.sh run config "+getProperty("GNOSDonorID"));
+            
+            // TODO: look at Kerien's code for generating GNOS metadata
+            
+            // The directory: analysis/DKFZ/SNV/panCancer/{GNOSDonorID}/mpileup[_indel]/[snvs|indels]_{GNOSDonorID}.vcf.gz
+            Job GNOSUpload = this.getWorkflow().createBashJob("GNOSUpload");
+            GNOSUpload.getCommand().addArgument(this.getWorkflowBaseDir()+"/bin/upload_gnos.pl "+getProperty("GNOSDonorID")+" analysis/DKFZ/SNV/panCancer/{GNOSDonorID}/mpileup[_indel]/[snvs|indels]_{GNOSDonorID}.vcf.gz");
+            GNOSUpload.addParent(SNVCalling);
+            
+            //String inputFilePath = this.getFiles().get("file_in_0").getProvisionedPath();
+            
+            // a simple bash job to cat a file into a test file
+            // the file is not saved to the metadata database
+            /*Job copyJob1 = this.getWorkflow().createBashJob("bash_cp");
+            copyJob1.setCommand(catPath + " " + inputFilePath + "> test1/test.out");
+            copyJob1.addParent(mkdirJob);*/
+            
+            // a simple bash job to echo to an output file and concat an input file
+            // the file IS saved to the metadata database
+            /*Job copyJob2 = this.getWorkflow().createBashJob("bash_cp");
+            copyJob2.getCommand().addArgument(echoPath).addArgument(greeting).addArgument(" > ").addArgument("dir1/output");
+            copyJob2.getCommand().addArgument(";");
+            copyJob2.getCommand().addArgument(catPath + " " +inputFilePath+ " >> dir1/output");
+            copyJob2.addParent(mkdirJob);
+            copyJob2.addFile(createOutputFile("dir1/output", "txt/plain", manualOutput));       */ 
+        } catch (Exception ex) {
+            Logger.getLogger(DKFZSNVCallingWorkflow.class.getName()).log(Level.SEVERE, null, ex);
+        }
 
     }
 
