@@ -13,16 +13,27 @@
 
 ## Running the Decider in Testing Mode
 
+more to come
+
 ## Running the Decider for Real Analysis
 
 * running it for real manually
 * cron job
 
+more to come
+
 ## Dealing with Workflow Failure
+
+more to come
 
 ## Dealing with Cluster Failures
 
+more to come
+
 ## Monitoring the System
+
+more to come
 
 ## Next Steps
 
+more to come
