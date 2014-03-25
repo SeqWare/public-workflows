@@ -61,10 +61,82 @@ You can run the workflow with integrated sample data.  Before you run it, please
 
 ## Running the Workflow with Real Data
 
-You can make your own ini file and feed that to the workflow.
+The process below shows you how to run the workflow with custom inputs and
+settings vs. the hard-coded test data that comes bundled with the workflow
+above.
+
+### Important Config INI Parameters
+
+The following are important parameters that you will need/want to change if you
+are running the workflow for real:
+
+#### Skipping Uploads
+
+    skip_upload=true
+
+This parameter controls whether or not the results of the workflow are uploaded
+back into GNOS. For testing this defaults to "true" but you can switch it to
+"false" and this will upload the workflow results at the end of the workflow.
+
+#### GNOS Input File URLs
+
+    gnos_input_file_urls=https://gtrepo-ebi.annailabs.com/cghub/data/analysis/download/9c414428-9446-11e3-86c1-ab5c73f0e08b,https://gtrepo-ebi.annailabs.com/cghub/data/analysis/download/4fb18a5a-9504-11e3-8d90-d1f1d69ccc24
+
+This is a comma-seperated list of GNOS download URLs.  Each represents one or
+more BAM file (assuming unaligned BAM) that will be downloaded by GeneTorrent
+and aligned with the workflow.  You get these URLs by either 1) using the
+cgquery tool manually to search the GNOS repository which will display the URLs
+in the reports it generates or 2) using the workflow decider that will query
+GNOS, digest the information, and create the workflow.ini for you.  The latter
+approach is a lot easier.
+
+#### GNOS Input Metadata URLs
+
+    gnos_input_metadata_urls=https://gtrepo-ebi.annailabs.com/cghub/metadata/analysisFull/9c414428-9446-11e3-86c1-ab5c73f0e08b,https://gtrepo-ebi.annailabs.com/cghub/metadata/analysisFull/4fb18a5a-9504-11e3-8d90-d1f1d69ccc24
+
+This compliments the input file URLs above with the metadata for each analysis
+event.  You should use the same order as the download URLs above.  Like the
+download URLs, these URLs are taken from either cgquery results or the decider
+will find these for you. They are used by the workflow to pull back needed
+metadata for the input samples.
+
+#### GNOS BAM Files
+
+    input_bam_paths=9c414428-9446-11e3-86c1-ab5c73f0e08b/hg19.chr22.5x.normal.bam,4fb18a5a-9504-11e3-8d90-d1f1d69ccc24/hg19.chr22.5x.normal2.bam
+
+The metadata includes information about the BAM files available for each
+sample. This lists the BAM files that will be produced as a result of
+downloading from the input file URLs. You can get this list of files from the
+input metadata either using cgquery or the workflow decider.
+
+#### GNOS Key
+
+    gnos_key=\${workflow_bundle_dir}/Workflow_Bundle_\${workflow-directory-name}/\${version}/scripts/gnostest.pem
+
+They key is used for communicating with GNOS for both download and upload.  You
+need to apply for a key since access to GNOS for PanCancer is controlled.  See
+https://pancancer-token.annailabs.com/ for getting this key.
+
+#### GNOS Server URL
+
+    gnos_output_file_url=https://gtrepo-ebi.annailabs.com
+
+This is the URL for the GNOS server, used for the validation and upload of
+result data when the workflow finishes.
+
+### Running with Custom Settings File
+
+You can make your own ini file based on the information above and the sample
+\${workflow_bundle_dir}/Workflow_Bundle_\${workflow-directory-name}/\${version}/config/workflow.ini
+in and feed that to the workflow.
 
     $ seqware bundle launch --dir ~/provisioned_bundles/Workflow_Bundle_BWA_2.1_SeqWare_1.0.11 --ini-file my_settings.ini
 
+This will launch the workflow with your custom settings.
+
 ## Next Steps
 
-Take a look at the "BWA-Mem Automated Workflow Running SOP".
+Take a look at the "BWA-Mem Automated Workflow Running SOP", that will give you
+information on using the decider which is a script that queries GNOS and
+prepares the workflow.ini.  This makes the whole process of parameterizing the
+workflow way easier than manually parameterizing the above.
