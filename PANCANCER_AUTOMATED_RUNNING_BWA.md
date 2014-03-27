@@ -56,32 +56,77 @@ launcher host, presumably running in the same cloud as the GNOS instance you
 point to (though not neccesarily). This will produce a report that clearly
 shows what is available in GNOS, which samples have already been aligned, etc.
 
-    perl workflow_decider.pl --gnos-url http://gtrepo-ebi.annailabs.com --report report.txt --force-run --test 
+    perl workflow_decider.pl --gnos-url https://gtrepo-ebi.annailabs.com --report report.txt --force-run --test 
 
 This will produce a report in "report.txt" for every sample in GNOS along with
 sample workflow execution command lines.
 
+## Cluster.JSON
+
+This file provides a listing of the available clusters that can be used to
+schedule workflows.  You typically setup several clusters/nodes on a given
+cloud environment and then use them for many workflow runs over time.  Some
+clusters may be retired or killed over time so it is up to the decider caller
+to keep the cluster.json describing the clusters available up to date.  Here is
+an example of the JSON format used for this file.  If you use the
+SeqWare-Vagrant PanCancer profile that installs the BWA-Mem workflow you will
+find it installed under SeqWare accession "2".
+
+    {
+      "cluster-name-1": {
+         "workflow_accession": "1",
+         "username": "admin@admin.com",
+         "password": "admin",
+         "webservice": "http://master:8080/SeqWareWebService",
+         "host": "master"
+       }
+    }
+
+As you build new nodes/clusters you will create a "cluster-name-2",
+"cluster-name-3" and so on.  You will then replace "master" with the IP address
+of the master node for each of you new clusters/nodes.
+
 ## Running the Decider for Real Analysis
 
+You typically want to run the decider to actually trigger analysis via a
+workflow in one of two modes:
 
+* running it manually for a given sample, perhaps to force alignment
+* or via a cron job that will periodically cause the decider to run
 
-* running it for real manually
-* cron job
+### Manually Calling
 
-more to come
+You typically will manually call the decider for a single sample, for example,
+if you want to force that sample to be re-run in order to test a workflow.
+Here is an example of how to specify a particular sample:
+
+    perl workflow_decider.pl --gnos-url https://gtrepo-ebi.annailabs.com --report report.2.txt --force-run --test --skip-meta-download --sample SP2163
+
+And this will just prepare to launch the workflow for sample SP2163.  Note a
+couple of things, 1) it does not launch because --test was used, 2) it does not
+download metadata again, it uses the cached version from the last run since
+--skip-meta-download, and 3) it just does the sample command for SP2163.
+
+### Automatically Calling via Cron
+
+Add the following to your cronjob, running every hour:
+
+    perl workflow_decider.pl --gnos-url https://gtrepo-ebi.annailabs.com --report report.cron.txt
 
 ## Dealing with Workflow Failure
 
-more to come
+Workflow failures can be monitored with the standard SeqWare tools, see
+http://seqware.io for information on how to debug workflows.  If a failure
+occurs you will need to use --force-run to run the workflow again.
 
 ## Dealing with Cluster Failures
 
-more to come
+Cluster failures can occur and the strategy for dealing with them is to replace
+the lost cluster/node and modify the cluster.json.  Upon next execution, the
+workflows will be scheduled to the new system.
 
 ## Monitoring the System
 
-more to come
+The system can be monitored with the standard SeqWare tools, see
+http://seqware.io for more information.
 
-## Next Steps
-
-more to come
