@@ -130,3 +130,6 @@ workflows will be scheduled to the new system.
 The system can be monitored with the standard SeqWare tools, see
 http://seqware.io for more information.
 
+## TODO
+
+* document how to find the IPs of the master nodes using a command line script
