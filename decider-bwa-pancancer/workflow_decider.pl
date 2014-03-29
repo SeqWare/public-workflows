@@ -33,18 +33,18 @@ my $upload_results = 0;
 
 if (scalar(@ARGV) < 6 || scalar(@ARGV) > 20) {
   print "USAGE: 'perl $0 --gnos-url <URL> --cluster-json <cluster.json> [--working-dir <working_dir>] [--sample <sample_id>] [--threads <num_threads_bwa_default_8>] [--test] [--ignore-lane-count] [--force-run] [--skip-meta-download] [--report <workflow_decider_report.txt>] [--settings <seqware_settings_file>] [--upload-results]'\n";
-  print "\t--gnos-url\t\ta URL for a GNOS server, e.g. https://gtrepo-ebi.annailabs.com\n";
-  print "\t--cluster-json\t\ta json file that describes the clusters available to schedule workflows to\n";
-  print "\t--working-dir\t\ta place for temporary ini and settings files\n";
-  print "\t--sample\t\tto only run a particular sample\n";
-  print "\t--threads\t\tnumber of threads to use for BWA\n";
-  print "\t--test\t\t\ta flag that indicates no workflow should be scheudle, just summary of what would have been run\n";
-  print "\t--ignore-lane-count\tskip the check that the GNOS XML contains a count of lanes for this sample and the bams count matches\n";
-  print "\t--force-run\t\tschedule workflows even if they were previously run/failed/scheduled\n";
-  print "\t--skip-meta-download\tuse the previously downloaded XML from GNOS, only useful for testing\n";
-  print "\t--report\t\tthe report file name\n";
-  print "\t--settings\t\tthe template seqware settings file\n";
-  print "\t--upload-results\ta flag indicating the resulting BAM files and metadata should be uploaded to GNOS, default is to not upload!!!\n";
+  print "\t--gnos-url           a URL for a GNOS server, e.g. https://gtrepo-ebi.annailabs.com\n";
+  print "\t--cluster-json       a json file that describes the clusters available to schedule workflows to\n";
+  print "\t--working-dir        a place for temporary ini and settings files\n";
+  print "\t--sample             to only run a particular sample\n";
+  print "\t--threads            number of threads to use for BWA\n";
+  print "\t--test               a flag that indicates no workflow should be scheudle, just summary of what would have been run\n";
+  print "\t--ignore-lane-count  skip the check that the GNOS XML contains a count of lanes for this sample and the bams count matches\n";
+  print "\t--force-run          schedule workflows even if they were previously run/failed/scheduled\n";
+  print "\t--skip-meta-download use the previously downloaded XML from GNOS, only useful for testing\n";
+  print "\t--report             the report file name\n";
+  print "\t--settings           the template seqware settings file\n";
+  print "\t--upload-results     a flag indicating the resulting BAM files and metadata should be uploaded to GNOS, default is to not upload!!!\n";
   exit;
 }
 
