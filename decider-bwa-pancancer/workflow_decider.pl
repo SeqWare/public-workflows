@@ -45,7 +45,7 @@ if (scalar(@ARGV) < 6 || scalar(@ARGV) > 20) {
   print "\t--report\t\tthe report file name\n";
   print "\t--settings\t\tthe template seqware settings file\n";
   print "\t--upload-results\ta flag indicating the resulting BAM files and metadata should be uploaded to GNOS, default is to not upload!!!\n";
-  die;
+  exit;
 }
 
 GetOptions("gnos-url=s" => \$gnos_url, "cluster-json=s" => \$cluster_json, "working-dir=s" => \$working_dir, "sample=s" => \$specific_sample, "test" => \$test, "ignore-lane-count" => \$ignore_lane_cnt, "force-run" => \$force_run, "threads=i" => \$threads, "skip-meta-download" => \$skip_down, "report=s" => \$report_name, "settings=s" => \$seqware_setting, "upload-results" => \$upload_results);
