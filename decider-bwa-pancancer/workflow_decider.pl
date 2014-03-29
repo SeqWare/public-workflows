@@ -120,8 +120,10 @@ END
   close OUT;
   my $settings = `cat $seqware_setting`;
   my $cluster_found = 0;
+  # cluster info
+  my $url = "";
   foreach my $cluster (keys %{$cluster_info}) {
-    my $url = $cluster_info->{$cluster}{webservice}; 
+    $url = $cluster_info->{$cluster}{webservice}; 
     my $username = $cluster_info->{$cluster}{username}; 
     my $password = $cluster_info->{$cluster}{password}; 
     $workflow_accession = $cluster_info->{$cluster}{workflow_accession};
@@ -141,7 +143,7 @@ END
   my $cmd = "SEQWARE_SETTINGS=$working_dir/$rand/settings seqware workflow schedule --accession $workflow_accession --host $host --ini $working_dir/$rand/workflow.ini";
   if (!$test && $cluster_found) {
     print R "\tLAUNCHING WORKFLOW: $working_dir/$rand/workflow.ini\n";
-    print R "\t\tCLUSTER HOST: $cluster ACCESSION: $workflow_accession URL: $url\n";
+    print R "\t\tCLUSTER HOST: $host ACCESSION: $workflow_accession URL: $url\n";
     print R "\t\tLAUNCH CMD: $cmd\n";
     if (system("$cmd")) {
       print R "\t\tSOMETHING WENT WRONG WITH SCHEDULING THE WORKFLOW\n";
