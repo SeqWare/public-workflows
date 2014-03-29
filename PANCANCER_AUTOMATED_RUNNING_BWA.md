@@ -61,6 +61,27 @@ shows what is available in GNOS, which samples have already been aligned, etc.
 This will produce a report in "report.txt" for every sample in GNOS along with
 sample workflow execution command lines.
 
+## Cluster Setup
+
+You need to setup one or more nodes/clusters that are used for running
+workflows and processing data.  These are distinct from the launcher host which
+runs the decider documented here.  Launch one or more compute clusters using
+the [TCGA/ICGC PanCancer - Computational Node/Cluster Launch
+SOP](https://github.com/SeqWare/vagrant/blob/feature/brian_pancan_fixes/PANCAN_CLUSTER_LAUNCH_README.md).
+
+You should use the node/cluster profile that includes the installation of the
+BWA-Mem workflow for PanCancer. This will ensure your compute clusters are
+ready to go for analysis.  However, there is one extremely important step that
+you will need to manually perform on each cluster you setup.  You need to
+ensure you first get a GNOS key for the PanCancer project by following
+instructures at the [PAWG Researcher
+Guide](https://wiki.oicr.on.ca/display/PANCANCER/PAWG+Researcher%27s+Guide).
+You then need to take the contents of this key and replace the contents of
+"~seqware/provisioned-bundles/Workflow_Bundle_BWA_2.1_SeqWare_1.0.11/Workflow_Bundle_BWA/2.1/scripts/gnostest.pem"
+on the master node of each computational cluster you launch. This will ensure
+input and output data can be read/written to the GNOS repositories used in the
+project.
+
 ## Cluster.JSON
 
 This file provides a listing of the available clusters that can be used to
@@ -130,3 +151,6 @@ workflows will be scheduled to the new system.
 The system can be monitored with the standard SeqWare tools, see
 http://seqware.io for more information.
 
+## TODO
+
+* document how to find the IPs of the master nodes using a command line script
