@@ -26,10 +26,11 @@ my $ignore_lane_cnt = 0;
 my $force_run = 0;
 my $threads = 8;
 my $report_name = "workflow_decider_report.txt";
+my $seqware_setting = "seqware.setting";
 
-if (scalar(@ARGV) < 6 || scalar(@ARGV) > 16) { die "USAGE: 'perl $0 --gnos-url <URL> --cluster-json <cluster.json> --working-dir <working_dir> [--sample <sample_id>] [--threads <num_threads_bwa_default_8>] [--test] [--ignore-lane-count] [--force-run] [--skip-meta-download] [--report <workflow_decider_report.txt>]'\n"; }
+if (scalar(@ARGV) < 6 || scalar(@ARGV) > 18) { die "USAGE: 'perl $0 --gnos-url <URL> --cluster-json <cluster.json> --working-dir <working_dir> [--sample <sample_id>] [--threads <num_threads_bwa_default_8>] [--test] [--ignore-lane-count] [--force-run] [--skip-meta-download] [--report <workflow_decider_report.txt>] [--settings <seqware_settings_file>]'\n"; }
 
-GetOptions("gnos-url=s" => \$gnos_url, "cluster-json=s" => \$cluster_json, "working-dir=s" => \$working_dir, "sample=s" => \$specific_sample, "test" => \$test, "ignore-lane-count" => \$ignore_lane_cnt, "force-run" => \$force_run, "threads=i" => \$threads, "skip-meta-download" => \$skip_down, "report=s" => \$report_name);
+GetOptions("gnos-url=s" => \$gnos_url, "cluster-json=s" => \$cluster_json, "working-dir=s" => \$working_dir, "sample=s" => \$specific_sample, "test" => \$test, "ignore-lane-count" => \$ignore_lane_cnt, "force-run" => \$force_run, "threads=i" => \$threads, "skip-meta-download" => \$skip_down, "report=s" => \$report_name, "settings=s" => \$seqware_setting);
 
 
 ##############
@@ -117,7 +118,7 @@ bwa_choice=mem
 bwa_mem_params=
 END
   close OUT;
-  my $settings = `cat ~/.seqware/settings`;
+  my $settings = `cat $seqware_setting`;
   foreach my $cluster (keys %{$cluster_info}) {
     my $url = $cluster_info->{$cluster}{webservice}; 
     my $username = $cluster_info->{$cluster}{username}; 

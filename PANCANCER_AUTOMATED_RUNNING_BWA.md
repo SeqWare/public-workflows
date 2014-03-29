@@ -11,13 +11,6 @@ installed on those SeqWare nodes/clusters. The general idea is you run the
 then finds unaligned samples and assigns running of these samples on one of the
 SeqWare hosts.
 
-The decider is currently released within the BWA-Mem workflow bundle. So the
-easiest way to get the decider is to install the bundle. However, for security
-reasons, the luancher is typically a bare-bones Ubuntu box.  In this case the
-decider can be downloaded and used independently of the workflow bundle:
-
-    wget https://raw.githubusercontent.com/SeqWare/public-workflows/feature/brian_bwa_pancan_gnos_download/workflow-bwa-pancancer/workflow/scripts/workflow_decider.pl
-
 ## Requirements
 
 * seqware nodes/clusters, see https://github.com/SeqWare/vagrant, specifically https://github.com/SeqWare/vagrant/blob/feature/brian_pancan_fixes/PANCAN_CLUSTER_LAUNCH_README.md for information about building nodes/clusters for PanCancer
@@ -50,9 +43,25 @@ future runs of the decider that this sample is now aligned.
 
 ## Getting the Decider
 
-We have a release available at: https://s3.amazonaws.com/oicr.workflow.bundles/released-bundles/decider-bwa-pancancer_1.0.tar.gz
+We have a release available at:
+https://s3.amazonaws.com/oicr.workflow.bundles/released-bundles/decider-bwa-pancancer_1.0.tar.gz
 
 Download and unzip this to your launcher host.
+
+Next, you need to install dependencies for the decider. This assumes you are on Ubuntu 12.04 for your launcher and logged in as the ubuntu user which can perform admin actions using sudo.
+
+    sudo apt-get update
+    sudo apt-get -q -y --force-yes install liblz-dev zlib1g-dev libxml-dom-perl samtools libossp-uuid-perl libjson-perl libxml-libxml-perl libboost-filesystem1.48.0 libboost-program-options1.48.0 libboost-regex1.48.0 libboost-system1.48.0 libicu48 libxerces-c3.1 libxqilla6
+    wget http://cghub.ucsc.edu/software/downloads/GeneTorrent/3.8.5/genetorrent-common_3.8.5-ubuntu2.91-12.04_amd64.deb
+    wget http://cghub.ucsc.edu/software/downloads/GeneTorrent/3.8.5/genetorrent-download_3.8.5-ubuntu2.91-12.04_amd64.deb
+    wget http://cghub.ucsc.edu/software/downloads/GeneTorrent/3.8.5/genetorrent-upload_3.8.5-ubuntu2.91-12.04_amd64.deb
+    sudo dpkg -i genetorrent-common_3.8.5-ubuntu2.91-12.04_amd64.deb genetorrent-download_3.8.5-ubuntu2.91-12.04_amd64.deb genetorrent-upload_3.8.5-ubuntu2.91-12.04_amd64.deb
+
+You can check to see if everything is correctly installed with:
+
+    perl -c workflow_decider.pl
+
+That should produce no errors.
 
 ## Running the Decider in Testing Mode
 
@@ -101,7 +110,7 @@ find it installed under SeqWare accession "2".
 
     {
       "cluster-name-1": {
-         "workflow_accession": "1",
+         "workflow_accession": "2",
          "username": "admin@admin.com",
          "password": "admin",
          "webservice": "http://master:8080/SeqWareWebService",
@@ -112,6 +121,32 @@ find it installed under SeqWare accession "2".
 As you build new nodes/clusters you will create a "cluster-name-2",
 "cluster-name-3" and so on.  You will then replace "master" with the IP address
 of the master node for each of you new clusters/nodes.
+
+Assuming you are using the SeqWare-Vagrant process to build your computational
+clusters, you can get the IP addresses of the master nodes under the
+--working-dir specified when you launched the node/cluster.  Change directories
+to that directory and then to master.  Then execute "vagrant ssh-config".  That
+will show you the IP address of master.  For example, if your working directory
+is "target-os-cluster-1":
+
+    $ cd target-os-cluster-1/master
+    $ vagrant ssh-config
+
+And the result looks like:
+
+    Host master
+      HostName 10.0.20.184
+      User ubuntu
+      Port 22
+      UserKnownHostsFile /dev/null
+      StrictHostKeyChecking no
+      PasswordAuthentication no
+      IdentityFile /home/ubuntu/.ssh/oicr-os-1.pem
+      IdentitiesOnly yes
+      LogLevel FATAL
+
+You can then use this information to fill in your cluster.json config for the
+decider.
 
 ## Running the Decider for Real Analysis
 
