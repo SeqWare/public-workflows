@@ -63,19 +63,6 @@ You can check to see if everything is correctly installed with:
 
 That should produce no errors.
 
-## Running the Decider in Testing Mode
-
-First, you will want to run the decider in test mode just to see the samples
-available in GNOS and their status (aligned or not). You do this on the
-launcher host, presumably running in the same cloud as the GNOS instance you
-point to (though not neccesarily). This will produce a report that clearly
-shows what is available in GNOS, which samples have already been aligned, etc.
-
-    perl workflow_decider.pl --gnos-url https://gtrepo-ebi.annailabs.com --report report.txt --force-run --test 
-
-This will produce a report in "report.txt" for every sample in GNOS along with
-sample workflow execution command lines.
-
 ## Cluster Setup
 
 You need to setup one or more nodes/clusters that are used for running
@@ -120,7 +107,10 @@ find it installed under SeqWare accession "2".
 
 As you build new nodes/clusters you will create a "cluster-name-2",
 "cluster-name-3" and so on.  You will then replace "master" with the IP address
-of the master node for each of you new clusters/nodes.
+of the master node for each of you new clusters/nodes. Note that the "host"
+parameter is what the host is called that the workflow is being scheduled on.
+Given our provisioning process this is almost always "master". Do not use the
+IP address here.
 
 Assuming you are using the SeqWare-Vagrant process to build your computational
 clusters, you can get the IP addresses of the master nodes under the
@@ -147,6 +137,19 @@ And the result looks like:
 
 You can then use this information to fill in your cluster.json config for the
 decider.
+
+## Running the Decider in Testing Mode
+
+First, you will want to run the decider in test mode just to see the samples
+available in GNOS and their status (aligned or not). You do this on the
+launcher host, presumably running in the same cloud as the GNOS instance you
+point to (though not neccesarily). This will produce a report that clearly
+shows what is available in GNOS, which samples have already been aligned, etc.
+
+    perl workflow_decider.pl --gnos-url https://gtrepo-ebi.annailabs.com --report report.txt --force-run --test 
+
+This will produce a report in "report.txt" for every sample in GNOS along with
+sample workflow execution command lines.
 
 ## Running the Decider for Real Analysis
 

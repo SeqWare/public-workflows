@@ -119,6 +119,7 @@ bwa_mem_params=
 END
   close OUT;
   my $settings = `cat $seqware_setting`;
+  my $cluster_found = 0;
   foreach my $cluster (keys %{$cluster_info}) {
     my $url = $cluster_info->{$cluster}{webservice}; 
     my $username = $cluster_info->{$cluster}{username}; 
@@ -128,7 +129,8 @@ END
     $settings =~ s/SW_REST_URL=.*/SW_REST_URL=$url/g;
     $settings =~ s/SW_REST_USER=.*/SW_REST_USER=$username/g;
     $settings =~ s/SW_REST_PASS=.*/SW_REST_PASS=$password/g;
-    # can only assign one workflow here
+    # can only assign one workflow here per cluster
+    $cluster_found = 1;
     delete $cluster_info->{$cluster};
     last;
   }
@@ -137,12 +139,16 @@ END
   close OUT;
   # now submit the workflow!
   my $cmd = "SEQWARE_SETTINGS=$working_dir/$rand/settings seqware workflow schedule --accession $workflow_accession --host $host --ini $working_dir/$rand/workflow.ini";
-  if (!$test) {
+  if (!$test && $cluster_found) {
     print R "\tLAUNCHING WORKFLOW: $working_dir/$rand/workflow.ini\n";
+    print R "\t\tCLUSTER HOST: $cluster ACCESSION: $workflow_accession URL: $url\n";
     print R "\t\tLAUNCH CMD: $cmd\n";
     if (system("$cmd")) {
       print R "\t\tSOMETHING WENT WRONG WITH SCHEDULING THE WORKFLOW\n";
     }
+  } elsif (!$test && !$cluster_found) {
+    print R "\tNOT LAUNCHING WORKFLOW, NO CLUSTER AVAILABLE: $working_dir/$rand/workflow.ini\n";
+    print R "\t\tLAUNCH CMD WOULD HAVE BEEN: $cmd\n";
   } else {
     print R "\tNOT LAUNCHING WORKFLOW BECAUSE --test SPECIFIED: $working_dir/$rand/workflow.ini\n";
     print R "\t\tLAUNCH CMD WOULD HAVE BEEN: $cmd\n";
