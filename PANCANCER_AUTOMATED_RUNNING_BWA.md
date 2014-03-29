@@ -48,6 +48,12 @@ If both criteria are met (not aligned yet, not running/failed) the decider
 final step in the worklfow is to upload the results back to GNOS, indicating to
 future runs of the decider that this sample is now aligned.
 
+## Getting the Decider
+
+We have a release available at: https://s3.amazonaws.com/oicr.workflow.bundles/released-bundles/decider-bwa-pancancer_1.0.tar.gz
+
+Download and unzip this to your launcher host.
+
 ## Running the Decider in Testing Mode
 
 First, you will want to run the decider in test mode just to see the samples
