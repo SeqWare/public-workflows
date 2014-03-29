@@ -27,10 +27,30 @@ my $force_run = 0;
 my $threads = 8;
 my $report_name = "workflow_decider_report.txt";
 my $seqware_setting = "seqware.setting";
+# by default skip the upload of results back to GNOS
+my $skip_upload = "true";
+my $upload_results = 0;
 
-if (scalar(@ARGV) < 6 || scalar(@ARGV) > 18) { die "USAGE: 'perl $0 --gnos-url <URL> --cluster-json <cluster.json> --working-dir <working_dir> [--sample <sample_id>] [--threads <num_threads_bwa_default_8>] [--test] [--ignore-lane-count] [--force-run] [--skip-meta-download] [--report <workflow_decider_report.txt>] [--settings <seqware_settings_file>]'\n"; }
+if (scalar(@ARGV) < 6 || scalar(@ARGV) > 20) {
+  print "USAGE: 'perl $0 --gnos-url <URL> --cluster-json <cluster.json> [--working-dir <working_dir>] [--sample <sample_id>] [--threads <num_threads_bwa_default_8>] [--test] [--ignore-lane-count] [--force-run] [--skip-meta-download] [--report <workflow_decider_report.txt>] [--settings <seqware_settings_file>] [--upload-results]'\n";
+  print "\t--gnos-url\ta URL for a GNOS server, e.g. https://gtrepo-ebi.annailabs.com\n";
+  print "\t--cluster-json\ta json file that describes the clusters available to schedule workflows to\n";
+  print "\t--working-dir\ta place for temporary ini and settings files\n";
+  print "\t--sample\tto only run a particular sample\n";
+  print "\t--threads\tnumber of threads to use for BWA\n";
+  print "\t--test\ta flag that indicates no workflow should be scheudle, just summary of what would have been run\n";
+  print "\t--ignore-lane-count\tskip the check that the GNOS XML contains a count of lanes for this sample and the bams count matches\n";
+  print "\t--force-run\tschedule workflows even if they were previously run/failed/scheduled\n";
+  print "\t--skip-meta-download\tuse the previously downloaded XML from GNOS, only useful for testing\n";
+  print "\t--report\tthe report file name\n";
+  print "\t--settings\tthe template seqware settings file\n";
+  print "\t--upload-results\ta flag indicating the resulting BAM files and metadata should be uploaded to GNOS, default is to not upload!!!\n";
+  die;
+}
 
-GetOptions("gnos-url=s" => \$gnos_url, "cluster-json=s" => \$cluster_json, "working-dir=s" => \$working_dir, "sample=s" => \$specific_sample, "test" => \$test, "ignore-lane-count" => \$ignore_lane_cnt, "force-run" => \$force_run, "threads=i" => \$threads, "skip-meta-download" => \$skip_down, "report=s" => \$report_name, "settings=s" => \$seqware_setting);
+GetOptions("gnos-url=s" => \$gnos_url, "cluster-json=s" => \$cluster_json, "working-dir=s" => \$working_dir, "sample=s" => \$specific_sample, "test" => \$test, "ignore-lane-count" => \$ignore_lane_cnt, "force-run" => \$force_run, "threads=i" => \$threads, "skip-meta-download" => \$skip_down, "report=s" => \$report_name, "settings=s" => \$seqware_setting, "upload-results" => \$upload_results);
+
+if ($upload_results) { $skip_upload = "false"; }
 
 
 ##############
@@ -81,6 +101,7 @@ sub schedule_workflow {
   print OUT "gnos_output_file_url=$gnos_url\n";
   print OUT "readGroup=\n";
   print OUT "numOfThreads=$threads\n";
+  print OUT "skip_upload=$skip_upload\n";
   print OUT <<END;
 #key=picardSortJobMem:type=integer:display=F:display_name=Memory for Picard merge, sort, index, and md5sum
 picardSortJobMem=6
@@ -92,8 +113,6 @@ input_reference=\${workflow_bundle_dir}/Workflow_Bundle_BWA/2.1/data/reference/b
 maxInsertSize=
 #key=bwaAlignMemG:type=integer:display=F:display_name=Memory for BWA align step
 bwaAlignMemG=8
-#key=skip_upload:type=pulldown:display=T:display_name=Selecting true prevents upload of metadata and data and is used for testing
-skip_upload=true
 #key=output_prefix:type=text:display=F:display_name=The output_prefix is a convention and used to specify the root of the absolute output path or an S3 bucket name
 output_prefix=./
 #key=additionalPicardParams:type=text:display=F:display_name=Any additional parameters you want to pass to Picard

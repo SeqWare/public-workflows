@@ -41,7 +41,7 @@ If both criteria are met (not aligned yet, not running/failed) the decider
 final step in the worklfow is to upload the results back to GNOS, indicating to
 future runs of the decider that this sample is now aligned.
 
-## Getting the Decider
+## Getting the Decider and Dependencies
 
 We have a release available at:
 https://s3.amazonaws.com/oicr.workflow.bundles/released-bundles/decider-bwa-pancancer_1.0.tar.gz
@@ -50,18 +50,28 @@ Download and unzip this to your launcher host.
 
 Next, you need to install dependencies for the decider. This assumes you are on Ubuntu 12.04 for your launcher and logged in as the ubuntu user which can perform admin actions using sudo.
 
-    sudo apt-get update
-    sudo apt-get -q -y --force-yes install liblz-dev zlib1g-dev libxml-dom-perl samtools libossp-uuid-perl libjson-perl libxml-libxml-perl libboost-filesystem1.48.0 libboost-program-options1.48.0 libboost-regex1.48.0 libboost-system1.48.0 libicu48 libxerces-c3.1 libxqilla6
-    wget http://cghub.ucsc.edu/software/downloads/GeneTorrent/3.8.5/genetorrent-common_3.8.5-ubuntu2.91-12.04_amd64.deb
-    wget http://cghub.ucsc.edu/software/downloads/GeneTorrent/3.8.5/genetorrent-download_3.8.5-ubuntu2.91-12.04_amd64.deb
-    wget http://cghub.ucsc.edu/software/downloads/GeneTorrent/3.8.5/genetorrent-upload_3.8.5-ubuntu2.91-12.04_amd64.deb
-    sudo dpkg -i genetorrent-common_3.8.5-ubuntu2.91-12.04_amd64.deb genetorrent-download_3.8.5-ubuntu2.91-12.04_amd64.deb genetorrent-upload_3.8.5-ubuntu2.91-12.04_amd64.deb
+    $ sudo apt-get update
+    $ sudo apt-get -q -y --force-yes install liblz-dev zlib1g-dev libxml-dom-perl samtools libossp-uuid-perl libjson-perl libxml-libxml-perl libboost-filesystem1.48.0 libboost-program-options1.48.0 libboost-regex1.48.0 libboost-system1.48.0 libicu48 libxerces-c3.1 libxqilla6
+    $ wget http://cghub.ucsc.edu/software/downloads/GeneTorrent/3.8.5/genetorrent-common_3.8.5-ubuntu2.91-12.04_amd64.deb
+    $ wget http://cghub.ucsc.edu/software/downloads/GeneTorrent/3.8.5/genetorrent-download_3.8.5-ubuntu2.91-12.04_amd64.deb
+    $ wget http://cghub.ucsc.edu/software/downloads/GeneTorrent/3.8.5/genetorrent-upload_3.8.5-ubuntu2.91-12.04_amd64.deb
+    $ sudo dpkg -i genetorrent-common_3.8.5-ubuntu2.91-12.04_amd64.deb genetorrent-download_3.8.5-ubuntu2.91-12.04_amd64.deb genetorrent-upload_3.8.5-ubuntu2.91-12.04_amd64.deb
 
 You can check to see if everything is correctly installed with:
 
-    perl -c workflow_decider.pl
+    $ perl -c workflow_decider.pl
 
 That should produce no errors.
+
+The SeqWare command line tool is also used by the decider.  Install it using the following:
+
+    $ wget https://github.com/SeqWare/seqware/releases/download/1.0.11/seqware
+    $ sudo cp seqware /usr/local/bin/
+    $ sudo chmod a+x /usr/local/bin/seqware
+
+Java can be installed using:
+
+    $ sudo apt-get install openjdk-7-jdk
 
 ## Cluster Setup
 
@@ -177,6 +187,12 @@ download metadata again, it uses the cached version from the last run since
 Add the following to your cronjob, running every hour:
 
     perl workflow_decider.pl --gnos-url https://gtrepo-ebi.annailabs.com --report report.cron.txt
+
+### Parameters
+
+There are several additional parameters that may be useful:
+
+    USAGE: 'perl workflow_decider.pl --gnos-url <URL> --cluster-json <cluster.json> --working-dir <working_dir> [--sample <sample_id>] [--threads <num_threads_bwa_default_8>] [--test] [--ignore-lane-count] [--force-run] [--skip-meta-download] [--report <workflow_decider_report.txt>] [--settings <seqware_settings_file>]'
 
 ## Dealing with Workflow Failure
 
