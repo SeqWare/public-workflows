@@ -4,3 +4,9 @@
 *.jar
 *.war
 *.ear
+/workflow-bwa-pancancer/target/
+/workflow-bwa-pancancer/links/
+/workflow-DKFZ-SNV-Calling/target/
+/workflow-DKFZ-SNV-Calling/links/
+/workflow-bwa-pancancer/workflow/scripts/*.pem
+/workflow-bwa-pancancer/workflow/scripts/xml/
