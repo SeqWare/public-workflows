@@ -4,3 +4,4 @@
 *.jar
 *.war
 *.ear
+/workflow-DKFZ-SNV-Calling/target/
