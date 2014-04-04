@@ -18,7 +18,7 @@ use XML::LibXML;
 
 my $skip_down = 0;
 my $gnos_url = "https://gtrepo-ebi.annailabs.com";
-my $cluster_json = "cluster.json";
+my $cluster_json = "";
 my $working_dir = "decider_tmp";
 my $specific_sample;
 my $test = 0;
@@ -379,7 +379,7 @@ sub read_cluster_info {
   my $json_txt = "";
   my $d = {};
   my $run_samples = {};
-  if (-e "$cluster_info") {
+  if ($cluster_info ne "" && -e $cluster_info) {
     open IN, "<$cluster_info" or die "Can't open $cluster_info";
     while(<IN>) {
       $json_txt .= $_;
