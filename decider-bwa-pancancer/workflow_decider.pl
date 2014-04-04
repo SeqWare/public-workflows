@@ -291,18 +291,21 @@ sub read_sample_info {
         next;
       }
       print OUT "ANALYSIS FULL URL: $aurl\n";
-      #if ($down) { system("wget -q -O xml/data_$i.xml $aurl"); }
       if (!$skip_down) { download($aurl, "xml/data_$i.xml"); }
       my $adoc = $parser->parsefile ("xml/data_$i.xml");
       my $adoc2 = XML::LibXML->new->parse_file("xml/data_$i.xml");
-      my $analysisId = getVal($adoc, 'analysis_id'); #->getElementsByTagName('analysis_id')->item(0)->getFirstChild->getNodeValue;
-      my $analysisDataURI = getVal($adoc, 'analysis_data_uri'); #->getElementsByTagName('analysis_data_uri')->item(0)->getFirstChild->getNodeValue;
-      my $submitterAliquotId = getCustomVal($adoc2, 'submitter_aliquot_id');
+      my $analysisId = getVal($adoc, 'analysis_id');
+      my $analysisDataURI = getVal($adoc, 'analysis_data_uri');
+      my $submitterAliquotId = getCustomVal($adoc2, 'submitter_aliquot_id,submitter_sample_id');
       my $aliquotId = getCustomVal($adoc2, 'aliquot_id');
-      my $submitterParticipantId = getCustomVal($adoc2, 'submitter_participant_id');
-      my $participantId = getCustomVal($adoc2, 'participant_id');
+      my $submitterParticipantId = getCustomVal($adoc2, 'submitter_participant_id,submitter_donor_id');
+      my $participantId = getCustomVal($adoc2, 'participant_id,submitter_donor_id');
       my $submitterSampleId = getCustomVal($adoc2, 'submitter_sample_id');
-      my $sampleId = getCustomVal($adoc2, 'sample_id');
+      # if donor_id defined then dealing with newer XML
+      if (defined(getCustomVal($adoc2, 'submitter_donor_id')) && getCustomVal($adoc2, 'submitter_donor_id') ne '') {
+        $submitterSampleId = getCustomVal($adoc2, 'submitter_specimen_id');
+      }
+      my $sampleId = getCustomVal($adoc2, 'sample_id,submitter_specimen_id');
       my $use_control = getCustomVal($adoc2, "use_cntl");
       my $alignment = getVal($adoc, "refassem_short_name");
       my $total_lanes = getCustomVal($adoc2, "total_lanes");
@@ -315,9 +318,9 @@ sub read_sample_info {
       print OUT "SUBMITTER PARTICIPANT ID: $submitterParticipantId\n";
       print OUT "SUBMITTER SAMPLE ID: $submitterSampleId\n";
       print OUT "SUBMITTER ALIQUOTID: $submitterAliquotId\n";
-      my $libName = getVal($adoc, 'LIBRARY_NAME'); #->getElementsByTagName('LIBRARY_NAME')->item(0)->getFirstChild->getNodeValue;
-      my $libStrategy = getVal($adoc, 'LIBRARY_STRATEGY'); #->getElementsByTagName('LIBRARY_STRATEGY')->item(0)->getFirstChild->getNodeValue;
-      my $libSource = getVal($adoc, 'LIBRARY_SOURCE'); #->getElementsByTagName('LIBRARY_SOURCE')->item(0)->getFirstChild->getNodeValue;
+      my $libName = getVal($adoc, 'LIBRARY_NAME');
+      my $libStrategy = getVal($adoc, 'LIBRARY_STRATEGY');
+      my $libSource = getVal($adoc, 'LIBRARY_SOURCE');
       print OUT "LibName: $libName LibStrategy: $libStrategy LibSource: $libSource\n";
       # get files
       # now if these are defined then move onto the next step
@@ -455,23 +458,23 @@ sub readFiles {
 }
 
 sub getCustomVal {
-  my ($dom2, $key) = @_;
-  #print "HERE $dom2 $key\n";
+  my ($dom2, $keys) = @_;
+  my @keys_arr = split /,/, $keys;
   for my $node ($dom2->findnodes('//ANALYSIS_ATTRIBUTES/ANALYSIS_ATTRIBUTE')) {
-    #print "NODE: ".$node->toString()."\n";
     my $i=0;
     for my $currKey ($node->findnodes('//TAG/text()')) {
       $i++;
       my $keyStr = $currKey->toString();
-      if ($keyStr eq $key) {
-        my $j=0;
-        for my $currVal ($node->findnodes('//VALUE/text()')) {
-          $j++;   
-          if ($j==$i) { 
-            #print "TAG: $keyStr\n";
-            return($currVal->toString());
-          }
-        } 
+      foreach my $key (@keys_arr) {
+        if ($keyStr eq $key) {
+          my $j=0;
+          for my $currVal ($node->findnodes('//VALUE/text()')) {
+            $j++;   
+            if ($j==$i) { 
+              return($currVal->toString());
+            }
+          } 
+        }
       }
     }
   }
