@@ -180,7 +180,7 @@ END
 sub schedule_samples {
   print R "SAMPLE SCHEDULING INFORMATION\n\n";
   foreach my $participant (keys %{$sample_info}) {
-    print R "PARTICIPANT: $participant\n\n";
+    print R "DONOR/PARTICIPANT: $participant\n\n";
     foreach my $sample (keys %{$sample_info->{$participant}}) {
       if (defined($specific_sample) && $specific_sample ne '' && $specific_sample ne $sample) { next; }
       # storing some info
@@ -188,12 +188,12 @@ sub schedule_samples {
       $d->{gnos_url} = $gnos_url;
       my $aligns = {};
       print R "\tSAMPLE OVERVIEW\n";
-      print R "\tSAMPLE: $sample\n";
+      print R "\tSPECIMEN/SAMPLE: $sample\n";
       foreach my $alignment (keys %{$sample_info->{$participant}{$sample}}) {
         print R "\t\tALIGNMENT: $alignment\n";
         $aligns->{$alignment} = 1;
         foreach my $aliquot (keys %{$sample_info->{$participant}{$sample}{$alignment}}) {
-          print R "\t\t\tALIQUOT: $aliquot\n";
+          print R "\t\t\tANALYZED SAMPLE/ALIQUOT: $aliquot\n";
           foreach my $library (keys %{$sample_info->{$participant}{$sample}{$alignment}{$aliquot}}) {
             print R "\t\t\t\tLIBRARY: $library\n";
             #print "$participant\t$sample\t$alignment\t$aliquot\t$library\n";
@@ -215,7 +215,8 @@ sub schedule_samples {
               $d->{downloadURL}{"$gnos_url/cghub/data/analysis/download/$analysis"} = 1;
             }
             $d->{gnos_input_file_urls} = join (",", (sort keys %{$d->{downloadURL}}));
-            print R "\t\t\t\t\tBAMS: ", join(",", (keys %{$sample_info->{$participant}{$sample}{$alignment}{$aliquot}{$library}{files}})), "\n\n";
+            print R "\t\t\t\t\tBAMS: ", join(",", (keys %{$sample_info->{$participant}{$sample}{$alignment}{$aliquot}{$library}{files}})), "\n";
+            print R "\t\t\t\t\tANALYSIS_IDS: ", join(",", (keys %{$sample_info->{$participant}{$sample}{$alignment}{$aliquot}{$library}{analysis_id}})), "\n\n";
           }
         }
       }
