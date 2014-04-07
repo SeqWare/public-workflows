@@ -1,5 +1,9 @@
 # TCGA/ICGC PanCancer - BWA-Mem Automated Workflow Running SOP
 
+# TODO: 
+
+* .seqware/settings on the launcher host???? Should add a sample to the tarball
+
 ## Overview
 
 This document describes how to automate the running of the BWA-Mem SeqWare
