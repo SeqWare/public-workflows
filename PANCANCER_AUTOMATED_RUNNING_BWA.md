@@ -227,6 +227,18 @@ workflows will be scheduled to the new system.
 The system can be monitored with the standard SeqWare tools, see
 http://seqware.io for more information.
 
+## Cloud-Specific Notes
+
+This section describes modifications needed on a per PanCancer cloud basis.
+
+### BioNimbus PDC
+
+This cloud uses a web proxy, the settings for which are stored in environment variables.  This means you need to override these variables when interacting with the local network.  For example, to run the decider on the launcher host you would do:
+
+    http_proxy= perl workflow_decider.pl --test --ignore-lane-count --force-run --cluster-json cluster.json --report bionimbus.log --gnos-url https://gtrepo-osdc.annailabs.com
+
+The "http_proxy=" here disables the proxy settings for just this command.
+
 ## TODO
 
 * document how to find the IPs of the master nodes using a command line script
