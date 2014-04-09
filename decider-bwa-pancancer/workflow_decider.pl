@@ -430,6 +430,11 @@ sub read_cluster_info {
             $j++;
             if ($i==$j) { my $txt = $node2->toString(); print R "\t\t\tCWD: $txt\n"; }
           }
+          $j=0;
+          for my $node2 ($dom2->findnodes('//WorkflowRunList2/list/swAccession/text()')) {
+            $j++;
+            if ($i==$j) { my $txt = $node2->toString(); print R "\t\t\tWORKFLOW ACCESSION: $txt\n"; }
+          }
         } 
         # if there are no running workflows on this cluster it's a candidate
         if ($running == 0) {
