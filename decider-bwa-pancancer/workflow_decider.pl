@@ -237,6 +237,7 @@ sub schedule_samples {
         print R "\t\tNOT PREVIOUSLY SCHEDULED OR RUN FORCED!\n";
       } else {
         print R "\t\tIS PREVIOUSLY SCHEDULED, RUNNING, OR FAILED!\n";
+        print R "\t\t\tSTATUS: ".$running_samples->{$analysis_url_str}."\n";
         $veto = 1; 
       }
       # now check the number of bams == lane count (or this check is suppressed) 
@@ -412,7 +413,7 @@ sub read_cluster_info {
         my $i=0;
         for my $node ($dom2->findnodes('//WorkflowRunList2/list/status/text()')) {
           $i++;
-          print R "\tWORKFLOW: ".$acc." STATUS: ".$node->toString()."\n";
+          print R "\t\tWORKFLOW: ".$acc." STATUS: ".$node->toString()."\n";
           if ($node->toString() eq 'running' || $node->toString() eq 'scheduled' || $node->toString() eq 'submitted') { $running++; }
           # find running samples
           my $j=0;
@@ -422,7 +423,12 @@ sub read_cluster_info {
             $ini_contents =~ /gnos_input_metadata_urls=(\S+)/;
             my @urls = split /,/, $1;
             my $sorted_urls = join(",", sort @urls);
-            if ($i==$j) { $run_samples->{$sorted_urls} = $node->toString(); print R "\t\tINPUTS: $sorted_urls\n"; }
+            if ($i==$j) { $run_samples->{$sorted_urls} = $node->toString(); print R "\t\t\tINPUTS: $sorted_urls\n"; }
+          }
+          $j=0;
+          for my $node2 ($dom2->findnodes('//WorkflowRunList2/list/currentWorkingDir/text()')) {
+            $j++;
+            if ($i==$j) { my $txt = $node2->toString(); print R "\t\t\tCWD: $txt\n"; }
           }
         } 
         # if there are no running workflows on this cluster it's a candidate
