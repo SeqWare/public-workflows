@@ -1,0 +1,905 @@
+.
+├── links
+│   ├── input.txt
+│   └── README
+├── output.txt
+├── pom.xml
+├── src
+│   └── main
+│       └── java
+│           └── dockerHelloWorld
+│               └── dockerHelloWorldWorkflow.java
+├── target
+│   ├── classes
+│   │   └── dockerHelloWorld
+│   │       └── dockerHelloWorldWorkflow.class
+│   ├── dependency-maven-plugin-markers
+│   │   ├── io.seqware-seqware-bin-linux-x86-64-jre-7.0.51-jar-1.0.0.marker
+│   │   ├── net.sourceforge.seqware-seqware-bin-linux-x86-64-cat-5.67-jar-1.0.0.marker
+│   │   ├── net.sourceforge.seqware-seqware-bin-linux-x86-64-echo-5.67-jar-1.0.0.marker
+│   │   ├── net.sourceforge.seqware-seqware-bin-linux-x86-64-perl-5.14.1-jar-1.0.0.marker
+│   │   └── net.sourceforge.seqware-seqware-bin-noarch-pegasus-dirmanager-jar-1.0.0.marker
+│   ├── dockerHelloWorld-1.0-SNAPSHOT.jar
+│   ├── generated-sources
+│   │   └── annotations
+│   ├── maven-archiver
+│   │   └── pom.properties
+│   ├── maven-status
+│   │   └── maven-compiler-plugin
+│   │       └── compile
+│   │           └── default-compile
+│   │               ├── createdFiles.lst
+│   │               └── inputFiles.lst
+│   ├── surefire
+│   ├── test-classes
+│   └── Workflow_Bundle_dockerHelloWorld_1.0-SNAPSHOT_SeqWare_1.0.14-SNAPSHOT
+│       └── Workflow_Bundle_dockerHelloWorld
+│           └── 1.0-SNAPSHOT
+│               ├── bin
+│               │   ├── globus
+│               │   │   └── pegasus-dirmanager
+│               │   ├── gnu-coreutils-5.67
+│               │   │   ├── cat
+│               │   │   └── echo
+│               │   ├── jre1.7.0_51
+│               │   │   ├── bin
+│               │   │   │   ├── ControlPanel
+│               │   │   │   ├── java
+│               │   │   │   ├── java_vm
+│               │   │   │   ├── javaws
+│               │   │   │   ├── jcontrol
+│               │   │   │   ├── keytool
+│               │   │   │   ├── orbd
+│               │   │   │   ├── pack200
+│               │   │   │   ├── policytool
+│               │   │   │   ├── rmid
+│               │   │   │   ├── rmiregistry
+│               │   │   │   ├── servertool
+│               │   │   │   ├── tnameserv
+│               │   │   │   └── unpack200
+│               │   │   ├── COPYRIGHT
+│               │   │   ├── lib
+│               │   │   │   ├── alt-rt.jar
+│               │   │   │   ├── amd64
+│               │   │   │   │   ├── fxavcodecplugin-52.so
+│               │   │   │   │   ├── fxavcodecplugin-53.so
+│               │   │   │   │   ├── fxplugins.so
+│               │   │   │   │   ├── headless
+│               │   │   │   │   │   └── libmawt.so
+│               │   │   │   │   ├── jli
+│               │   │   │   │   │   └── libjli.so
+│               │   │   │   │   ├── jvm.cfg
+│               │   │   │   │   ├── libawt.so
+│               │   │   │   │   ├── libdcpr.so
+│               │   │   │   │   ├── libdeploy.so
+│               │   │   │   │   ├── libdt_socket.so
+│               │   │   │   │   ├── libfontmanager.so
+│               │   │   │   │   ├── libglass.so
+│               │   │   │   │   ├── libgstplugins-lite.so
+│               │   │   │   │   ├── libgstreamer-lite.so
+│               │   │   │   │   ├── libhprof.so
+│               │   │   │   │   ├── libinstrument.so
+│               │   │   │   │   ├── libj2gss.so
+│               │   │   │   │   ├── libj2pcsc.so
+│               │   │   │   │   ├── libj2pkcs11.so
+│               │   │   │   │   ├── libjaas_unix.so
+│               │   │   │   │   ├── libjava_crw_demo.so
+│               │   │   │   │   ├── libjavafx-font.so
+│               │   │   │   │   ├── libjavafx-iio.so
+│               │   │   │   │   ├── libjavaplugin_jni.so
+│               │   │   │   │   ├── libjava.so
+│               │   │   │   │   ├── libjawt.so
+│               │   │   │   │   ├── libJdbcOdbc.so
+│               │   │   │   │   ├── libjdwp.so
+│               │   │   │   │   ├── libjfr.so
+│               │   │   │   │   ├── libjfxmedia.so
+│               │   │   │   │   ├── libjfxwebkit.so
+│               │   │   │   │   ├── libjpeg.so
+│               │   │   │   │   ├── libjsdt.so
+│               │   │   │   │   ├── libjsig.so
+│               │   │   │   │   ├── libjsoundalsa.so
+│               │   │   │   │   ├── libjsound.so
+│               │   │   │   │   ├── libkcms.so
+│               │   │   │   │   ├── libmanagement.so
+│               │   │   │   │   ├── libmlib_image.so
+│               │   │   │   │   ├── libnet.so
+│               │   │   │   │   ├── libnio.so
+│               │   │   │   │   ├── libnpjp2.so
+│               │   │   │   │   ├── libnpt.so
+│               │   │   │   │   ├── libprism-es2.so
+│               │   │   │   │   ├── libsctp.so
+│               │   │   │   │   ├── libsplashscreen.so
+│               │   │   │   │   ├── libsunec.so
+│               │   │   │   │   ├── libt2k.so
+│               │   │   │   │   ├── libunpack.so
+│               │   │   │   │   ├── libverify.so
+│               │   │   │   │   ├── libzip.so
+│               │   │   │   │   ├── server
+│               │   │   │   │   │   ├── libjsig.so
+│               │   │   │   │   │   ├── libjvm.so
+│               │   │   │   │   │   └── Xusage.txt
+│               │   │   │   │   └── xawt
+│               │   │   │   │       └── libmawt.so
+│               │   │   │   ├── applet
+│               │   │   │   ├── calendars.properties
+│               │   │   │   ├── charsets.jar
+│               │   │   │   ├── classlist
+│               │   │   │   ├── cmm
+│               │   │   │   │   ├── CIEXYZ.pf
+│               │   │   │   │   ├── GRAY.pf
+│               │   │   │   │   ├── LINEAR_RGB.pf
+│               │   │   │   │   ├── PYCC.pf
+│               │   │   │   │   └── sRGB.pf
+│               │   │   │   ├── content-types.properties
+│               │   │   │   ├── currency.data
+│               │   │   │   ├── deploy
+│               │   │   │   │   ├── cautionshield.icns
+│               │   │   │   │   ├── ffjcext.zip
+│               │   │   │   │   ├── java-icon.ico
+│               │   │   │   │   ├── messages_de.properties
+│               │   │   │   │   ├── messages_es.properties
+│               │   │   │   │   ├── messages_fr.properties
+│               │   │   │   │   ├── messages_it.properties
+│               │   │   │   │   ├── messages_ja.properties
+│               │   │   │   │   ├── messages_ko.properties
+│               │   │   │   │   ├── messages.properties
+│               │   │   │   │   ├── messages_pt_BR.properties
+│               │   │   │   │   ├── messages_sv.properties
+│               │   │   │   │   ├── messages_zh_CN.properties
+│               │   │   │   │   ├── messages_zh_HK.properties
+│               │   │   │   │   ├── messages_zh_TW.properties
+│               │   │   │   │   ├── mixcode_s.png
+│               │   │   │   │   ├── MixedCodeMainDialogJs.ui
+│               │   │   │   │   ├── MixedCodeMainDialog.ui
+│               │   │   │   │   └── splash.gif
+│               │   │   │   ├── deploy.jar
+│               │   │   │   ├── desktop
+│               │   │   │   │   ├── applications
+│               │   │   │   │   │   ├── sun_java.desktop
+│               │   │   │   │   │   ├── sun-java.desktop
+│               │   │   │   │   │   └── sun-javaws.desktop
+│               │   │   │   │   ├── icons
+│               │   │   │   │   │   ├── hicolor
+│               │   │   │   │   │   │   ├── 16x16
+│               │   │   │   │   │   │   │   ├── apps
+│               │   │   │   │   │   │   │   │   ├── sun-java.png
+│               │   │   │   │   │   │   │   │   ├── sun-javaws.png
+│               │   │   │   │   │   │   │   │   └── sun-jcontrol.png
+│               │   │   │   │   │   │   │   └── mimetypes
+│               │   │   │   │   │   │   │       ├── gnome-mime-application-x-java-archive.png
+│               │   │   │   │   │   │   │       ├── gnome-mime-application-x-java-jnlp-file.png
+│               │   │   │   │   │   │   │       └── gnome-mime-text-x-java.png
+│               │   │   │   │   │   │   └── 48x48
+│               │   │   │   │   │   │       ├── apps
+│               │   │   │   │   │   │       │   ├── sun-java.png
+│               │   │   │   │   │   │       │   ├── sun-javaws.png
+│               │   │   │   │   │   │       │   └── sun-jcontrol.png
+│               │   │   │   │   │   │       └── mimetypes
+│               │   │   │   │   │   │           ├── gnome-mime-application-x-java-archive.png
+│               │   │   │   │   │   │           ├── gnome-mime-application-x-java-jnlp-file.png
+│               │   │   │   │   │   │           └── gnome-mime-text-x-java.png
+│               │   │   │   │   │   ├── HighContrast
+│               │   │   │   │   │   │   ├── 16x16
+│               │   │   │   │   │   │   │   ├── apps
+│               │   │   │   │   │   │   │   │   ├── sun-java.png
+│               │   │   │   │   │   │   │   │   ├── sun-javaws.png
+│               │   │   │   │   │   │   │   │   └── sun-jcontrol.png
+│               │   │   │   │   │   │   │   └── mimetypes
+│               │   │   │   │   │   │   │       ├── gnome-mime-application-x-java-archive.png
+│               │   │   │   │   │   │   │       ├── gnome-mime-application-x-java-jnlp-file.png
+│               │   │   │   │   │   │   │       └── gnome-mime-text-x-java.png
+│               │   │   │   │   │   │   └── 48x48
+│               │   │   │   │   │   │       ├── apps
+│               │   │   │   │   │   │       │   ├── sun-java.png
+│               │   │   │   │   │   │       │   ├── sun-javaws.png
+│               │   │   │   │   │   │       │   └── sun-jcontrol.png
+│               │   │   │   │   │   │       └── mimetypes
+│               │   │   │   │   │   │           ├── gnome-mime-application-x-java-archive.png
+│               │   │   │   │   │   │           ├── gnome-mime-application-x-java-jnlp-file.png
+│               │   │   │   │   │   │           └── gnome-mime-text-x-java.png
+│               │   │   │   │   │   ├── HighContrastInverse
+│               │   │   │   │   │   │   ├── 16x16
+│               │   │   │   │   │   │   │   ├── apps
+│               │   │   │   │   │   │   │   │   ├── sun-java.png
+│               │   │   │   │   │   │   │   │   ├── sun-javaws.png
+│               │   │   │   │   │   │   │   │   └── sun-jcontrol.png
+│               │   │   │   │   │   │   │   └── mimetypes
+│               │   │   │   │   │   │   │       ├── gnome-mime-application-x-java-archive.png
+│               │   │   │   │   │   │   │       ├── gnome-mime-application-x-java-jnlp-file.png
+│               │   │   │   │   │   │   │       └── gnome-mime-text-x-java.png
+│               │   │   │   │   │   │   └── 48x48
+│               │   │   │   │   │   │       ├── apps
+│               │   │   │   │   │   │       │   ├── sun-java.png
+│               │   │   │   │   │   │       │   ├── sun-javaws.png
+│               │   │   │   │   │   │       │   └── sun-jcontrol.png
+│               │   │   │   │   │   │       └── mimetypes
+│               │   │   │   │   │   │           ├── gnome-mime-application-x-java-archive.png
+│               │   │   │   │   │   │           ├── gnome-mime-application-x-java-jnlp-file.png
+│               │   │   │   │   │   │           └── gnome-mime-text-x-java.png
+│               │   │   │   │   │   └── LowContrast
+│               │   │   │   │   │       ├── 16x16
+│               │   │   │   │   │       │   ├── apps
+│               │   │   │   │   │       │   │   ├── sun-java.png
+│               │   │   │   │   │       │   │   ├── sun-javaws.png
+│               │   │   │   │   │       │   │   └── sun-jcontrol.png
+│               │   │   │   │   │       │   └── mimetypes
+│               │   │   │   │   │       │       ├── gnome-mime-application-x-java-archive.png
+│               │   │   │   │   │       │       ├── gnome-mime-application-x-java-jnlp-file.png
+│               │   │   │   │   │       │       └── gnome-mime-text-x-java.png
+│               │   │   │   │   │       └── 48x48
+│               │   │   │   │   │           ├── apps
+│               │   │   │   │   │           │   ├── sun-java.png
+│               │   │   │   │   │           │   ├── sun-javaws.png
+│               │   │   │   │   │           │   └── sun-jcontrol.png
+│               │   │   │   │   │           └── mimetypes
+│               │   │   │   │   │               ├── gnome-mime-application-x-java-archive.png
+│               │   │   │   │   │               ├── gnome-mime-application-x-java-jnlp-file.png
+│               │   │   │   │   │               └── gnome-mime-text-x-java.png
+│               │   │   │   │   └── mime
+│               │   │   │   │       └── packages
+│               │   │   │   │           ├── x-java-archive.xml
+│               │   │   │   │           └── x-java-jnlp-file.xml
+│               │   │   │   ├── ext
+│               │   │   │   │   ├── dnsns.jar
+│               │   │   │   │   ├── localedata.jar
+│               │   │   │   │   ├── meta-index
+│               │   │   │   │   ├── sunec.jar
+│               │   │   │   │   ├── sunjce_provider.jar
+│               │   │   │   │   ├── sunpkcs11.jar
+│               │   │   │   │   └── zipfs.jar
+│               │   │   │   ├── flavormap.properties
+│               │   │   │   ├── fontconfig.bfc
+│               │   │   │   ├── fontconfig.properties.src
+│               │   │   │   ├── fontconfig.RedHat.5.bfc
+│               │   │   │   ├── fontconfig.RedHat.5.properties.src
+│               │   │   │   ├── fontconfig.RedHat.6.bfc
+│               │   │   │   ├── fontconfig.RedHat.6.properties.src
+│               │   │   │   ├── fontconfig.SuSE.10.bfc
+│               │   │   │   ├── fontconfig.SuSE.10.properties.src
+│               │   │   │   ├── fontconfig.SuSE.11.bfc
+│               │   │   │   ├── fontconfig.SuSE.11.properties.src
+│               │   │   │   ├── fontconfig.Turbo.bfc
+│               │   │   │   ├── fontconfig.Turbo.properties.src
+│               │   │   │   ├── fonts
+│               │   │   │   │   ├── fonts.dir
+│               │   │   │   │   ├── LucidaBrightDemiBold.ttf
+│               │   │   │   │   ├── LucidaBrightDemiItalic.ttf
+│               │   │   │   │   ├── LucidaBrightItalic.ttf
+│               │   │   │   │   ├── LucidaBrightRegular.ttf
+│               │   │   │   │   ├── LucidaSansDemiBold.ttf
+│               │   │   │   │   ├── LucidaSansRegular.ttf
+│               │   │   │   │   ├── LucidaTypewriterBold.ttf
+│               │   │   │   │   └── LucidaTypewriterRegular.ttf
+│               │   │   │   ├── images
+│               │   │   │   │   ├── cursors
+│               │   │   │   │   │   ├── cursors.properties
+│               │   │   │   │   │   ├── invalid32x32.gif
+│               │   │   │   │   │   ├── motif_CopyDrop32x32.gif
+│               │   │   │   │   │   ├── motif_CopyNoDrop32x32.gif
+│               │   │   │   │   │   ├── motif_LinkDrop32x32.gif
+│               │   │   │   │   │   ├── motif_LinkNoDrop32x32.gif
+│               │   │   │   │   │   ├── motif_MoveDrop32x32.gif
+│               │   │   │   │   │   └── motif_MoveNoDrop32x32.gif
+│               │   │   │   │   └── icons
+│               │   │   │   │       ├── sun-java_HighContrastInverse.png
+│               │   │   │   │       ├── sun-java_HighContrast.png
+│               │   │   │   │       ├── sun-java_LowContrast.png
+│               │   │   │   │       └── sun-java.png
+│               │   │   │   ├── javafx.properties
+│               │   │   │   ├── javaws.jar
+│               │   │   │   ├── jce.jar
+│               │   │   │   ├── jexec
+│               │   │   │   ├── jfr
+│               │   │   │   │   ├── default.jfc
+│               │   │   │   │   └── profile.jfc
+│               │   │   │   ├── jfr.jar
+│               │   │   │   ├── jfxrt.jar
+│               │   │   │   ├── jsse.jar
+│               │   │   │   ├── jvm.hprof.txt
+│               │   │   │   ├── locale
+│               │   │   │   │   ├── de
+│               │   │   │   │   │   └── LC_MESSAGES
+│               │   │   │   │   │       └── sunw_java_plugin.mo
+│               │   │   │   │   ├── es
+│               │   │   │   │   │   └── LC_MESSAGES
+│               │   │   │   │   │       └── sunw_java_plugin.mo
+│               │   │   │   │   ├── fr
+│               │   │   │   │   │   └── LC_MESSAGES
+│               │   │   │   │   │       └── sunw_java_plugin.mo
+│               │   │   │   │   ├── it
+│               │   │   │   │   │   └── LC_MESSAGES
+│               │   │   │   │   │       └── sunw_java_plugin.mo
+│               │   │   │   │   ├── ja
+│               │   │   │   │   │   └── LC_MESSAGES
+│               │   │   │   │   │       └── sunw_java_plugin.mo
+│               │   │   │   │   ├── ko
+│               │   │   │   │   │   └── LC_MESSAGES
+│               │   │   │   │   │       └── sunw_java_plugin.mo
+│               │   │   │   │   ├── ko.UTF-8
+│               │   │   │   │   │   └── LC_MESSAGES
+│               │   │   │   │   │       └── sunw_java_plugin.mo
+│               │   │   │   │   ├── pt_BR
+│               │   │   │   │   │   └── LC_MESSAGES
+│               │   │   │   │   │       └── sunw_java_plugin.mo
+│               │   │   │   │   ├── sv
+│               │   │   │   │   │   └── LC_MESSAGES
+│               │   │   │   │   │       └── sunw_java_plugin.mo
+│               │   │   │   │   ├── zh
+│               │   │   │   │   │   └── LC_MESSAGES
+│               │   │   │   │   │       └── sunw_java_plugin.mo
+│               │   │   │   │   ├── zh.GBK
+│               │   │   │   │   │   └── LC_MESSAGES
+│               │   │   │   │   │       └── sunw_java_plugin.mo
+│               │   │   │   │   ├── zh_HK.BIG5HK
+│               │   │   │   │   │   └── LC_MESSAGES
+│               │   │   │   │   │       └── sunw_java_plugin.mo
+│               │   │   │   │   ├── zh_TW
+│               │   │   │   │   │   └── LC_MESSAGES
+│               │   │   │   │   │       └── sunw_java_plugin.mo
+│               │   │   │   │   └── zh_TW.BIG5
+│               │   │   │   │       └── LC_MESSAGES
+│               │   │   │   │           └── sunw_java_plugin.mo
+│               │   │   │   ├── logging.properties
+│               │   │   │   ├── management
+│               │   │   │   │   ├── jmxremote.access
+│               │   │   │   │   ├── jmxremote.password.template
+│               │   │   │   │   ├── management.properties
+│               │   │   │   │   └── snmp.acl.template
+│               │   │   │   ├── management-agent.jar
+│               │   │   │   ├── meta-index
+│               │   │   │   ├── net.properties
+│               │   │   │   ├── oblique-fonts
+│               │   │   │   │   ├── fonts.dir
+│               │   │   │   │   ├── LucidaSansDemiOblique.ttf
+│               │   │   │   │   ├── LucidaSansOblique.ttf
+│               │   │   │   │   ├── LucidaTypewriterBoldOblique.ttf
+│               │   │   │   │   └── LucidaTypewriterOblique.ttf
+│               │   │   │   ├── plugin.jar
+│               │   │   │   ├── psfontj2d.properties
+│               │   │   │   ├── psfont.properties.ja
+│               │   │   │   ├── resources.jar
+│               │   │   │   ├── rt.jar
+│               │   │   │   ├── security
+│               │   │   │   │   ├── blacklist
+│               │   │   │   │   ├── cacerts
+│               │   │   │   │   ├── javafx.policy
+│               │   │   │   │   ├── java.policy
+│               │   │   │   │   ├── java.security
+│               │   │   │   │   ├── javaws.policy
+│               │   │   │   │   ├── local_policy.jar
+│               │   │   │   │   ├── trusted.libraries
+│               │   │   │   │   └── US_export_policy.jar
+│               │   │   │   ├── sound.properties
+│               │   │   │   └── zi
+│               │   │   │       ├── Africa
+│               │   │   │       │   ├── Abidjan
+│               │   │   │       │   ├── Accra
+│               │   │   │       │   ├── Addis_Ababa
+│               │   │   │       │   ├── Algiers
+│               │   │   │       │   ├── Asmara
+│               │   │   │       │   ├── Bamako
+│               │   │   │       │   ├── Bangui
+│               │   │   │       │   ├── Banjul
+│               │   │   │       │   ├── Bissau
+│               │   │   │       │   ├── Blantyre
+│               │   │   │       │   ├── Brazzaville
+│               │   │   │       │   ├── Bujumbura
+│               │   │   │       │   ├── Cairo
+│               │   │   │       │   ├── Casablanca
+│               │   │   │       │   ├── Ceuta
+│               │   │   │       │   ├── Conakry
+│               │   │   │       │   ├── Dakar
+│               │   │   │       │   ├── Dar_es_Salaam
+│               │   │   │       │   ├── Djibouti
+│               │   │   │       │   ├── Douala
+│               │   │   │       │   ├── El_Aaiun
+│               │   │   │       │   ├── Freetown
+│               │   │   │       │   ├── Gaborone
+│               │   │   │       │   ├── Harare
+│               │   │   │       │   ├── Johannesburg
+│               │   │   │       │   ├── Kampala
+│               │   │   │       │   ├── Khartoum
+│               │   │   │       │   ├── Kigali
+│               │   │   │       │   ├── Kinshasa
+│               │   │   │       │   ├── Lagos
+│               │   │   │       │   ├── Libreville
+│               │   │   │       │   ├── Lome
+│               │   │   │       │   ├── Luanda
+│               │   │   │       │   ├── Lubumbashi
+│               │   │   │       │   ├── Lusaka
+│               │   │   │       │   ├── Malabo
+│               │   │   │       │   ├── Maputo
+│               │   │   │       │   ├── Maseru
+│               │   │   │       │   ├── Mbabane
+│               │   │   │       │   ├── Mogadishu
+│               │   │   │       │   ├── Monrovia
+│               │   │   │       │   ├── Nairobi
+│               │   │   │       │   ├── Ndjamena
+│               │   │   │       │   ├── Niamey
+│               │   │   │       │   ├── Nouakchott
+│               │   │   │       │   ├── Ouagadougou
+│               │   │   │       │   ├── Porto-Novo
+│               │   │   │       │   ├── Sao_Tome
+│               │   │   │       │   ├── Tripoli
+│               │   │   │       │   ├── Tunis
+│               │   │   │       │   └── Windhoek
+│               │   │   │       ├── America
+│               │   │   │       │   ├── Adak
+│               │   │   │       │   ├── Anchorage
+│               │   │   │       │   ├── Antigua
+│               │   │   │       │   ├── Araguaina
+│               │   │   │       │   ├── Argentina
+│               │   │   │       │   │   ├── Buenos_Aires
+│               │   │   │       │   │   ├── Catamarca
+│               │   │   │       │   │   ├── Cordoba
+│               │   │   │       │   │   ├── Jujuy
+│               │   │   │       │   │   ├── La_Rioja
+│               │   │   │       │   │   ├── Mendoza
+│               │   │   │       │   │   ├── Rio_Gallegos
+│               │   │   │       │   │   ├── Salta
+│               │   │   │       │   │   ├── San_Juan
+│               │   │   │       │   │   ├── San_Luis
+│               │   │   │       │   │   ├── Tucuman
+│               │   │   │       │   │   └── Ushuaia
+│               │   │   │       │   ├── Asuncion
+│               │   │   │       │   ├── Atikokan
+│               │   │   │       │   ├── Bahia
+│               │   │   │       │   ├── Bahia_Banderas
+│               │   │   │       │   ├── Barbados
+│               │   │   │       │   ├── Belem
+│               │   │   │       │   ├── Belize
+│               │   │   │       │   ├── Blanc-Sablon
+│               │   │   │       │   ├── Boa_Vista
+│               │   │   │       │   ├── Bogota
+│               │   │   │       │   ├── Boise
+│               │   │   │       │   ├── Cambridge_Bay
+│               │   │   │       │   ├── Campo_Grande
+│               │   │   │       │   ├── Cancun
+│               │   │   │       │   ├── Caracas
+│               │   │   │       │   ├── Cayenne
+│               │   │   │       │   ├── Cayman
+│               │   │   │       │   ├── Chicago
+│               │   │   │       │   ├── Chihuahua
+│               │   │   │       │   ├── Costa_Rica
+│               │   │   │       │   ├── Creston
+│               │   │   │       │   ├── Cuiaba
+│               │   │   │       │   ├── Curacao
+│               │   │   │       │   ├── Danmarkshavn
+│               │   │   │       │   ├── Dawson
+│               │   │   │       │   ├── Dawson_Creek
+│               │   │   │       │   ├── Denver
+│               │   │   │       │   ├── Detroit
+│               │   │   │       │   ├── Edmonton
+│               │   │   │       │   ├── Eirunepe
+│               │   │   │       │   ├── El_Salvador
+│               │   │   │       │   ├── Fortaleza
+│               │   │   │       │   ├── Glace_Bay
+│               │   │   │       │   ├── Godthab
+│               │   │   │       │   ├── Goose_Bay
+│               │   │   │       │   ├── Grand_Turk
+│               │   │   │       │   ├── Guatemala
+│               │   │   │       │   ├── Guayaquil
+│               │   │   │       │   ├── Guyana
+│               │   │   │       │   ├── Halifax
+│               │   │   │       │   ├── Havana
+│               │   │   │       │   ├── Hermosillo
+│               │   │   │       │   ├── Indiana
+│               │   │   │       │   │   ├── Indianapolis
+│               │   │   │       │   │   ├── Knox
+│               │   │   │       │   │   ├── Marengo
+│               │   │   │       │   │   ├── Petersburg
+│               │   │   │       │   │   ├── Tell_City
+│               │   │   │       │   │   ├── Vevay
+│               │   │   │       │   │   ├── Vincennes
+│               │   │   │       │   │   └── Winamac
+│               │   │   │       │   ├── Inuvik
+│               │   │   │       │   ├── Iqaluit
+│               │   │   │       │   ├── Jamaica
+│               │   │   │       │   ├── Juneau
+│               │   │   │       │   ├── Kentucky
+│               │   │   │       │   │   ├── Louisville
+│               │   │   │       │   │   └── Monticello
+│               │   │   │       │   ├── La_Paz
+│               │   │   │       │   ├── Lima
+│               │   │   │       │   ├── Los_Angeles
+│               │   │   │       │   ├── Maceio
+│               │   │   │       │   ├── Managua
+│               │   │   │       │   ├── Manaus
+│               │   │   │       │   ├── Martinique
+│               │   │   │       │   ├── Matamoros
+│               │   │   │       │   ├── Mazatlan
+│               │   │   │       │   ├── Menominee
+│               │   │   │       │   ├── Merida
+│               │   │   │       │   ├── Metlakatla
+│               │   │   │       │   ├── Mexico_City
+│               │   │   │       │   ├── Miquelon
+│               │   │   │       │   ├── Moncton
+│               │   │   │       │   ├── Monterrey
+│               │   │   │       │   ├── Montevideo
+│               │   │   │       │   ├── Montreal
+│               │   │   │       │   ├── Nassau
+│               │   │   │       │   ├── New_York
+│               │   │   │       │   ├── Nipigon
+│               │   │   │       │   ├── Nome
+│               │   │   │       │   ├── Noronha
+│               │   │   │       │   ├── North_Dakota
+│               │   │   │       │   │   ├── Beulah
+│               │   │   │       │   │   ├── Center
+│               │   │   │       │   │   └── New_Salem
+│               │   │   │       │   ├── Ojinaga
+│               │   │   │       │   ├── Panama
+│               │   │   │       │   ├── Pangnirtung
+│               │   │   │       │   ├── Paramaribo
+│               │   │   │       │   ├── Phoenix
+│               │   │   │       │   ├── Port-au-Prince
+│               │   │   │       │   ├── Port_of_Spain
+│               │   │   │       │   ├── Porto_Velho
+│               │   │   │       │   ├── Puerto_Rico
+│               │   │   │       │   ├── Rainy_River
+│               │   │   │       │   ├── Rankin_Inlet
+│               │   │   │       │   ├── Recife
+│               │   │   │       │   ├── Regina
+│               │   │   │       │   ├── Resolute
+│               │   │   │       │   ├── Rio_Branco
+│               │   │   │       │   ├── Santa_Isabel
+│               │   │   │       │   ├── Santarem
+│               │   │   │       │   ├── Santiago
+│               │   │   │       │   ├── Santo_Domingo
+│               │   │   │       │   ├── Sao_Paulo
+│               │   │   │       │   ├── Scoresbysund
+│               │   │   │       │   ├── Sitka
+│               │   │   │       │   ├── St_Johns
+│               │   │   │       │   ├── Swift_Current
+│               │   │   │       │   ├── Tegucigalpa
+│               │   │   │       │   ├── Thule
+│               │   │   │       │   ├── Thunder_Bay
+│               │   │   │       │   ├── Tijuana
+│               │   │   │       │   ├── Toronto
+│               │   │   │       │   ├── Vancouver
+│               │   │   │       │   ├── Whitehorse
+│               │   │   │       │   ├── Winnipeg
+│               │   │   │       │   ├── Yakutat
+│               │   │   │       │   └── Yellowknife
+│               │   │   │       ├── Antarctica
+│               │   │   │       │   ├── Casey
+│               │   │   │       │   ├── Davis
+│               │   │   │       │   ├── DumontDUrville
+│               │   │   │       │   ├── Macquarie
+│               │   │   │       │   ├── Mawson
+│               │   │   │       │   ├── Palmer
+│               │   │   │       │   ├── Rothera
+│               │   │   │       │   ├── Syowa
+│               │   │   │       │   └── Vostok
+│               │   │   │       ├── Asia
+│               │   │   │       │   ├── Aden
+│               │   │   │       │   ├── Almaty
+│               │   │   │       │   ├── Amman
+│               │   │   │       │   ├── Anadyr
+│               │   │   │       │   ├── Aqtau
+│               │   │   │       │   ├── Aqtobe
+│               │   │   │       │   ├── Ashgabat
+│               │   │   │       │   ├── Baghdad
+│               │   │   │       │   ├── Bahrain
+│               │   │   │       │   ├── Baku
+│               │   │   │       │   ├── Bangkok
+│               │   │   │       │   ├── Beirut
+│               │   │   │       │   ├── Bishkek
+│               │   │   │       │   ├── Brunei
+│               │   │   │       │   ├── Choibalsan
+│               │   │   │       │   ├── Chongqing
+│               │   │   │       │   ├── Colombo
+│               │   │   │       │   ├── Damascus
+│               │   │   │       │   ├── Dhaka
+│               │   │   │       │   ├── Dili
+│               │   │   │       │   ├── Dubai
+│               │   │   │       │   ├── Dushanbe
+│               │   │   │       │   ├── Gaza
+│               │   │   │       │   ├── Harbin
+│               │   │   │       │   ├── Hebron
+│               │   │   │       │   ├── Ho_Chi_Minh
+│               │   │   │       │   ├── Hong_Kong
+│               │   │   │       │   ├── Hovd
+│               │   │   │       │   ├── Irkutsk
+│               │   │   │       │   ├── Jakarta
+│               │   │   │       │   ├── Jayapura
+│               │   │   │       │   ├── Jerusalem
+│               │   │   │       │   ├── Kabul
+│               │   │   │       │   ├── Kamchatka
+│               │   │   │       │   ├── Karachi
+│               │   │   │       │   ├── Kashgar
+│               │   │   │       │   ├── Kathmandu
+│               │   │   │       │   ├── Khandyga
+│               │   │   │       │   ├── Kolkata
+│               │   │   │       │   ├── Krasnoyarsk
+│               │   │   │       │   ├── Kuala_Lumpur
+│               │   │   │       │   ├── Kuching
+│               │   │   │       │   ├── Kuwait
+│               │   │   │       │   ├── Macau
+│               │   │   │       │   ├── Magadan
+│               │   │   │       │   ├── Makassar
+│               │   │   │       │   ├── Manila
+│               │   │   │       │   ├── Muscat
+│               │   │   │       │   ├── Nicosia
+│               │   │   │       │   ├── Novokuznetsk
+│               │   │   │       │   ├── Novosibirsk
+│               │   │   │       │   ├── Omsk
+│               │   │   │       │   ├── Oral
+│               │   │   │       │   ├── Phnom_Penh
+│               │   │   │       │   ├── Pontianak
+│               │   │   │       │   ├── Pyongyang
+│               │   │   │       │   ├── Qatar
+│               │   │   │       │   ├── Qyzylorda
+│               │   │   │       │   ├── Rangoon
+│               │   │   │       │   ├── Riyadh
+│               │   │   │       │   ├── Riyadh87
+│               │   │   │       │   ├── Riyadh88
+│               │   │   │       │   ├── Riyadh89
+│               │   │   │       │   ├── Sakhalin
+│               │   │   │       │   ├── Samarkand
+│               │   │   │       │   ├── Seoul
+│               │   │   │       │   ├── Shanghai
+│               │   │   │       │   ├── Singapore
+│               │   │   │       │   ├── Taipei
+│               │   │   │       │   ├── Tashkent
+│               │   │   │       │   ├── Tbilisi
+│               │   │   │       │   ├── Tehran
+│               │   │   │       │   ├── Thimphu
+│               │   │   │       │   ├── Tokyo
+│               │   │   │       │   ├── Ulaanbaatar
+│               │   │   │       │   ├── Urumqi
+│               │   │   │       │   ├── Ust-Nera
+│               │   │   │       │   ├── Vientiane
+│               │   │   │       │   ├── Vladivostok
+│               │   │   │       │   ├── Yakutsk
+│               │   │   │       │   ├── Yekaterinburg
+│               │   │   │       │   └── Yerevan
+│               │   │   │       ├── Atlantic
+│               │   │   │       │   ├── Azores
+│               │   │   │       │   ├── Bermuda
+│               │   │   │       │   ├── Canary
+│               │   │   │       │   ├── Cape_Verde
+│               │   │   │       │   ├── Faroe
+│               │   │   │       │   ├── Madeira
+│               │   │   │       │   ├── Reykjavik
+│               │   │   │       │   ├── South_Georgia
+│               │   │   │       │   ├── Stanley
+│               │   │   │       │   └── St_Helena
+│               │   │   │       ├── Australia
+│               │   │   │       │   ├── Adelaide
+│               │   │   │       │   ├── Brisbane
+│               │   │   │       │   ├── Broken_Hill
+│               │   │   │       │   ├── Currie
+│               │   │   │       │   ├── Darwin
+│               │   │   │       │   ├── Eucla
+│               │   │   │       │   ├── Hobart
+│               │   │   │       │   ├── Lindeman
+│               │   │   │       │   ├── Lord_Howe
+│               │   │   │       │   ├── Melbourne
+│               │   │   │       │   ├── Perth
+│               │   │   │       │   └── Sydney
+│               │   │   │       ├── CET
+│               │   │   │       ├── CST6CDT
+│               │   │   │       ├── EET
+│               │   │   │       ├── EST
+│               │   │   │       ├── EST5EDT
+│               │   │   │       ├── Etc
+│               │   │   │       │   ├── GMT
+│               │   │   │       │   ├── GMT-1
+│               │   │   │       │   ├── GMT+1
+│               │   │   │       │   ├── GMT-10
+│               │   │   │       │   ├── GMT+10
+│               │   │   │       │   ├── GMT-11
+│               │   │   │       │   ├── GMT+11
+│               │   │   │       │   ├── GMT-12
+│               │   │   │       │   ├── GMT+12
+│               │   │   │       │   ├── GMT-13
+│               │   │   │       │   ├── GMT-14
+│               │   │   │       │   ├── GMT-2
+│               │   │   │       │   ├── GMT+2
+│               │   │   │       │   ├── GMT-3
+│               │   │   │       │   ├── GMT+3
+│               │   │   │       │   ├── GMT-4
+│               │   │   │       │   ├── GMT+4
+│               │   │   │       │   ├── GMT-5
+│               │   │   │       │   ├── GMT+5
+│               │   │   │       │   ├── GMT-6
+│               │   │   │       │   ├── GMT+6
+│               │   │   │       │   ├── GMT-7
+│               │   │   │       │   ├── GMT+7
+│               │   │   │       │   ├── GMT-8
+│               │   │   │       │   ├── GMT+8
+│               │   │   │       │   ├── GMT-9
+│               │   │   │       │   ├── GMT+9
+│               │   │   │       │   ├── UCT
+│               │   │   │       │   └── UTC
+│               │   │   │       ├── Europe
+│               │   │   │       │   ├── Amsterdam
+│               │   │   │       │   ├── Andorra
+│               │   │   │       │   ├── Athens
+│               │   │   │       │   ├── Belgrade
+│               │   │   │       │   ├── Berlin
+│               │   │   │       │   ├── Brussels
+│               │   │   │       │   ├── Bucharest
+│               │   │   │       │   ├── Budapest
+│               │   │   │       │   ├── Chisinau
+│               │   │   │       │   ├── Copenhagen
+│               │   │   │       │   ├── Dublin
+│               │   │   │       │   ├── Gibraltar
+│               │   │   │       │   ├── Helsinki
+│               │   │   │       │   ├── Istanbul
+│               │   │   │       │   ├── Kaliningrad
+│               │   │   │       │   ├── Kiev
+│               │   │   │       │   ├── Lisbon
+│               │   │   │       │   ├── London
+│               │   │   │       │   ├── Luxembourg
+│               │   │   │       │   ├── Madrid
+│               │   │   │       │   ├── Malta
+│               │   │   │       │   ├── Minsk
+│               │   │   │       │   ├── Monaco
+│               │   │   │       │   ├── Moscow
+│               │   │   │       │   ├── Oslo
+│               │   │   │       │   ├── Paris
+│               │   │   │       │   ├── Prague
+│               │   │   │       │   ├── Riga
+│               │   │   │       │   ├── Rome
+│               │   │   │       │   ├── Samara
+│               │   │   │       │   ├── Simferopol
+│               │   │   │       │   ├── Sofia
+│               │   │   │       │   ├── Stockholm
+│               │   │   │       │   ├── Tallinn
+│               │   │   │       │   ├── Tirane
+│               │   │   │       │   ├── Uzhgorod
+│               │   │   │       │   ├── Vienna
+│               │   │   │       │   ├── Vilnius
+│               │   │   │       │   ├── Volgograd
+│               │   │   │       │   ├── Warsaw
+│               │   │   │       │   ├── Zaporozhye
+│               │   │   │       │   └── Zurich
+│               │   │   │       ├── GMT
+│               │   │   │       ├── HST
+│               │   │   │       ├── Indian
+│               │   │   │       │   ├── Antananarivo
+│               │   │   │       │   ├── Chagos
+│               │   │   │       │   ├── Christmas
+│               │   │   │       │   ├── Cocos
+│               │   │   │       │   ├── Comoro
+│               │   │   │       │   ├── Kerguelen
+│               │   │   │       │   ├── Mahe
+│               │   │   │       │   ├── Maldives
+│               │   │   │       │   ├── Mauritius
+│               │   │   │       │   ├── Mayotte
+│               │   │   │       │   └── Reunion
+│               │   │   │       ├── MET
+│               │   │   │       ├── MST
+│               │   │   │       ├── MST7MDT
+│               │   │   │       ├── Pacific
+│               │   │   │       │   ├── Apia
+│               │   │   │       │   ├── Auckland
+│               │   │   │       │   ├── Chatham
+│               │   │   │       │   ├── Chuuk
+│               │   │   │       │   ├── Easter
+│               │   │   │       │   ├── Efate
+│               │   │   │       │   ├── Enderbury
+│               │   │   │       │   ├── Fakaofo
+│               │   │   │       │   ├── Fiji
+│               │   │   │       │   ├── Funafuti
+│               │   │   │       │   ├── Galapagos
+│               │   │   │       │   ├── Gambier
+│               │   │   │       │   ├── Guadalcanal
+│               │   │   │       │   ├── Guam
+│               │   │   │       │   ├── Honolulu
+│               │   │   │       │   ├── Kiritimati
+│               │   │   │       │   ├── Kosrae
+│               │   │   │       │   ├── Kwajalein
+│               │   │   │       │   ├── Majuro
+│               │   │   │       │   ├── Marquesas
+│               │   │   │       │   ├── Midway
+│               │   │   │       │   ├── Nauru
+│               │   │   │       │   ├── Niue
+│               │   │   │       │   ├── Norfolk
+│               │   │   │       │   ├── Noumea
+│               │   │   │       │   ├── Pago_Pago
+│               │   │   │       │   ├── Palau
+│               │   │   │       │   ├── Pitcairn
+│               │   │   │       │   ├── Pohnpei
+│               │   │   │       │   ├── Port_Moresby
+│               │   │   │       │   ├── Rarotonga
+│               │   │   │       │   ├── Saipan
+│               │   │   │       │   ├── Tahiti
+│               │   │   │       │   ├── Tarawa
+│               │   │   │       │   ├── Tongatapu
+│               │   │   │       │   ├── Wake
+│               │   │   │       │   └── Wallis
+│               │   │   │       ├── PST8PDT
+│               │   │   │       ├── SystemV
+│               │   │   │       │   ├── AST4
+│               │   │   │       │   ├── AST4ADT
+│               │   │   │       │   ├── CST6
+│               │   │   │       │   ├── CST6CDT
+│               │   │   │       │   ├── EST5
+│               │   │   │       │   ├── EST5EDT
+│               │   │   │       │   ├── HST10
+│               │   │   │       │   ├── MST7
+│               │   │   │       │   ├── MST7MDT
+│               │   │   │       │   ├── PST8
+│               │   │   │       │   ├── PST8PDT
+│               │   │   │       │   ├── YST9
+│               │   │   │       │   └── YST9YDT
+│               │   │   │       ├── WET
+│               │   │   │       └── ZoneInfoMappings
+│               │   │   ├── LICENSE
+│               │   │   ├── man
+│               │   │   │   ├── ja
+│               │   │   │   │   └── man1
+│               │   │   │   │       ├── java.1
+│               │   │   │   │       ├── javaws.1
+│               │   │   │   │       ├── keytool.1
+│               │   │   │   │       ├── orbd.1
+│               │   │   │   │       ├── pack200.1
+│               │   │   │   │       ├── policytool.1
+│               │   │   │   │       ├── rmid.1
+│               │   │   │   │       ├── rmiregistry.1
+│               │   │   │   │       ├── servertool.1
+│               │   │   │   │       ├── tnameserv.1
+│               │   │   │   │       └── unpack200.1
+│               │   │   │   ├── ja_JP.UTF-8
+│               │   │   │   │   └── man1
+│               │   │   │   │       ├── java.1
+│               │   │   │   │       ├── javaws.1
+│               │   │   │   │       ├── keytool.1
+│               │   │   │   │       ├── orbd.1
+│               │   │   │   │       ├── pack200.1
+│               │   │   │   │       ├── policytool.1
+│               │   │   │   │       ├── rmid.1
+│               │   │   │   │       ├── rmiregistry.1
+│               │   │   │   │       ├── servertool.1
+│               │   │   │   │       ├── tnameserv.1
+│               │   │   │   │       └── unpack200.1
+│               │   │   │   └── man1
+│               │   │   │       ├── java.1
+│               │   │   │       ├── javaws.1
+│               │   │   │       ├── keytool.1
+│               │   │   │       ├── orbd.1
+│               │   │   │       ├── pack200.1
+│               │   │   │       ├── policytool.1
+│               │   │   │       ├── rmid.1
+│               │   │   │       ├── rmiregistry.1
+│               │   │   │       ├── servertool.1
+│               │   │   │       ├── tnameserv.1
+│               │   │   │       └── unpack200.1
+│               │   │   ├── plugin
+│               │   │   │   └── desktop
+│               │   │   │       ├── sun_java.desktop
+│               │   │   │       └── sun_java.png
+│               │   │   ├── README
+│               │   │   ├── release
+│               │   │   ├── THIRDPARTYLICENSEREADME-JAVAFX.txt
+│               │   │   ├── THIRDPARTYLICENSEREADME.txt
+│               │   │   └── Welcome.html
+│               │   ├── META-INF
+│               │   │   └── MANIFEST.MF
+│               │   └── perl-5.14.1
+│               │       ├── bigperl.build.txt
+│               │       ├── bigperl.bundle
+│               │       ├── bigperl.files.txt
+│               │       ├── perl
+│               │       └── README
+│               ├── classes
+│               │   └── dockerHelloWorld
+│               │       └── dockerHelloWorldWorkflow.class
+│               ├── config
+│               │   └── dockerHelloWorldWorkflow.ini
+│               ├── data -> /home/dyuen/public-workflows/dockerHelloWorld/links
+│               ├── lib
+│               │   └── seqware-distribution-1.0.14-SNAPSHOT-full.jar
+│               └── metadata.xml
+├── workflow
+│   ├── bin
+│   ├── config
+│   │   └── dockerHelloWorldWorkflow.ini
+│   ├── lib
+│   ├── metadata.xml
+│   └── workflows
+└── workflow.properties
+
+142 directories, 760 files
