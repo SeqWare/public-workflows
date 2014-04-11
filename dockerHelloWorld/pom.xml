@@ -241,6 +241,17 @@
                         </goals>
                         <configuration>
                             <executable>docker</executable>
+			    <commandlineArgs>build -t eg_postgresql ${workflow-dir}/workflows/postgres_image </commandlineArgs>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>save_docker_image</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>docker</executable>
                             <commandlineArgs>save -o ${workflow-dir}/workflows/postgres_image.tar eg_postgresql</commandlineArgs>
                         </configuration>
                     </execution>
