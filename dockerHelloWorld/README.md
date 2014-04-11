@@ -8,3 +8,4 @@ When using this branch on Amazon, you will need a base image with a 3.8 kernel s
 You will also need to install docker in order to successfully build a docker image from the source code (the image will be packaged into your bundle).
 Follow [this](for Ubuntu).
 
+Note, when running on Amazon, the build step for the docker image outputs a bunch of blank space and takes a while.
