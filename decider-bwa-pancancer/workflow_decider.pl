@@ -4,6 +4,7 @@ use Data::Dumper;
 use JSON;
 use Getopt::Long;
 use XML::LibXML;
+use Cwd;
 
 # DESCRIPTION
 # A tool for identifying samples ready for alignment, scheduling on clusters,
@@ -159,12 +160,27 @@ END
   print OUT $settings;
   close OUT;
   # now submit the workflow!
-  my $cmd = "SEQWARE_SETTINGS=$working_dir/$rand/settings seqware workflow schedule --accession $workflow_accession --host $host --ini $working_dir/$rand/workflow.ini";
+  my $dir = getcwd();
+  my $cmd = "SEQWARE_SETTINGS=$working_dir/$rand/settings /usr/local/bin/seqware workflow schedule --accession $workflow_accession --host $host --ini $working_dir/$rand/workflow.ini";
   if (!$test && $cluster_found) {
     print R "\tLAUNCHING WORKFLOW: $working_dir/$rand/workflow.ini\n";
     print R "\t\tCLUSTER HOST: $host ACCESSION: $workflow_accession URL: $url\n";
     print R "\t\tLAUNCH CMD: $cmd\n";
-    if (system("$cmd")) {
+    open S, ">temp_script.sh" or die;
+# FIXME: this is all extremely brittle when executed via cronjobs
+    print S "#!/bin/bash
+
+source ~/.bashrc
+
+cd $dir
+export SEQWARE_SETTINGS=$working_dir/$rand/settings
+export PATH=\$PATH:/usr/local/bin
+env
+seqware workflow schedule --accession $workflow_accession --host $host --ini $working_dir/$rand/workflow.ini
+
+";
+    close S;
+    if (system("bash -l $dir/temp_script.sh > submission.out 2> submission.err") != 0) {
       print R "\t\tSOMETHING WENT WRONG WITH SCHEDULING THE WORKFLOW\n";
     }
   } elsif (!$test && !$cluster_found) {
