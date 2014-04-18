@@ -2,7 +2,7 @@
 
 # TODO: 
 
-* .seqware/settings on the launcher host???? Should add a sample to the tarball
+* .seqware/settings on the launcher host???? Should add a sample to the tarball.  Also, will need to copy it to ~/.seqware/settings otherwise the submit will not work?  Is this true?
 
 ## Overview
 
