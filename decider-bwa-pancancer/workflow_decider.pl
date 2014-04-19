@@ -412,7 +412,9 @@ sub read_cluster_info {
       my $web = $json->{$c}{webservice};
       my $acc = $json->{$c}{workflow_accession};
       my $max_running = $json->{$c}{max_workflows};
+      my $max_scheduled_workflows = $json->{$c}{max_scheduled_workflows};
       if ($max_running <= 0 || $max_running eq "") { $max_running = 1; }
+      if ($max_scheduled_workflows <= 0 || $max_scheduled_workflows eq "" || $max_scheduled_workflows > $max_running) { $max_scheduled_workflows = $max_running; }
       print R "EXAMINING CLUSER: $c\n";
       #print "wget -O - --http-user=$user --http-password=$pass -q $web\n"; 
       my $info = `wget -O - --http-user='$user' --http-password=$pass -q $web/workflows/$acc`; 
@@ -458,7 +460,7 @@ sub read_cluster_info {
         # if there are no running workflows on this cluster it's a candidate
         if ($running < $max_running ) {
           print R "\tTHERE ARE $running RUNNING WORKFLOWS WHICH IS LESS THAN MAX OF $max_running, ADDING TO LIST OF AVAILABLE CLUSTERS\n\n";
-          for (my $i=0; $i<$max_running; $i++) {
+          for (my $i=0; $i<$max_scheduled_workflows; $i++) {
             $d->{"$c\_$i"} = $json->{$c}; 
           }
         } else {
