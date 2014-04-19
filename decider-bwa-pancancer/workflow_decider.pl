@@ -282,8 +282,8 @@ sub read_sample_info {
   #my $doc = $parser->parsefile ("https://cghub.ucsc.edu/cghub/metadata/analysisDetail?participant_id=3f70c3e3-0131-466f-92aa-0a63ab3d4258");
   #system("lwp-download 'https://cghub.ucsc.edu/cghub/metadata/analysisDetail?study=TCGA_MUT_BENCHMARK_4&state=live' data.xml");
   #my $doc = $parser->parsefile ('https://cghub.ucsc.edu/cghub/metadata/analysisDetail?study=TCGA_MUT_BENCHMARK_4&state=live');
-  if (!$skip_down) { my $cmd = "mkdir -p xml; cgquery -s $gnos_url --all-states -o xml/data.xml 'study=*'"; print OUT "$cmd\n"; system($cmd); }
-  #if (!$skip_down) { my $cmd = "mkdir -p xml; cgquery -s $gnos_url -o xml/data.xml 'study=*&state=live'"; print OUT "$cmd\n"; system($cmd); }
+  #if (!$skip_down) { my $cmd = "mkdir -p xml; cgquery -s $gnos_url --all-states -o xml/data.xml 'study=*'"; print OUT "$cmd\n"; system($cmd); }
+  if (!$skip_down) { my $cmd = "mkdir -p xml; cgquery -s $gnos_url -o xml/data.xml 'study=*&state=live'"; print OUT "$cmd\n"; system($cmd); }
   my $doc = $parser->parsefile("xml/data.xml");
   
   # print OUT all HREF attributes of all CODEBASE elements
@@ -411,6 +411,8 @@ sub read_cluster_info {
       my $pass = $json->{$c}{password};
       my $web = $json->{$c}{webservice};
       my $acc = $json->{$c}{workflow_accession};
+      my $max_running = $json->{$c}{max_workflows};
+      if ($max_running <= 0 || $max_running eq "") { $max_running = 1; }
       print R "EXAMINING CLUSER: $c\n";
       #print "wget -O - --http-user=$user --http-password=$pass -q $web\n"; 
       my $info = `wget -O - --http-user='$user' --http-password=$pass -q $web/workflows/$acc`; 
@@ -431,7 +433,7 @@ sub read_cluster_info {
         for my $node ($dom2->findnodes('//WorkflowRunList2/list/status/text()')) {
           $i++;
           print R "\t\tWORKFLOW: ".$acc." STATUS: ".$node->toString()."\n";
-          if ($node->toString() eq 'running' || $node->toString() eq 'scheduled' || $node->toString() eq 'submitted') { $running++; }
+          if ($node->toString() eq 'pending' || $node->toString() eq 'running' || $node->toString() eq 'scheduled' || $node->toString() eq 'submitted') { $running++; }
           # find running samples
           my $j=0;
           for my $node2 ($dom2->findnodes('//WorkflowRunList2/list/iniFile/text()')) {
@@ -454,9 +456,11 @@ sub read_cluster_info {
           }
         } 
         # if there are no running workflows on this cluster it's a candidate
-        if ($running == 0) {
-          print R "\tNO RUNNING WORKFLOWS, ADDING TO LIST OF AVAILABLE CLUSTERS\n\n";
-          $d->{$c} = $json->{$c}; 
+        if ($running < $max_running ) {
+          print R "\tTHERE ARE $running RUNNING WORKFLOWS WHICH IS LESS THAN MAX OF $max_running, ADDING TO LIST OF AVAILABLE CLUSTERS\n\n";
+          for (my $i=0; $i<$max_running; $i++) {
+            $d->{"$c\_$i"} = $json->{$c}; 
+          }
         } else {
           print R "\tCLUSTER HAS RUNNING WORKFLOWS, NOT ADDING TO AVAILABLE CLUSTERS\n\n";
         }

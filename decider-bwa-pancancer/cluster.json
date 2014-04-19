@@ -4,6 +4,7 @@
      "username": "admin@admin.com",
      "password": "admin",
      "webservice": "http://master:8080/SeqWareWebService",
-     "host": "master"
+     "host": "master",
+     "max_workflows": "1"
    }
 }
