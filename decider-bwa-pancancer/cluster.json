@@ -5,6 +5,7 @@
      "password": "admin",
      "webservice": "http://master:8080/SeqWareWebService",
      "host": "master",
-     "max_workflows": "1"
+     "max_workflows": "1",
+     "max_scheduled_workflows": "1"
    }
 }
