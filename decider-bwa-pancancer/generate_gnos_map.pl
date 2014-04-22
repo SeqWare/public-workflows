@@ -19,7 +19,7 @@ foreach my $i ("gtrepo-bsc", "gtrepo-dkfz", "gtrepo-osdc", "gtrepo-etri", "gtrep
     chomp $line;
     if ($line =~ /\s+(\d+)\s+ALIGNMENT: unaligned/) {
       $notaligned = $1;
-    } elsif ($line =~ /\s+(\d+)\s+ALIGNMENT:) {
+    } elsif ($line =~ /\s+(\d+)\s+ALIGNMENT:/) {
       $aligned += $1;
     }
   }
