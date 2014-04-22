@@ -9,7 +9,7 @@ GetOptions("output=s" => \$output);
 
 # queries each gnos repo
 foreach my $i ("gtrepo-bsc", "gtrepo-dkfz", "gtrepo-osdc", "gtrepo-etri", "gtrepo-ebi") {
-  my $cmd = "perl workflow_decider.pl --gnos-url https://$i.annailabs.com --report $i.log --ignore-lane-count --upload-results --test &> /dev/null";
+  my $cmd = "perl workflow_decider.pl --gnos-url https://$i.annailabs.com --report $i.log --ignore-lane-count --upload-results --test";
   print "$cmd";
   system($cmd);
   my $values = `cat $i.log | grep 'ALIGNMENT:' | sort | uniq -c`;
