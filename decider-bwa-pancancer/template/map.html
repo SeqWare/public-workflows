@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<body>
+  <script src="http://d3js.org/d3.v3.min.js"></script>
+  <script src="http://d3js.org/topojson.v1.min.js"></script>
+  <!-- I recommend you host this file on your own, since this will change without warning -->
+  <script src="http://datamaps.github.io/scripts/datamaps.world.min.js?v=1"></script>
+  <h2>ICGC/TCGA PanCancer Status</h2>
+  <p>The map below shows the number of specimens whose unaligned WGS reads have been uploaded to a GNOS repository at one of the PanCancer clouds.  It also
+    shows the count of those specimens aligned using the project's BWA-Mem workflow.  For more information see our
+    <a href="https://wiki.oicr.on.ca/display/PANCANCER/PANCANCER+Home">Wiki Space</a>.</p>
+  <div id="container1" style="position: relative; width: 80%; "></div>
+
+     <script>
+      var colors = d3.scale.category10();
+       //basic map config with custom fills, mercator projection
+      var map = new Datamap({
+        scope: 'world',
+        element: document.getElementById('container1'),
+        geographyConfig: {
+          popupOnHover: false,
+          highlightOnHover: false,
+          highlightFillColor: '#ABDDA4',
+        },
+        projection: 'mercator',
+        fills: {defaultFill: "#ABDDA4",
+                gt50: colors(Math.random() * 20),
+                gt60: "#63AFD0",
+                gt70: "#0772A1",}
+      })
+
+     //bubbles, custom popup on hover template
+     map.bubbles([
+       {name: "Chicago", total: 'gtrepo-osdc.unaligned', aligned: 'gtrepo-osdc.aligned', latitude: 41.891519, longitude: -87.629159, radius: gtrepo-osdc.log.unaligned, fillKey: 'gt60'},
+       {name: "Chicago", total: 'gtrepo-osdc.unaligned', aligned: 'gtrepo-osdc.aligned', latitude: 41.891519, longitude: -87.629159, radius: gtrepo-osdc.log.aligned, fillKey: 'gt70'},
+
+       {name: "Barcelona", total: 'gtrepo-bsc.unaligned', aligned: 'gtrepo-bsc.aligned', latitude: 41.378691, longitude: 2.175547, radius: gtrepo-bsc.log.unaligned, fillKey: 'gt60'},
+       {name: "Barcelona", total: 'gtrepo-bsc.unaligned', aligned: 'gtrepo-bsc.aligned', latitude: 41.378691, longitude: 2.175547, radius: gtrepo-bsc.log.unaligned, fillKey: 'gt70'},
+ 
+       //TEMP
+       {name: "Tokyo", total: '?', aligned: '?', latitude: 35.684219, longitude: 139.755020, radius: 4, fillKey: 'gt60'},
+       {name: "Tokyo", total: '?', aligned: '?', latitude: 35.684219, longitude: 139.755020, radius: 4, fillKey: 'gt70'},
+       {name: "Seoul", total: '?', aligned: '?', latitude: 37.553397, longitude: 126.980624, radius: 4, fillKey: 'gt60'},
+       {name: "Seoul", total: '?', aligned: '?', latitude: 37.553397, longitude: 126.980624, radius: 4, fillKey: 'gt70'},
+
+       //{name: "Tokyo", total: '30', aligned: '10', latitude: 35.684219, longitude: 139.755020, radius: 30, fillKey: 'gt60'},
+       //{name: "Tokyo", total: '30', aligned: '10', latitude: 35.684219, longitude: 139.755020, radius: 10, fillKey: 'gt70'},
+
+       //{name: "Seoul", total: 'gtrepo-etri.unaligned', aligned: 'gtrepo-etri.aligned', latitude: 37.553397, longitude: 126.980624, radius: gtrepo-etri.log.unaligned, fillKey: 'gt60'},
+       //{name: "Seoul", total: 'gtrepo-etri.unaligned', aligned: 'gtrepo-etri.aligned', latitude: 37.553397, longitude: 126.980624, radius: gtrepo-etri.log.aligned, fillKey: 'gt70'},
+
+       {name: "Heidelberg", total: 'gtrepo-dkfz.unaligned', aligned: 'gtrepo-dkfz.aligned', latitude: 49.403159, longitude: 8.676061, radius: gtrepo-dkfz.log.unaligned, fillKey: 'gt60'},
+       {name: "Heidelberg", total: 'gtrepo-dkfz.unaligned', aligned: 'gtrepo-dkfz.aligned', latitude: 49.403159, longitude: 8.676061, radius: gtrepo-dkfz.log.aligned, fillKey: 'gt70'},
+
+       {name: "London", total: 'gtrepo-ebi.unaligned', aligned: 'gtrepo-ebi.aligned', latitude: 51.507919, longitude: -0.123571, radius: gtrepo-ebi.log.unaligned, fillKey: 'gt60'},
+       {name: "London", total: 'gtrepo-ebi.unaligned', aligned: 'gtrepo-ebi.aligned', latitude: 51.507919, longitude: -0.123571, radius: gtrepo-ebi.log.aligned, fillKey: 'gt70'},
+
+     ], {
+       popupTemplate: function(geo, data) {
+         return "<div class='hoverinfo'>"+data.name+"<br/>Aligned: " + data.aligned + " Total: " +data.total+ "</div>";
+       }
+     });
+     </script>
+</body>
