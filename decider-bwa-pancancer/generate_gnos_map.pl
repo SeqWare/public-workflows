@@ -11,6 +11,7 @@ GetOptions("output=s" => \$output);
 foreach my $i ("gtrepo-bsc", "gtrepo-dkfz", "gtrepo-osdc", "gtrepo-etri", "gtrepo-ebi") {
   my $cmd = "perl workflow_decider.pl --gnos-url https://$i.annailabs.com --report $i.log --ignore-lane-count --upload-results --test &> /dev/null";
   print "$cmd";
+  system($cmd);
   my $values = `cat $i.log | grep 'ALIGNMENT:' | sort | uniq -c`;
   my @v = split /\n/;
   my $aligned = 0;
