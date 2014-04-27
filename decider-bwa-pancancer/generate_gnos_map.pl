@@ -11,7 +11,7 @@ GetOptions("output=s" => \$output);
 my $t = `cat template/map.html`;
 
 # 3000 specimens for ICGC see https://docs.google.com/spreadsheet/ccc?key=0AnBqxOn9BY8ldGN6dnNqNmxiYlhBNUlCZ3VIYVpPRlE&usp=sharing#gid=0
-my $specimens = 1500;
+my $specimens = 3000;
 my $total_aligned = 0;
 my $total_unaligned = 0;
 
