@@ -289,7 +289,12 @@ sub read_sample_info {
   #system("lwp-download 'https://cghub.ucsc.edu/cghub/metadata/analysisDetail?study=TCGA_MUT_BENCHMARK_4&state=live' data.xml");
   #my $doc = $parser->parsefile ('https://cghub.ucsc.edu/cghub/metadata/analysisDetail?study=TCGA_MUT_BENCHMARK_4&state=live');
   #if (!$skip_down) { my $cmd = "mkdir -p xml; cgquery -s $gnos_url --all-states -o xml/data.xml 'study=*'"; print OUT "$cmd\n"; system($cmd); }
-  if (!$skip_down) { my $cmd = "mkdir -p xml; cgquery -s $gnos_url -o xml/data.xml 'study=*&state=live'"; print OUT "$cmd\n"; system($cmd); }
+  if (!$skip_down) { 
+    my $cmd = "mkdir -p xml; cgquery -s $gnos_url -o xml/data.xml 'study=*&state=live'"; 
+    print OUT "$cmd\n"; 
+    my $rsult = system($cmd); 
+    if ($rsult) { print STDERR "Could not download data via cgquery!\n"; exit (1); }
+  }
   my $doc = $parser->parsefile("xml/data.xml");
 
   # print OUT all HREF attributes of all CODEBASE elements
