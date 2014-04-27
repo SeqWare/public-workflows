@@ -41,3 +41,7 @@ foreach my $i ("gtrepo-bsc", "gtrepo-dkfz", "gtrepo-osdc", "gtrepo-ebi") {
 open OUT, ">$output" or die;
 print OUT $t;
 close OUT;
+
+# now cleanup
+system("rm -rf xml");
+
