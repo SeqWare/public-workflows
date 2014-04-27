@@ -31,6 +31,7 @@ my $seqware_setting = "seqware.setting";
 # by default skip the upload of results back to GNOS
 my $skip_upload = "true";
 my $upload_results = 0;
+my $ignore_failed = 0;
 
 if (scalar(@ARGV) < 6 || scalar(@ARGV) > 20) {
   print "USAGE: 'perl $0 --gnos-url <URL> --cluster-json <cluster.json> [--working-dir <working_dir>] [--sample <sample_id>] [--threads <num_threads_bwa_default_8>] [--test] [--ignore-lane-count] [--force-run] [--skip-meta-download] [--report <workflow_decider_report.txt>] [--settings <seqware_settings_file>] [--upload-results]'\n";
@@ -46,10 +47,11 @@ if (scalar(@ARGV) < 6 || scalar(@ARGV) > 20) {
   print "\t--report             the report file name\n";
   print "\t--settings           the template seqware settings file\n";
   print "\t--upload-results     a flag indicating the resulting BAM files and metadata should be uploaded to GNOS, default is to not upload!!!\n";
+  print "\t--ignore-failed      a flag indicating that previously failed runs for this specimen should be ignored and the specimen scheduled again\n";
   exit;
 }
 
-GetOptions("gnos-url=s" => \$gnos_url, "cluster-json=s" => \$cluster_json, "working-dir=s" => \$working_dir, "sample=s" => \$specific_sample, "test" => \$test, "ignore-lane-count" => \$ignore_lane_cnt, "force-run" => \$force_run, "threads=i" => \$threads, "skip-meta-download" => \$skip_down, "report=s" => \$report_name, "settings=s" => \$seqware_setting, "upload-results" => \$upload_results);
+GetOptions("gnos-url=s" => \$gnos_url, "cluster-json=s" => \$cluster_json, "working-dir=s" => \$working_dir, "sample=s" => \$specific_sample, "test" => \$test, "ignore-lane-count" => \$ignore_lane_cnt, "force-run" => \$force_run, "threads=i" => \$threads, "skip-meta-download" => \$skip_down, "report=s" => \$report_name, "settings=s" => \$seqware_setting, "upload-results" => \$upload_results, "ignore-failed" => \$ignore_failed);
 
 if ($upload_results) { $skip_upload = "false"; }
 
@@ -253,6 +255,8 @@ sub schedule_samples {
       #print "ANALYSISURL $analysis_url_str\n";
       if (!defined($running_samples->{$analysis_url_str}) || $force_run) {
         print R "\t\tNOT PREVIOUSLY SCHEDULED OR RUN FORCED!\n";
+      } elsif ($running_samples->{$analysis_url_str} eq "failed" && $ignore_failed) {
+        print R "\t\tPREVIOUSLY FAILED BUT RUN FORCED VIA IGNORE FAILED OPTION!\n";
       } else {
         print R "\t\tIS PREVIOUSLY SCHEDULED, RUNNING, OR FAILED!\n";
         print R "\t\t\tSTATUS: ".$running_samples->{$analysis_url_str}."\n";

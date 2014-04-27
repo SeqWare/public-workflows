@@ -14,6 +14,7 @@ my $t = `cat template/map.html`;
 #foreach my $i ("gtrepo-bsc", "gtrepo-dkfz", "gtrepo-osdc", "gtrepo-etri", "gtrepo-ebi") {
 foreach my $i ("gtrepo-bsc", "gtrepo-dkfz", "gtrepo-osdc", "gtrepo-ebi") {
 #foreach my $i ("gtrepo-bsc", "gtrepo-dkfz", "gtrepo-osdc") {
+  system("rm -rf xml");
   my $cmd = "perl workflow_decider.pl --gnos-url https://$i.annailabs.com --report $i.log --ignore-lane-count --upload-results --test";
   print "$cmd";
   system($cmd);
@@ -30,8 +31,8 @@ foreach my $i ("gtrepo-bsc", "gtrepo-dkfz", "gtrepo-osdc", "gtrepo-ebi") {
     }
   }
   print "$i ALIGNED $aligned UNALIGNED: $notaligned\n";
-  my $logalign = 6; if ($aligned > 6) { $logalign = 2 * ceil(log($aligned)/log(2)); }
-  my $lognot = 6; if ($notaligned > 6) { $lognot = 2 * ceil(log($notaligned)/log(2)); }
+  my $logalign = 6; if ($aligned > 6) { $logalign = ceil(3 * (log($aligned)/log(2))); }
+  my $lognot = 6; if ($notaligned > 6) { $lognot = ceil(3 * (log($notaligned)/log(2))); }
   $t =~ s/$i.aligned/$aligned/g;
   $t =~ s/$i.unaligned/$notaligned/g;
   $t =~ s/$i.log.aligned/$logalign/g;
