@@ -4,7 +4,7 @@ source ~/.bashrc
 
 cd /home/ubuntu/gitroot/public-workflows/decider-bwa-pancancer
 perl workflow_decider.pl --gnos-url https://gtrepo-ebi.annailabs.com --cluster-json my_cluster.json  --report ebi.log --ignore-lane-count --upload-results --ignore-failed
-perl generate_gnos_map.pl --output index.html
+perl generate_gnos_map.pl --output index.html --cluster-json my_cluster.json
 cp index.html /var/www/
 cp gtrepo*.log /var/www/
 

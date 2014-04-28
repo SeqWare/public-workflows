@@ -5,8 +5,9 @@
   <script src="http://d3js.org/topojson.v1.min.js"></script>
   <!-- I recommend you host this file on your own, since this will change without warning -->
   <script src="http://datamaps.github.io/scripts/datamaps.world.min.js?v=1"></script>
-  <h2>ICGC/TCGA PanCancer Status</h2>
-  <p>The map below shows the number of specimens whose unaligned WGS reads have been uploaded to a GNOS repository at one of the PanCancer clouds.  It also
+  <h2>ICGC PanCancer Status</h2>
+
+  <p>The map aboveshows the number of specimens whose unaligned, lane-level WGS reads have been uploaded to a GNOS repository at one of the PanCancer clouds. Typically there are two specimens per donor, a tumor and a normal, and we expect approximately 3,000 specimens from ICGC. It also
     shows the count of those specimens aligned using the project's BWA-Mem workflow.  For more information see our
     <a href="https://wiki.oicr.on.ca/display/PANCANCER/PANCANCER+Home">Wiki Space</a>.</p>
 <p>
@@ -16,7 +17,10 @@
 <tr><td><b>Unaligned</b></td><td>gtrepo-bsc.unaligned</td><td>gtrepo-osdc.unaligned</td><td>gtrepo-dkfz.unaligned</td><td>gtrepo-ebi.unaligned</td><td>gtrepo-etri.unaligned</td><td>gtrepo-tokyo.unaligned</td><td>total.unaligned</td><td>total.unaligned.percent</td></tr>
 </table>
 </p>
-    <div id="container1" style="position:absolute; left:50px; top:250px; width:800px; height:500px "></div>
+<p>
+cluster.table
+</p>
+    <div id="container1" style="position:absolute; left:50px; top:450px; width:800px; height:500px "></div>
 
      <script>
       var colors = d3.scale.category10();
