@@ -26,7 +26,9 @@
         fills: {defaultFill: "#ABDDA4",
                 gt50: colors(Math.random() * 20),
                 gt60: "#63AFD0",
-                gt70: "#0772A1",}
+                gt70: "#0772A1",
+                gt80: "#63AF00",
+                gt90: "#077200",}
       })
 
      //bubbles, custom popup on hover template
@@ -54,6 +56,12 @@
 
        {name: "London", total: 'gtrepo-ebi.unaligned', aligned: 'gtrepo-ebi.aligned', latitude: 51.507919, longitude: -0.123571, radius: gtrepo-ebi.log.unaligned, fillKey: 'gt60'},
        {name: "London", total: 'gtrepo-ebi.unaligned', aligned: 'gtrepo-ebi.aligned', latitude: 51.507919, longitude: -0.123571, radius: gtrepo-ebi.log.aligned, fillKey: 'gt70'},
+
+       {name: "UCSC", total: 'ucsc_pod.unaligned', aligned: 'ucsc_pod.aligned', latitude: 36.9720, longitude: -122.0263, radius: ucsc_pod.log.unaligned, fillKey: 'gt80'},
+       {name: "UCSC", total: 'ucsc_pod.unaligned', aligned: 'ucsc_pod.aligned', latitude: 36.9720, longitude: -122.0263, radius: ucsc_pod.log.aligned, fillKey: 'gt90'},
+
+       {name: "UCSC_biofarm", total: 'ucsc_biofarm.unaligned', aligned: 'ucsc_biofarm.aligned', latitude: 32.7150, longitude: -117.1625, radius: ucsc_biofarm.log.unaligned, fillKey: 'gt80'},
+       {name: "UCSC_biofarm", total: 'ucsc_biofarm.unaligned', aligned: 'ucsc_biofarm.aligned', latitude: 32.7150, longitude: -117.1625, radius: ucsc_biofarm.log.aligned, fillKey: 'gt90'},
 
      ], {
        popupTemplate: function(geo, data) {
