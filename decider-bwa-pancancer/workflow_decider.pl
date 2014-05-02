@@ -31,6 +31,7 @@ my $seqware_setting = "seqware.setting";
 # by default skip the upload of results back to GNOS
 my $skip_upload = "true";
 my $upload_results = 0;
+my $ignore_failed = 0;
 
 if (scalar(@ARGV) < 6 || scalar(@ARGV) > 20) {
   print "USAGE: 'perl $0 --gnos-url <URL> --cluster-json <cluster.json> [--working-dir <working_dir>] [--sample <sample_id>] [--threads <num_threads_bwa_default_8>] [--test] [--ignore-lane-count] [--force-run] [--skip-meta-download] [--report <workflow_decider_report.txt>] [--settings <seqware_settings_file>] [--upload-results]'\n";
@@ -39,17 +40,18 @@ if (scalar(@ARGV) < 6 || scalar(@ARGV) > 20) {
   print "\t--working-dir        a place for temporary ini and settings files\n";
   print "\t--sample             to only run a particular sample\n";
   print "\t--threads            number of threads to use for BWA\n";
-  print "\t--test               a flag that indicates no workflow should be scheudle, just summary of what would have been run\n";
+  print "\t--test               a flag that indicates no workflow should be scheduled, just summary of what would have been run\n";
   print "\t--ignore-lane-count  skip the check that the GNOS XML contains a count of lanes for this sample and the bams count matches\n";
   print "\t--force-run          schedule workflows even if they were previously run/failed/scheduled\n";
   print "\t--skip-meta-download use the previously downloaded XML from GNOS, only useful for testing\n";
   print "\t--report             the report file name\n";
   print "\t--settings           the template seqware settings file\n";
   print "\t--upload-results     a flag indicating the resulting BAM files and metadata should be uploaded to GNOS, default is to not upload!!!\n";
+  print "\t--ignore-failed      a flag indicating that previously failed runs for this specimen should be ignored and the specimen scheduled again\n";
   exit;
 }
 
-GetOptions("gnos-url=s" => \$gnos_url, "cluster-json=s" => \$cluster_json, "working-dir=s" => \$working_dir, "sample=s" => \$specific_sample, "test" => \$test, "ignore-lane-count" => \$ignore_lane_cnt, "force-run" => \$force_run, "threads=i" => \$threads, "skip-meta-download" => \$skip_down, "report=s" => \$report_name, "settings=s" => \$seqware_setting, "upload-results" => \$upload_results);
+GetOptions("gnos-url=s" => \$gnos_url, "cluster-json=s" => \$cluster_json, "working-dir=s" => \$working_dir, "sample=s" => \$specific_sample, "test" => \$test, "ignore-lane-count" => \$ignore_lane_cnt, "force-run" => \$force_run, "threads=i" => \$threads, "skip-meta-download" => \$skip_down, "report=s" => \$report_name, "settings=s" => \$seqware_setting, "upload-results" => \$upload_results, "ignore-failed" => \$ignore_failed);
 
 if ($upload_results) { $skip_upload = "false"; }
 
@@ -93,7 +95,7 @@ sub schedule_workflow {
   #print Dumper($d);
   my $workflow_accession = 0;
   my $host = "unknown";
-  my $rand = substr(rand(), 2); 
+  my $rand = substr(rand(), 2);
   system("mkdir -p $working_dir/$rand");
   open OUT, ">$working_dir/$rand/workflow.ini" or die;
   print OUT "input_bam_paths=".join(",",sort(keys(%{$d->{local_bams}})))."\n";
@@ -143,9 +145,9 @@ END
   # cluster info
   my $url = "";
   foreach my $cluster (keys %{$cluster_info}) {
-    $url = $cluster_info->{$cluster}{webservice}; 
-    my $username = $cluster_info->{$cluster}{username}; 
-    my $password = $cluster_info->{$cluster}{password}; 
+    $url = $cluster_info->{$cluster}{webservice};
+    my $username = $cluster_info->{$cluster}{username};
+    my $password = $cluster_info->{$cluster}{password};
     $workflow_accession = $cluster_info->{$cluster}{workflow_accession};
     $host = $cluster_info->{$cluster}{host};
     $settings =~ s/SW_REST_URL=.*/SW_REST_URL=$url/g;
@@ -223,7 +225,9 @@ sub schedule_samples {
             foreach my $bam (keys %{$sample_info->{$participant}{$sample}{$alignment}{$aliquot}{$library}{files}}) {
               $d->{bams}{$bam} = $sample_info->{$participant}{$sample}{$alignment}{$aliquot}{$library}{files}{$bam}{localpath};
               $d->{local_bams}{$sample_info->{$participant}{$sample}{$alignment}{$aliquot}{$library}{files}{$bam}{localpath}} = 1;
-              $d->{bams_count}++;
+              if ($alignment eq "unaligned") {
+                $d->{bams_count}++;
+              }
             }
             # analysis
             foreach my $analysis (sort keys %{$sample_info->{$participant}{$sample}{$alignment}{$aliquot}{$library}{analysis_id}}) {
@@ -251,12 +255,14 @@ sub schedule_samples {
       #print "ANALYSISURL $analysis_url_str\n";
       if (!defined($running_samples->{$analysis_url_str}) || $force_run) {
         print R "\t\tNOT PREVIOUSLY SCHEDULED OR RUN FORCED!\n";
+      } elsif ($running_samples->{$analysis_url_str} eq "failed" && $ignore_failed) {
+        print R "\t\tPREVIOUSLY FAILED BUT RUN FORCED VIA IGNORE FAILED OPTION!\n";
       } else {
         print R "\t\tIS PREVIOUSLY SCHEDULED, RUNNING, OR FAILED!\n";
         print R "\t\t\tSTATUS: ".$running_samples->{$analysis_url_str}."\n";
-        $veto = 1; 
+        $veto = 1;
       }
-      # now check the number of bams == lane count (or this check is suppressed) 
+      # now check the number of bams == lane count (or this check is suppressed)
       if ($d->{total_lanes} == $d->{bams_count} || $ignore_lane_cnt || $force_run) {
         print R "\t\tLANE COUNT MATCHES OR IGNORED OR RUN FORCED: $ignore_lane_cnt $d->{total_lanes} $d->{bams_count}\n";
       } else {
@@ -273,7 +279,7 @@ sub schedule_samples {
 }
 
 sub read_sample_info {
-  
+
   open OUT, ">xml_parse.log" or die;
   my $d = {};
 
@@ -283,18 +289,23 @@ sub read_sample_info {
   #system("lwp-download 'https://cghub.ucsc.edu/cghub/metadata/analysisDetail?study=TCGA_MUT_BENCHMARK_4&state=live' data.xml");
   #my $doc = $parser->parsefile ('https://cghub.ucsc.edu/cghub/metadata/analysisDetail?study=TCGA_MUT_BENCHMARK_4&state=live');
   #if (!$skip_down) { my $cmd = "mkdir -p xml; cgquery -s $gnos_url --all-states -o xml/data.xml 'study=*'"; print OUT "$cmd\n"; system($cmd); }
-  if (!$skip_down) { my $cmd = "mkdir -p xml; cgquery -s $gnos_url -o xml/data.xml 'study=*&state=live'"; print OUT "$cmd\n"; system($cmd); }
+  if (!$skip_down) { 
+    my $cmd = "mkdir -p xml; cgquery -s $gnos_url -o xml/data.xml 'study=*&state=live'"; 
+    print OUT "$cmd\n"; 
+    my $rsult = system($cmd); 
+    if ($rsult) { print STDERR "Could not download data via cgquery!\n"; exit (1); }
+  }
   my $doc = $parser->parsefile("xml/data.xml");
-  
+
   # print OUT all HREF attributes of all CODEBASE elements
   my $nodes = $doc->getElementsByTagName ("Result");
   my $n = $nodes->getLength;
 
   # DEBUG
   #$n = 30;
-  
+
   print OUT "\n";
-  
+
   for (my $i = 0; $i < $n; $i++)
   {
       my $node = $nodes->item ($i);
@@ -305,7 +316,7 @@ sub read_sample_info {
       #print OUT "Analysis Full URL: $aurl\n";
       if($aurl =~ /^(.*)\/([^\/]+)$/) {
       $aurl = $1."/".lc($2);
-      } else { 
+      } else {
         print OUT "SKIPPING!\n";
         next;
       }
@@ -316,7 +327,8 @@ sub read_sample_info {
       my $analysisId = getVal($adoc, 'analysis_id');
       my $analysisDataURI = getVal($adoc, 'analysis_data_uri');
       my $submitterAliquotId = getCustomVal($adoc2, 'submitter_aliquot_id,submitter_sample_id');
-      my $aliquotId = getCustomVal($adoc2, 'aliquot_id');
+      my $aliquotUUID = getVal($adoc, 'aliquot_id');
+      my $aliquotId = getCustomVal($adoc2, 'aliquot_id,submitter_sample_id');
       my $submitterParticipantId = getCustomVal($adoc2, 'submitter_participant_id,submitter_donor_id');
       my $participantId = getCustomVal($adoc2, 'participant_id,submitter_donor_id');
       my $submitterSampleId = getCustomVal($adoc2, 'submitter_sample_id');
@@ -343,22 +355,22 @@ sub read_sample_info {
       print OUT "LibName: $libName LibStrategy: $libStrategy LibSource: $libSource\n";
       # get files
       # now if these are defined then move onto the next step
-      if (defined($libName) && defined($libStrategy) && defined($libSource) && defined($analysisId) && defined($analysisDataURI)) { 
+      if (defined($libName) && defined($libStrategy) && defined($libSource) && defined($analysisId) && defined($analysisDataURI)) {
         print OUT "  gtdownload -c gnostest.pem -v -d $analysisDataURI\n";
         #system "gtdownload -c gnostest.pem -vv -d $analysisId\n";
         print OUT "\n";
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{analysis_id}{$analysisId} = 1; 
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{analysis_url}{$analysisDataURI} = 1; 
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{library_name}{$libName} = 1; 
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{library_strategy}{$libStrategy} = 1; 
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{library_source}{$libSource} = 1; 
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{alignment_genome}{$alignment} = 1; 
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{use_control}{$use_control} = 1; 
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{total_lanes}{$total_lanes} = 1; 
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{submitter_participant_id}{$submitterParticipantId} = 1; 
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{submitter_sample_id}{$submitterSampleId} = 1; 
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{submitter_aliquot_id}{$submitterAliquotId} = 1; 
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{sample_uuid}{$sample_uuid} = 1; 
+        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{analysis_id}{$analysisId} = 1;
+        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{analysis_url}{$analysisDataURI} = 1;
+        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{library_name}{$libName} = 1;
+        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{library_strategy}{$libStrategy} = 1;
+        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{library_source}{$libSource} = 1;
+        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{alignment_genome}{$alignment} = 1;
+        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{use_control}{$use_control} = 1;
+        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{total_lanes}{$total_lanes} = 1;
+        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{submitter_participant_id}{$submitterParticipantId} = 1;
+        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{submitter_sample_id}{$submitterSampleId} = 1;
+        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{submitter_aliquot_id}{$submitterAliquotId} = 1;
+        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{sample_uuid}{$sample_uuid} = 1;
         # need to add
         # input_bam_paths=9c414428-9446-11e3-86c1-ab5c73f0e08b/hg19.chr22.5x.normal.bam
         # gnos_input_file_urls=https://gtrepo-ebi.annailabs.com/cghub/data/analysis/download/9c414428-9446-11e3-86c1-ab5c73f0e08b
@@ -373,20 +385,20 @@ sub read_sample_info {
       foreach my $file(keys %{$files}) {
         print OUT "  FILE: $file SIZE: ".$files->{$file}{size}." CHECKSUM: ".$files->{$file}{checksum}."\n";
         print OUT "  LOCAL FILE PATH: $analysisId/$file\n";
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{files}{$file}{size} = $files->{$file}{size}; 
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{files}{$file}{checksum} = $files->{$file}{checksum}; 
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{files}{$file}{localpath} = "$analysisId/$file"; 
+        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{files}{$file}{size} = $files->{$file}{size};
+        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{files}{$file}{checksum} = $files->{$file}{checksum};
+        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{files}{$file}{localpath} = "$analysisId/$file";
         # URLs?
       }
 
   }
-  
+
   # Print doc file
   #$doc->printToFile ("out.xml");
-  
+
   # Print to string
   #print OUT $doc->toString;
-  
+
   # Avoid memory leaks - cleanup circular references for garbage collection
   $doc->dispose;
   close OUT;
@@ -403,9 +415,9 @@ sub read_cluster_info {
     while(<IN>) {
       $json_txt .= $_;
     }
-    close IN; 
+    close IN;
     my $json = decode_json($json_txt);
-  
+
     foreach my $c (keys %{$json}) {
       my $user = $json->{$c}{username};
       my $pass = $json->{$c}{password};
@@ -416,18 +428,18 @@ sub read_cluster_info {
       if ($max_running <= 0 || $max_running eq "") { $max_running = 1; }
       if ($max_scheduled_workflows <= 0 || $max_scheduled_workflows eq "" || $max_scheduled_workflows > $max_running) { $max_scheduled_workflows = $max_running; }
       print R "EXAMINING CLUSER: $c\n";
-      #print "wget -O - --http-user=$user --http-password=$pass -q $web\n"; 
-      my $info = `wget -O - --http-user='$user' --http-password=$pass -q $web/workflows/$acc`; 
+      #print "wget -O - --http-user=$user --http-password=$pass -q $web\n";
+      my $info = `wget -O - --http-user='$user' --http-password=$pass -q $web/workflows/$acc`;
       #print "INFO: $info\n";
       my $dom = XML::LibXML->new->parse_string($info);
       # check the XML returned above
       if ($dom->findnodes('//Workflow/name/text()')) {
         # now figure out if any of these workflows are currently scheduled here
         #print "wget -O - --http-user='$user' --http-password=$pass -q $web/workflows/$acc/runs\n";
-        my $wr = `wget -O - --http-user='$user' --http-password=$pass -q $web/workflows/$acc/runs`; 
+        my $wr = `wget -O - --http-user='$user' --http-password=$pass -q $web/workflows/$acc/runs`;
         #print "WR: $wr\n";
         my $dom2 = XML::LibXML->new->parse_string($wr);
-  
+
         # find available clusters
         my $running = 0;
         print R "\tWORKFLOWS ON THIS CLUSTER\n";
@@ -456,12 +468,12 @@ sub read_cluster_info {
             $j++;
             if ($i==$j) { my $txt = $node2->toString(); print R "\t\t\tWORKFLOW ACCESSION: $txt\n"; }
           }
-        } 
+        }
         # if there are no running workflows on this cluster it's a candidate
         if ($running < $max_running ) {
           print R "\tTHERE ARE $running RUNNING WORKFLOWS WHICH IS LESS THAN MAX OF $max_running, ADDING TO LIST OF AVAILABLE CLUSTERS\n\n";
           for (my $i=0; $i<$max_scheduled_workflows; $i++) {
-            $d->{"$c\_$i"} = $json->{$c}; 
+            $d->{"$c\_$i"} = $json->{$c};
           }
         } else {
           print R "\tCLUSTER HAS RUNNING WORKFLOWS, NOT ADDING TO AVAILABLE CLUSTERS\n\n";
@@ -472,7 +484,7 @@ sub read_cluster_info {
   #print "Final cluster list:\n";
   #print Dumper($d);
   return($d, $run_samples);
-  
+
 }
 
 sub readFiles {
@@ -504,11 +516,11 @@ sub getCustomVal {
         if ($keyStr eq $key) {
           my $j=0;
           for my $currVal ($node->findnodes('//VALUE/text()')) {
-            $j++;   
-            if ($j==$i) { 
+            $j++;
+            if ($j==$i) {
               return($currVal->toString());
             }
-          } 
+          }
         }
       }
     }

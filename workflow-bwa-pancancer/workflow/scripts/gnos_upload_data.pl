@@ -35,6 +35,10 @@ my $key = "gnostest.pem";
 my $md5_file = "";
 my $upload_url = "";
 my $test = 0;
+# hardcoded
+my $workflow_version = "2.2.0";
+# hardcoded
+my $workflow_url = "https://s3.amazonaws.com/oicr.workflow.bundles/released-bundles/Workflow_Bundle_BWA_2.2.0_SeqWare_1.0.13.zip";
 
 if (scalar(@ARGV) != 12 && scalar(@ARGV) != 13) { die "USAGE: 'perl gnos_upload_data.pl --metadata-urls <URLs_comma_separated> --bam <sample-level_bam_file_path> --bam-md5sum-file <file_with_bam_md5sum> --outdir <output_dir> --key <gnos.pem> --upload-url <gnos_server_url> [--test]\n"; }
 GetOptions("metadata-urls=s" => \$metadata_urls, "bam=s" => \$bam, "outdir=s" => \$output_dir, "key=s" => \$key, "bam-md5sum-file=s" => \$md5_file, "upload-url=s" => \$upload_url, "test" => \$test);
@@ -70,10 +74,6 @@ if (validate_submission($sub_path)) { die "The submission did not pass validatio
 print "UPLOADING SUBMISSION\n";
 if (upload_submission($sub_path)) { die "The upload of files did not work!  Files are located at: $sub_path\n"; }
 
-# hack, this will cleanup the working directory 
-if (!$test) {
-  system("cd $sub_path/../../; rm -rf `find . | grep '\.bam\$'`");
-}
 
 ###############
 # SUBROUTINES #
@@ -90,13 +90,13 @@ sub upload_submission {
   my ($sub_path) = @_;
   my $cmd = "cgsubmit -s $upload_url -o metadata_upload.log -u $sub_path -vv -c $key";
   print "UPLOADING METADATA: $cmd\n";
-  if (!$test) { 
+  if (!$test) {
     if (system($cmd)) { return(1); }
   }
 
   $cmd = "cd $sub_path; gtupload -v -c $key -u ./manifest.xml; cd -";
-  print "UPLOADING DATA: $cmd\n";
-  if (!$test) { 
+  if (!$test) {
+    print "UPLOADING DATA: $cmd\n";
     if (system($cmd)) { return(1); }
   }
 
@@ -105,14 +105,14 @@ sub upload_submission {
 sub generate_submission {
 
   my ($m) = @_;
-  
+
   # const
-  my $t = gmtime; 
+  my $t = gmtime;
   my $datetime = $t->datetime();
-  # populate refcenter from original BAM submission 
+  # populate refcenter from original BAM submission
   # @RG CN:(.*)
   my $refcenter = "OICR";
-  # @CO sample_id 
+  # @CO sample_id
   my $sample_id = "";
   # capture list
   my $sample_uuids = {};
@@ -120,10 +120,6 @@ sub generate_submission {
   my $sample_uuid = "";
   # @RG SM or @CO aliquoit_id
   my $aliquot_id = "";
-  # hardcoded
-  my $workflow_version = "2.1";
-  # hardcoded
-  my $workflow_url = "https://s3.amazonaws.com/oicr.workflow.bundles/released-bundles/Workflow_Bundle_BWA_2.1_SeqWare_1.0.11.zip"; 
   # @RG LB:(.*)
   my $library = "";
   # @RG ID:(.*)
@@ -138,23 +134,25 @@ sub generate_submission {
   my $bam_file = "";
   # hardcoded
   my $bam_file_checksum = "";
-  
+
   # these data are collected from all files
   # aliquot_id|library_id|platform_unit|read_group_id|input_url
-  my $read_group_info = {};
   my $global_attr = {};
-  
+
   #print Dumper($m);
-  
+
+  # input info
+  my $pi2 = {};
+
   # this isn't going to work if there are multiple files/readgroups!
   foreach my $file (keys %{$m}) {
-    # populate refcenter from original BAM submission 
+    # populate refcenter from original BAM submission
     # @RG CN:(.*)
     # FIXME: GNOS currently only allows: ^UCSC$|^NHGRI$|^CGHUB$|^The Cancer Genome Atlas Research Network$|^OICR$
     ############$refcenter = $m->{$file}{'target'}[0]{'refcenter'};
     $sample_uuid = $m->{$file}{'target'}[0]{'refname'};
     $sample_uuids->{$m->{$file}{'target'}[0]{'refname'}} = 1;
-    # @CO sample_id 
+    # @CO sample_id
     my @sample_ids = keys %{$m->{$file}{'analysis_attr'}{'sample_id'}};
     # workaround for updated XML
     if (scalar(@sample_ids) == 0) { @sample_ids = keys %{$m->{$file}{'analysis_attr'}{'submitter_specimen_id'}}; }
@@ -182,13 +180,21 @@ sub generate_submission {
       if ($bam_info->{data_block_name} ne '') {
         #print Dumper($bam_info);
         #print Dumper($m->{$file}{'file'}[$index]);
-        my $str = "$participant_id|$sample_id|$sample_uuid|$aliquot_id|$library|$platform_unit|$read_group_id|".$m->{$file}{'file'}[$index]{filename}."|".$m->{$file}{'analysis_id'};
-        $global_attr->{"pipeline_input_info:participant_id|sample_id|target_sample_refname|aliquot_id|library|platform_unit|read_group_id|analysis_id|bam_file"}{$str} = 1;
-        $read_group_info->{$str} = 1;
+        my $pi = {};
+        $pi->{'input_info'}{'donor_id'} = $participant_id;
+        $pi->{'input_info'}{'specimen_id'} = $sample_id;
+        $pi->{'input_info'}{'target_sample_refname'} = $sample_uuid;
+        $pi->{'input_info'}{'analyzed_sample'} = $aliquot_id;
+        $pi->{'input_info'}{'library'} = $library;
+        $pi->{'input_info'}{'platform_unit'} = $platform_unit;
+        $pi->{'read_group_id'} = $read_group_id;
+        $pi->{'input_info'}{'analysis_id'} = $m->{$file}{'analysis_id'};
+        $pi->{'input_info'}{'bam_file'} = $m->{$file}{'file'}[$index]{filename};
+        push @{$pi2->{'pipeline_input_info'}}, $pi;
       }
       $index++;
     }
-  
+
     # now combine the analysis attr
     foreach my $attName (keys %{$m->{$file}{analysis_attr}}) {
       foreach my $attVal (keys %{$m->{$file}{analysis_attr}{$attName}}) {
@@ -196,8 +202,8 @@ sub generate_submission {
       }
     }
   }
-  
-  #print Dumper($read_group_info);
+  my $str = to_json($pi2);
+  $global_attr->{"pipeline_input_info"}{$str} = 1;
   #print Dumper($global_attr);
 
   # FIXME: either custom needs to work or the reference needs to be listed in GNOS
@@ -206,9 +212,9 @@ sub generate_submission {
   my $analysis_xml = <<END;
   <ANALYSIS_SET xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.ncbi.nlm.nih.gov/viewvc/v1/trunk/sra/doc/SRA_1-5/SRA.analysis.xsd?view=co">
     <ANALYSIS center_name="$analysis_center" analysis_date="$datetime">
-      <TITLE>TCGA/ICGC PanCancer Sample-Level Alignment for Sample $sample_id from Participant $participant_id</TITLE>
+      <TITLE>TCGA/ICGC PanCancer Specimen-Level Alignment for Specimen $sample_id from Participant $participant_id</TITLE>
       <STUDY_REF refcenter="$refcenter" refname="icgc_pancancer" />
-      <DESCRIPTION>Sample-level BAM from the reference alignment of $sample_id from participant $participant_id. This uses the SeqWare BWA-Mem PanCancer Workflow version $workflow_version available at $workflow_url.  Please note the reference was actually hs37d, see ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/README_human_reference_20110707 for more information. Briefly this is the integrated reference sequence from the GRCh37 primary assembly (chromosomal plus unlocalized and unplaced contigs), the rCRS mitochondrial sequence (AC:NC_012920), Human herpesvirus 4 type 1 (AC:NC_007605) and the concatenated decoy sequences (hs37d5cs.fa.gz).</DESCRIPTION>
+      <DESCRIPTION>Specimen-level BAM from the reference alignment of specimen $sample_id from donor $participant_id. This uses the SeqWare BWA-Mem PanCancer Workflow version $workflow_version available at $workflow_url.  This workflow can be created from source, see https://github.com/SeqWare/public-workflows.  New features for this workflow compared to 2.1 include: 1) inclusion of QC information in the metadata uploaded to GNOS along with the aligned BAM, 2) cleanup steps added throughout the workflow to reduce the runtime storage footprint, 3) update of the PCAP tools to version 1.0.0 (along with the associated tools including BWA-Mem 0.7.7-r441), 4) improved efficiency with regards to doing more steps in parallel, 5) more consistent encoding of information in the GNOS metadata using JSON values, and 6) improvements and bug fixes to the metadata uploaded to GNOS.  Please note the reference is hs37d, see ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/README_human_reference_20110707 for more information. Briefly this is the integrated reference sequence from the GRCh37 primary assembly (chromosomal plus unlocalized and unplaced contigs), the rCRS mitochondrial sequence (AC:NC_012920), Human herpesvirus 4 type 1 (AC:NC_007605) and the concatenated decoy sequences (hs37d5cs.fa.gz).</DESCRIPTION>
       <ANALYSIS_TYPE>
         <REFERENCE_ALIGNMENT>
           <ASSEMBLY>
@@ -225,16 +231,16 @@ END
                    my $rgl = $run->{'read_group_label'};
                    my $rn = $run->{'refname'};
                  $analysis_xml .= "              <RUN data_block_name=\"$dbn\" read_group_label=\"$rgl\" refname=\"$rn\" refcenter=\"$refcenter\" />\n";
-                }              
+                }
               }
-  
+
   	  }
-  
+
   $analysis_xml .= <<END;
           </RUN_LABELS>
           <SEQ_LABELS>
 END
-  
+
             foreach my $dbn (keys %{$sample_uuids}) {
   $analysis_xml .= <<END;
             <SEQUENCE data_block_name="$dbn" accession="NC_000001.10" seq_label="1" />
@@ -325,12 +331,13 @@ END
             <SEQUENCE data_block_name="$dbn" accession="hs37d5" seq_label="hs37d5" />
 END
             }
-  
+
   $analysis_xml .= <<END;
           </SEQ_LABELS>
           <PROCESSING>
             <PIPELINE>
 END
+            my $i=0;
             foreach my $url (keys %{$m}) {
               foreach my $run (@{$m->{$url}{'run'}}) {
               #print Dumper($run);
@@ -339,16 +346,18 @@ END
                    my $dbn = $run->{'data_block_name'};
                    my $rgl = $run->{'read_group_label'};
                    my $rn = $run->{'refname'};
+                   my $fname = $m->{$url}{'file'}[$i]{'filename'};
   $analysis_xml .= <<END;
               <PIPE_SECTION section_name="Mapping">
                 <STEP_INDEX>$rgl</STEP_INDEX>
                 <PREV_STEP_INDEX>NIL</PREV_STEP_INDEX>
                 <PROGRAM>bwa</PROGRAM>
                 <VERSION>0.7.7-r441</VERSION>
-                <NOTES>bwa mem -t 8 -p -T 0 genome.fa.gz reference.fasta</NOTES>
+                <NOTES>bwa mem -t 8 -p -T 0 genome.fa.gz $fname</NOTES>
               </PIPE_SECTION>
 END
                  }
+                 $i++;
                }
             }
   $analysis_xml .= <<END;
@@ -373,13 +382,13 @@ END
       <DATA_BLOCK>
         <FILES>
 END
-  
+
        $analysis_xml .= "          <FILE filename=\"$bam_check.bam\" filetype=\"bam\" checksum_method=\"MD5\" checksum=\"$bam_check\" />\n";
-  
+
        # incorrect, there's only one bam!
-       my $i=0;
+       $i=0;
        foreach my $url (keys %{$m}) {
-       foreach my $run (@{$m->{$url}{'run'}}) {   
+       foreach my $run (@{$m->{$url}{'run'}}) {
        if (defined($run->{'read_group_label'})) {
           my $fname = $m->{$url}{'file'}[$i]{'filename'};
           my $ftype= $m->{$url}{'file'}[$i]{'filetype'};
@@ -389,13 +398,14 @@ END
        $i++;
        }
        }
-  
+
   $analysis_xml .= <<END;
         </FILES>
       </DATA_BLOCK>
       <ANALYSIS_ATTRIBUTES>
 END
-  
+
+    # this is a merge of the key-values from input XML
     foreach my $key (keys %{$global_attr}) {
       foreach my $val (keys %{$global_attr->{$key}}) {
         $analysis_xml .= "        <ANALYSIS_ATTRIBUTE>
@@ -405,13 +415,20 @@ END
 ";
       }
     }
-  
+
+  # QC
+  $analysis_xml .= "        <ANALYSIS_ATTRIBUTE>
+          <TAG>qc_metrics</TAG>
+          <VALUE>" . &getQcResult() . "</VALUE>
+        </ANALYSIS_ATTRIBUTE>
+";
+
   $analysis_xml .= <<END;
       </ANALYSIS_ATTRIBUTES>
     </ANALYSIS>
   </ANALYSIS_SET>
 END
-  
+
   open OUT, ">$output_dir/analysis.xml" or die;
   print OUT $analysis_xml;
   close OUT;
@@ -421,19 +438,19 @@ END
   foreach my $url (keys %{$m}) {
     $uniq_exp_xml->{$m->{$url}{'experiment'}} = 1;
   }
-  
+
   my $exp_xml = <<END;
   <EXPERIMENT_SET xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.ncbi.nlm.nih.gov/viewvc/v1/trunk/sra/doc/SRA_1-5/SRA.experiment.xsd?view=co">
 END
-  
+
   foreach my $curr_xml_block (keys %{$uniq_exp_xml}) {
     $exp_xml .= $curr_xml_block;
   }
-  
+
   $exp_xml .= <<END;
   </EXPERIMENT_SET>
 END
-  
+
   open OUT, ">$output_dir/experiment.xml" or die;
   print OUT "$exp_xml\n";
   close OUT;
@@ -442,32 +459,32 @@ END
   my $uniq_run_xml = {};
   foreach my $url (keys %{$m}) {
     my $run_block = $m->{$url}{'run_block'};
-    # replace the file 
+    # replace the file
     # FIXME: this is risky
     $run_block =~ s/filename="\S+"/filename="$bam_check.bam"/g;
     $run_block =~ s/checksum="\S+"/checksum="$bam_check"/g;
     $run_block =~ s/center_name="[^"]+"/center_name="$refcenter"/g;
     $uniq_run_xml->{$run_block} = 1;
   }
-  
+
   my $run_xml = <<END;
   <RUN_SET xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.ncbi.nlm.nih.gov/viewvc/v1/trunk/sra/doc/SRA_1-5/SRA.run.xsd?view=co">
 END
-  
+
   foreach my $run_block (keys %{$uniq_run_xml}) {
     $run_xml .= $run_block;
   }
-  
+
   $run_xml .= <<END;
   </RUN_SET>
 END
-  
+
   open OUT, ">$output_dir/run.xml" or die;
   print OUT $run_xml;
   close OUT;
-  
+
   return($output_dir);
-  
+
 }
 
 sub read_header {
@@ -478,7 +495,7 @@ sub read_header {
     chomp;
     my @a = split /\t+/;
     my $type = $a[0];
-    if ($type =~ /^@/) { 
+    if ($type =~ /^@/) {
       $type =~ s/@//;
       for(my $i=1; $i<scalar(@a); $i++) {
         $a[$i] =~ /^([^:]+):(.+)$/;
@@ -506,15 +523,15 @@ sub download_metadata {
 
 sub parse_metadata {
   my ($xml_path) = @_;
-  my $doc = $parser->parsefile($xml_path);  
+  my $doc = $parser->parsefile($xml_path);
   my $m = {};
-  $m->{'analysis_id'} = getVal($doc, 'analysis_id');  
-  $m->{'center_name'} = getVal($doc, 'center_name');  
-  push @{$m->{'study_ref'}}, getValsMulti($doc, 'STUDY_REF', "refcenter,refname");  
-  push @{$m->{'run'}}, getValsMulti($doc, 'RUN', "data_block_name,read_group_label,refname");  
-  push @{$m->{'target'}}, getValsMulti($doc, 'TARGET', "refcenter,refname");  
-  push @{$m->{'file'}}, getValsMulti($doc, 'FILE', "checksum,filename,filetype");  
-  $m->{'analysis_attr'} = getAttrs($doc);  
+  $m->{'analysis_id'} = getVal($doc, 'analysis_id');
+  $m->{'center_name'} = getVal($doc, 'center_name');
+  push @{$m->{'study_ref'}}, getValsMulti($doc, 'STUDY_REF', "refcenter,refname");
+  push @{$m->{'run'}}, getValsMulti($doc, 'RUN', "data_block_name,read_group_label,refname");
+  push @{$m->{'target'}}, getValsMulti($doc, 'TARGET', "refcenter,refname");
+  push @{$m->{'file'}}, getValsMulti($doc, 'FILE', "checksum,filename,filetype");
+  $m->{'analysis_attr'} = getAttrs($doc);
   $m->{'experiment'} = getBlock($xml_path, "EXPERIMENT ", "EXPERIMENT");
   $m->{'run_block'} = getBlock($xml_path, "RUN center_name", "RUN");
   return($m);
@@ -634,5 +651,34 @@ sub getVals {
   return(@r);
 }
 
-0;
+sub getQcResult {
+  # detect all the QC report files by checking file name pattern
 
+  opendir(DIR, ".");
+
+  my @qc_result_files = grep { /^out_\d+\.bam\.stats\.txt/ } readdir(DIR);
+
+  close(DIR);
+
+  my $ret = { "qc_metrics" => [] };
+
+  foreach (@qc_result_files) {
+
+    open (QC, "< $_");
+
+    my @header = split /\t/, <QC>;
+    my @data = split /\t/, <QC>;
+    chomp ((@header, @data));
+
+    close (QC);
+
+    my $qc_metrics = {};
+    $qc_metrics->{$_} = shift @data for (@header);
+
+    push @{ $ret->{qc_metrics} }, {"read_group_id" => $qc_metrics->{readgroup}, "metrics" => $qc_metrics};
+  }
+
+  return to_json $ret;
+}
+
+0;
