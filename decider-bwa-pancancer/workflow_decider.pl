@@ -269,9 +269,9 @@ sub schedule_samples {
         print R "\t\tLANE COUNT MISMATCH!\n";
         $veto=1;
       }
-      if ($veto) { print R "\t\tWILL NOT SCHEDULE THIS SAMPLE FOR ALIGNMENT!\n\n"; }
+      if ($veto) { print R "\t\tCONCLUSION: WILL NOT SCHEDULE THIS SAMPLE FOR ALIGNMENT!\n\n"; }
       else {
-        print R "\t\tSCHEDULING WORKFLOW FOR THIS SAMPLE!\n\n";
+        print R "\t\tCONCLUSION: SCHEDULING WORKFLOW FOR THIS SAMPLE!\n\n";
         schedule_workflow($d);
       }
     }
