@@ -269,9 +269,9 @@ sub schedule_samples {
         print R "\t\tLANE COUNT MISMATCH!\n";
         $veto=1;
       }
-      if ($veto) { print R "\t\tWILL NOT SCHEDULE THIS SAMPLE FOR ALIGNMENT!\n\n"; }
+      if ($veto) { print R "\t\tCONCLUSION: WILL NOT SCHEDULE THIS SAMPLE FOR ALIGNMENT!\n\n"; }
       else {
-        print R "\t\tSCHEDULING WORKFLOW FOR THIS SAMPLE!\n\n";
+        print R "\t\tCONCLUSION: SCHEDULING WORKFLOW FOR THIS SAMPLE!\n\n";
         schedule_workflow($d);
       }
     }
@@ -289,6 +289,7 @@ sub read_sample_info {
   #system("lwp-download 'https://cghub.ucsc.edu/cghub/metadata/analysisDetail?study=TCGA_MUT_BENCHMARK_4&state=live' data.xml");
   #my $doc = $parser->parsefile ('https://cghub.ucsc.edu/cghub/metadata/analysisDetail?study=TCGA_MUT_BENCHMARK_4&state=live');
   #if (!$skip_down) { my $cmd = "mkdir -p xml; cgquery -s $gnos_url --all-states -o xml/data.xml 'study=*'"; print OUT "$cmd\n"; system($cmd); }
+  # cgquery -o my_data.xml 'study=PAWG&state=live'
   if (!$skip_down) { 
     my $cmd = "mkdir -p xml; cgquery -s $gnos_url -o xml/data.xml 'study=*&state=live'"; 
     print OUT "$cmd\n"; 
