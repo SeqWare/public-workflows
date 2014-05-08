@@ -22,7 +22,7 @@ foreach my $i ("gtrepo-bsc", "gtrepo-dkfz", "gtrepo-osdc", "gtrepo-ebi", 'ucsc_p
     } else{
 	my $cmd = "perl workflow_decider.pl --gnos-url https://$i.annailabs.com --report $i.log --ignore-lane-count --upload-results --test";
 	print "$cmd";
-	#system($cmd);
+	system($cmd);
 	my $values = `cat $i.log | grep 'ALIGNMENT:' | sort | uniq -c`;
 	my @v = split /\n/, $values;
 	foreach my $line (@v) {
