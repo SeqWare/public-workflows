@@ -93,9 +93,36 @@ sub schedule_workflow {
   my ($d) = @_;
   #print Dumper($cluster_info);
   #print Dumper($d);
-  my $workflow_accession = 0;
-  my $host = "unknown";
+
   my $rand = substr(rand(), 2);
+  my $host = "unknown";
+  my $workflow_accession = 0;
+  my $workflow_version = "2.4.0";
+  # parse cluster info
+  my $settings = `cat $seqware_setting`;
+  my $cluster_found = 0;
+  # cluster info
+  my $url = "";
+  foreach my $cluster (keys %{$cluster_info}) {
+    $url = $cluster_info->{$cluster}{webservice};
+    my $username = $cluster_info->{$cluster}{username};
+    my $password = $cluster_info->{$cluster}{password};
+    $workflow_accession = $cluster_info->{$cluster}{workflow_accession};
+    $workflow_version = $cluster_info->{$cluster}{workflow_version};
+    $host = $cluster_info->{$cluster}{host};
+    $settings =~ s/SW_REST_URL=.*/SW_REST_URL=$url/g;
+    $settings =~ s/SW_REST_USER=.*/SW_REST_USER=$username/g;
+    $settings =~ s/SW_REST_PASS=.*/SW_REST_PASS=$password/g;
+    # can only assign one workflow here per cluster
+    $cluster_found = 1;
+    delete $cluster_info->{$cluster};
+    last;
+  }
+  open OUT, ">$working_dir/$rand/settings" or die;
+  print OUT $settings;
+  close OUT;
+
+  # ini file
   system("mkdir -p $working_dir/$rand");
   open OUT, ">$working_dir/$rand/workflow.ini" or die;
   print OUT "input_bam_paths=".join(",",sort(keys(%{$d->{local_bams}})))."\n";
@@ -111,7 +138,7 @@ picardSortJobMem=6
 #key=picardSortMem:type=integer:display=F:display_name=Memory for Picard merge, sort, index, and md5sum
 picardSortMem=4
 #key=input_reference:type=text:display=F:display_name=The reference used for BWA
-input_reference=\${workflow_bundle_dir}/Workflow_Bundle_BWA/2.2.0/data/reference/bwa-0.6.2/genome.fa.gz
+input_reference=\${workflow_bundle_dir}/Workflow_Bundle_BWA/$workflow_version/data/reference/bwa-0.6.2/genome.fa.gz
 #key=maxInsertSize:type=integer:display=F:display_name=The max insert size if known
 maxInsertSize=
 #key=bwaAlignMemG:type=integer:display=F:display_name=Memory for BWA align step
@@ -127,7 +154,7 @@ bwaSampeSortSamMemG=4
 #key=bwa_aln_params:type=text:display=F:display_name=Extra params for bwa aln
 bwa_aln_params=
 #key=gnos_key:type=text:display=T:display_name=The path to a GNOS key.pem file
-gnos_key=\${workflow_bundle_dir}/Workflow_Bundle_BWA/2.2.0/scripts/gnostest.pem
+gnos_key=\${workflow_bundle_dir}/Workflow_Bundle_BWA/$workflow_version/scripts/gnostest.pem
 #key=uploadScriptJobMem:type=integer:display=F:display_name=Memory for upload script
 uploadScriptJobMem=2
 #key=output_dir:type=text:display=F:display_name=The output directory is a conventions and used in many workflows to specify a relative output path
@@ -138,28 +165,10 @@ bwa_sampe_params=
 bwa_choice=mem
 # key=bwa_mem_params:type=text:display=F:display_name=Extra params for bwa mem
 bwa_mem_params=
+# GTDownload
+# key=gtdownload_retries:type=integer:display=F:display_name=How many retries to attempt before restarting gtdownload, each lasts 1 minute
+gtdownload_retries=120
 END
-  close OUT;
-  my $settings = `cat $seqware_setting`;
-  my $cluster_found = 0;
-  # cluster info
-  my $url = "";
-  foreach my $cluster (keys %{$cluster_info}) {
-    $url = $cluster_info->{$cluster}{webservice};
-    my $username = $cluster_info->{$cluster}{username};
-    my $password = $cluster_info->{$cluster}{password};
-    $workflow_accession = $cluster_info->{$cluster}{workflow_accession};
-    $host = $cluster_info->{$cluster}{host};
-    $settings =~ s/SW_REST_URL=.*/SW_REST_URL=$url/g;
-    $settings =~ s/SW_REST_USER=.*/SW_REST_USER=$username/g;
-    $settings =~ s/SW_REST_PASS=.*/SW_REST_PASS=$password/g;
-    # can only assign one workflow here per cluster
-    $cluster_found = 1;
-    delete $cluster_info->{$cluster};
-    last;
-  }
-  open OUT, ">$working_dir/$rand/settings" or die;
-  print OUT $settings;
   close OUT;
   # now submit the workflow!
   my $dir = getcwd();
