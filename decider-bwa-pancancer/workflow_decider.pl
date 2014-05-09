@@ -118,12 +118,12 @@ sub schedule_workflow {
     delete $cluster_info->{$cluster};
     last;
   }
-  open OUT, ">$working_dir/$rand/settings" or die;
+  system("mkdir -p $working_dir/$rand");
+  open OUT, ">$working_dir/$rand/settings" or die "Can't open file $working_dir/$rand/settings\n";
   print OUT $settings;
   close OUT;
 
   # ini file
-  system("mkdir -p $working_dir/$rand");
   open OUT, ">$working_dir/$rand/workflow.ini" or die;
   print OUT "input_bam_paths=".join(",",sort(keys(%{$d->{local_bams}})))."\n";
   print OUT "gnos_input_file_urls=".$d->{gnos_input_file_urls}."\n";
@@ -438,8 +438,8 @@ sub read_cluster_info {
       if ($max_running <= 0 || $max_running eq "") { $max_running = 1; }
       if ($max_scheduled_workflows <= 0 || $max_scheduled_workflows eq "" || $max_scheduled_workflows > $max_running) { $max_scheduled_workflows = $max_running; }
       print R "EXAMINING CLUSER: $c\n";
-      #print "wget -O - --http-user=$user --http-password=$pass -q $web\n";
-      my $info = `wget -O - --http-user='$user' --http-password=$pass -q $web/workflows/$acc`;
+      print "wget --timeout=60 -t 2 -O - --http-user=$user --http-password=$pass -q $web/workflows/$acc\n";
+      my $info = `wget --timeout=60 -t 2 -O - --http-user='$user' --http-password=$pass -q $web/workflows/$acc`;
       #print "INFO: $info\n";
       if ($info ne "") {
         my $dom = XML::LibXML->new->parse_string($info);
