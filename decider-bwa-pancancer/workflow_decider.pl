@@ -134,7 +134,7 @@ sub schedule_workflow {
   print OUT "skip_upload=$skip_upload\n";
   print OUT <<END;
 #key=picardSortJobMem:type=integer:display=F:display_name=Memory for Picard merge, sort, index, and md5sum
-picardSortJobMem=6
+picardSortJobMem=4
 #key=picardSortMem:type=integer:display=F:display_name=Memory for Picard merge, sort, index, and md5sum
 picardSortMem=4
 #key=input_reference:type=text:display=F:display_name=The reference used for BWA
