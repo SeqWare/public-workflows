@@ -291,7 +291,7 @@ sub schedule_samples {
 
 sub read_sample_info {
 
-  open OUT, ">xml_parse.log" or die;
+  open OUT, ">$working_dir/xml_parse.log" or die;
   my $d = {};
 
   # PARSE XML
@@ -302,15 +302,15 @@ sub read_sample_info {
   #if (!$skip_down) { my $cmd = "mkdir -p xml; cgquery -s $gnos_url --all-states -o xml/data.xml 'study=*'"; print OUT "$cmd\n"; system($cmd); }
   # cgquery -o my_data.xml 'study=PAWG&state=live'
   if (!$skip_down) { 
-    my $cmd = "mkdir -p xml; cgquery -s $gnos_url -o xml/data.xml 'study=*&state=live'"; 
+    my $cmd = "mkdir -p $working_dir/xml; cgquery -s $gnos_url -o $working_dir/xml/data.xml 'study=*&state=live'"; 
     if ($gnos_url =~ /cghub.ucsc.edu/) {
-      $cmd = "mkdir -p xml; cgquery -s $gnos_url -o xml/data.xml 'study=PAWG&state=live'";
+      $cmd = "mkdir -p $working_dir/xml; cgquery -s $gnos_url -o $working_dir/xml/data.xml 'study=PAWG&state=live'";
     }
     print OUT "$cmd\n"; 
     my $rsult = system($cmd); 
     if ($rsult) { print STDERR "Could not download data via cgquery!\n"; exit (1); }
   }
-  my $doc = $parser->parsefile("xml/data.xml");
+  my $doc = $parser->parsefile("$working_dir/xml/data.xml");
 
   # print OUT all HREF attributes of all CODEBASE elements
   my $nodes = $doc->getElementsByTagName ("Result");
@@ -337,9 +337,9 @@ sub read_sample_info {
         next;
       }
       print OUT "ANALYSIS FULL URL: $aurl $analysis_uuid\n";
-      if (!$skip_down) { download($aurl, "xml/data_$analysis_uuid.xml", $skip_cached); }
-      my $adoc = $parser->parsefile ("xml/data_$analysis_uuid.xml");
-      my $adoc2 = XML::LibXML->new->parse_file("xml/data_$analysis_uuid.xml");
+      if (!$skip_down) { download($aurl, "$working_dir/xml/data_$analysis_uuid.xml", $skip_cached); }
+      my $adoc = $parser->parsefile ("$working_dir/xml/data_$analysis_uuid.xml");
+      my $adoc2 = XML::LibXML->new->parse_file("$working_dir/xml/data_$analysis_uuid.xml");
       my $analysisId = getVal($adoc, 'analysis_id');
       my $analysisDataURI = getVal($adoc, 'analysis_data_uri');
       my $submitterAliquotId = getCustomVal($adoc2, 'submitter_aliquot_id,submitter_sample_id');
