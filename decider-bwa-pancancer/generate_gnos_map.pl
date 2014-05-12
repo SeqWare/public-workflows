@@ -18,15 +18,15 @@ GetOptions("output=s" => \$output, "cluster-json=s" => \$cluster_json, "template
 
 my $t = `cat $template`;
 
-# 3000 specimens for ICGC see https://docs.google.com/spreadsheet/ccc?key=0AnBqxOn9BY8ldGN6dnNqNmxiYlhBNUlCZ3VIYVpPRlE&usp=sharing#gid=0
-my $specimens = 3000;
+# 3000 specimens for ICGC, 2000 for TCGA see https://docs.google.com/spreadsheet/ccc?key=0AnBqxOn9BY8ldGN6dnNqNmxiYlhBNUlCZ3VIYVpPRlE&usp=sharing#gid=0
+my $specimens = 5000;
 my $total_aligned = 0;
 my $total_unaligned = 0;
 
 # queries each gnos repo
-#foreach my $i ("gtrepo-bsc", "gtrepo-dkfz", "gtrepo-osdc", "gtrepo-etri", "gtrepo-ebi", "gtrepo-riken") {
-foreach my $i ("gtrepo-cghub") {
-  system("rm -rf xml");
+foreach my $i ("gtrepo-bsc", "gtrepo-dkfz", "gtrepo-osdc", "gtrepo-etri", "gtrepo-ebi", "gtrepo-riken", "gtrepo-cghub") {
+#foreach my $i ("gtrepo-cghub") {
+  #system("rm -rf xml");
   my $cmd = "perl workflow_decider.pl --gnos-url https://$i.annailabs.com --report $i.log --ignore-lane-count --upload-results --test --working-dir $i --skip-cached";
   # hack for CGHub
   if ($i =~ /gtrepo-cghub/) {
@@ -96,7 +96,7 @@ print OUT $t;
 close OUT;
 
 # now cleanup
-system("rm -rf xml");
+#system("rm -rf xml");
 
 sub read_cluster_info {
   my ($cluster_info) = @_;
