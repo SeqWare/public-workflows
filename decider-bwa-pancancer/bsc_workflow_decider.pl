@@ -18,7 +18,7 @@ use Cwd;
 #############
 
 my $skip_down = 0;
-my $gnos_url = "https://gtrepo-ebi.annailabs.com";
+my $gnos_url = "https://gtrepo-bsc.annailabs.com";
 my $cluster_json = "";
 my $working_dir = "decider_tmp";
 my $specific_sample;
@@ -118,12 +118,12 @@ sub schedule_workflow {
     delete $cluster_info->{$cluster};
     last;
   }
-  system("mkdir -p $working_dir/$rand");
-  open OUT, ">$working_dir/$rand/settings" or die "Can't open file $working_dir/$rand/settings\n";
+  open OUT, ">$working_dir/$rand/settings" or die;
   print OUT $settings;
   close OUT;
 
   # ini file
+  system("mkdir -p $working_dir/$rand");
   open OUT, ">$working_dir/$rand/workflow.ini" or die;
   print OUT "input_bam_paths=".join(",",sort(keys(%{$d->{local_bams}})))."\n";
   print OUT "gnos_input_file_urls=".$d->{gnos_input_file_urls}."\n";
@@ -134,7 +134,7 @@ sub schedule_workflow {
   print OUT "skip_upload=$skip_upload\n";
   print OUT <<END;
 #key=picardSortJobMem:type=integer:display=F:display_name=Memory for Picard merge, sort, index, and md5sum
-picardSortJobMem=4
+picardSortJobMem=6
 #key=picardSortMem:type=integer:display=F:display_name=Memory for Picard merge, sort, index, and md5sum
 picardSortMem=4
 #key=input_reference:type=text:display=F:display_name=The reference used for BWA
@@ -170,6 +170,7 @@ bwa_mem_params=
 gtdownload_retries=120
 END
   close OUT;
+
   # now submit the workflow!
   my $dir = getcwd();
   my $cmd = "SEQWARE_SETTINGS=$working_dir/$rand/settings /usr/local/bin/seqware workflow schedule --accession $workflow_accession --host $host --ini $working_dir/$rand/workflow.ini";
@@ -438,57 +439,55 @@ sub read_cluster_info {
       if ($max_running <= 0 || $max_running eq "") { $max_running = 1; }
       if ($max_scheduled_workflows <= 0 || $max_scheduled_workflows eq "" || $max_scheduled_workflows > $max_running) { $max_scheduled_workflows = $max_running; }
       print R "EXAMINING CLUSER: $c\n";
-      print "wget --timeout=60 -t 2 -O - --http-user=$user --http-password=$pass -q $web/workflows/$acc\n";
-      my $info = `wget --timeout=60 -t 2 -O - --http-user='$user' --http-password=$pass -q $web/workflows/$acc`;
+      #print "wget -O - --http-user=$user --http-password=$pass -q $web\n";
+      my $info = `wget -O - --http-user='$user' --http-password=$pass -q $web/workflows/$acc`;
       #print "INFO: $info\n";
-      if ($info ne "") {
-        my $dom = XML::LibXML->new->parse_string($info);
-        # check the XML returned above
-        if ($dom->findnodes('//Workflow/name/text()')) {
-          # now figure out if any of these workflows are currently scheduled here
-          #print "wget -O - --http-user='$user' --http-password=$pass -q $web/workflows/$acc/runs\n";
-          my $wr = `wget -O - --http-user='$user' --http-password=$pass -q $web/workflows/$acc/runs`;
-          #print "WR: $wr\n";
-          my $dom2 = XML::LibXML->new->parse_string($wr);
-  
-          # find available clusters
-          my $running = 0;
-          print R "\tWORKFLOWS ON THIS CLUSTER\n";
-          my $i=0;
-          for my $node ($dom2->findnodes('//WorkflowRunList2/list/status/text()')) {
-            $i++;
-            print R "\t\tWORKFLOW: ".$acc." STATUS: ".$node->toString()."\n";
-            if ($node->toString() eq 'pending' || $node->toString() eq 'running' || $node->toString() eq 'scheduled' || $node->toString() eq 'submitted') { $running++; }
-            # find running samples
-            my $j=0;
-            for my $node2 ($dom2->findnodes('//WorkflowRunList2/list/iniFile/text()')) {
-              $j++;
-              my $ini_contents = $node2->toString();
-              $ini_contents =~ /gnos_input_metadata_urls=(\S+)/;
-              my @urls = split /,/, $1;
-              my $sorted_urls = join(",", sort @urls);
-              if ($i==$j) { $run_samples->{$sorted_urls} = $node->toString(); print R "\t\t\tINPUTS: $sorted_urls\n"; }
-            }
-            $j=0;
-            for my $node2 ($dom2->findnodes('//WorkflowRunList2/list/currentWorkingDir/text()')) {
-              $j++;
-              if ($i==$j) { my $txt = $node2->toString(); print R "\t\t\tCWD: $txt\n"; }
-            }
-            $j=0;
-            for my $node2 ($dom2->findnodes('//WorkflowRunList2/list/swAccession/text()')) {
-              $j++;
-              if ($i==$j) { my $txt = $node2->toString(); print R "\t\t\tWORKFLOW ACCESSION: $txt\n"; }
-            }
+      my $dom = XML::LibXML->new->parse_string($info);
+      # check the XML returned above
+      if ($dom->findnodes('//Workflow/name/text()')) {
+        # now figure out if any of these workflows are currently scheduled here
+        #print "wget -O - --http-user='$user' --http-password=$pass -q $web/workflows/$acc/runs\n";
+        my $wr = `wget -O - --http-user='$user' --http-password=$pass -q $web/workflows/$acc/runs`;
+        #print "WR: $wr\n";
+        my $dom2 = XML::LibXML->new->parse_string($wr);
+
+        # find available clusters
+        my $running = 0;
+        print R "\tWORKFLOWS ON THIS CLUSTER\n";
+        my $i=0;
+        for my $node ($dom2->findnodes('//WorkflowRunList2/list/status/text()')) {
+          $i++;
+          print R "\t\tWORKFLOW: ".$acc." STATUS: ".$node->toString()."\n";
+          if ($node->toString() eq 'pending' || $node->toString() eq 'running' || $node->toString() eq 'scheduled' || $node->toString() eq 'submitted') { $running++; }
+          # find running samples
+          my $j=0;
+          for my $node2 ($dom2->findnodes('//WorkflowRunList2/list/iniFile/text()')) {
+            $j++;
+            my $ini_contents = $node2->toString();
+            $ini_contents =~ /gnos_input_metadata_urls=(\S+)/;
+            my @urls = split /,/, $1;
+            my $sorted_urls = join(",", sort @urls);
+            if ($i==$j) { $run_samples->{$sorted_urls} = $node->toString(); print R "\t\t\tINPUTS: $sorted_urls\n"; }
           }
-          # if there are no running workflows on this cluster it's a candidate
-          if ($running < $max_running ) {
-            print R "\tTHERE ARE $running RUNNING WORKFLOWS WHICH IS LESS THAN MAX OF $max_running, ADDING TO LIST OF AVAILABLE CLUSTERS\n\n";
-            for (my $i=0; $i<$max_scheduled_workflows; $i++) {
-              $d->{"$c\_$i"} = $json->{$c};
-            }
-          } else {
-            print R "\tCLUSTER HAS RUNNING WORKFLOWS, NOT ADDING TO AVAILABLE CLUSTERS\n\n";
+          $j=0;
+          for my $node2 ($dom2->findnodes('//WorkflowRunList2/list/currentWorkingDir/text()')) {
+            $j++;
+            if ($i==$j) { my $txt = $node2->toString(); print R "\t\t\tCWD: $txt\n"; }
           }
+          $j=0;
+          for my $node2 ($dom2->findnodes('//WorkflowRunList2/list/swAccession/text()')) {
+            $j++;
+            if ($i==$j) { my $txt = $node2->toString(); print R "\t\t\tWORKFLOW ACCESSION: $txt\n"; }
+          }
+        }
+        # if there are no running workflows on this cluster it's a candidate
+        if ($running < $max_running ) {
+          print R "\tTHERE ARE $running RUNNING WORKFLOWS WHICH IS LESS THAN MAX OF $max_running, ADDING TO LIST OF AVAILABLE CLUSTERS\n\n";
+          for (my $i=0; $i<$max_scheduled_workflows; $i++) {
+            $d->{"$c\_$i"} = $json->{$c};
+          }
+        } else {
+          print R "\tCLUSTER HAS RUNNING WORKFLOWS, NOT ADDING TO AVAILABLE CLUSTERS\n\n";
         }
       }
     }
