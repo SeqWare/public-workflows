@@ -32,9 +32,10 @@ my $seqware_setting = "seqware.setting";
 my $skip_upload = "true";
 my $upload_results = 0;
 my $ignore_failed = 0;
+my $skip_cached = 0;
 
-if (scalar(@ARGV) < 6 || scalar(@ARGV) > 20) {
-  print "USAGE: 'perl $0 --gnos-url <URL> --cluster-json <cluster.json> [--working-dir <working_dir>] [--sample <sample_id>] [--threads <num_threads_bwa_default_8>] [--test] [--ignore-lane-count] [--force-run] [--skip-meta-download] [--report <workflow_decider_report.txt>] [--settings <seqware_settings_file>] [--upload-results]'\n";
+if (scalar(@ARGV) < 4 || scalar(@ARGV) > 20) {
+  print "USAGE: 'perl $0 --gnos-url <URL> --cluster-json <cluster.json> [--working-dir <working_dir>] [--sample <sample_id>] [--threads <num_threads_bwa_default_8>] [--test] [--ignore-lane-count] [--force-run] [--skip-meta-download] [--report <workflow_decider_report.txt>] [--settings <seqware_settings_file>] [--upload-results] [--skip-cached]'\n";
   print "\t--gnos-url           a URL for a GNOS server, e.g. https://gtrepo-ebi.annailabs.com\n";
   print "\t--cluster-json       a json file that describes the clusters available to schedule workflows to\n";
   print "\t--working-dir        a place for temporary ini and settings files\n";
@@ -48,10 +49,11 @@ if (scalar(@ARGV) < 6 || scalar(@ARGV) > 20) {
   print "\t--settings           the template seqware settings file\n";
   print "\t--upload-results     a flag indicating the resulting BAM files and metadata should be uploaded to GNOS, default is to not upload!!!\n";
   print "\t--ignore-failed      a flag indicating that previously failed runs for this specimen should be ignored and the specimen scheduled again\n";
-  exit;
+  print "\t--skip-cached        a flag indicating that previously download metadata XML files should not be downloaded again\n";
+  exit(1);
 }
 
-GetOptions("gnos-url=s" => \$gnos_url, "cluster-json=s" => \$cluster_json, "working-dir=s" => \$working_dir, "sample=s" => \$specific_sample, "test" => \$test, "ignore-lane-count" => \$ignore_lane_cnt, "force-run" => \$force_run, "threads=i" => \$threads, "skip-meta-download" => \$skip_down, "report=s" => \$report_name, "settings=s" => \$seqware_setting, "upload-results" => \$upload_results, "ignore-failed" => \$ignore_failed);
+GetOptions("gnos-url=s" => \$gnos_url, "cluster-json=s" => \$cluster_json, "working-dir=s" => \$working_dir, "sample=s" => \$specific_sample, "test" => \$test, "ignore-lane-count" => \$ignore_lane_cnt, "force-run" => \$force_run, "threads=i" => \$threads, "skip-meta-download" => \$skip_down, "report=s" => \$report_name, "settings=s" => \$seqware_setting, "upload-results" => \$upload_results, "ignore-failed" => \$ignore_failed, "skip-cached" => \$skip_cached);
 
 if ($upload_results) { $skip_upload = "false"; }
 
@@ -301,6 +303,9 @@ sub read_sample_info {
   # cgquery -o my_data.xml 'study=PAWG&state=live'
   if (!$skip_down) { 
     my $cmd = "mkdir -p xml; cgquery -s $gnos_url -o xml/data.xml 'study=*&state=live'"; 
+    if ($gnos_url =~ /cghub.ucsc.edu/) {
+      $cmd = "mkdir -p xml; cgquery -s $gnos_url -o xml/data.xml 'study=PAWG&state=live'";
+    }
     print OUT "$cmd\n"; 
     my $rsult = system($cmd); 
     if ($rsult) { print STDERR "Could not download data via cgquery!\n"; exit (1); }
@@ -326,14 +331,15 @@ sub read_sample_info {
       #print OUT "Analysis Full URL: $aurl\n";
       if($aurl =~ /^(.*)\/([^\/]+)$/) {
       $aurl = $1."/".lc($2);
+      my $analysis_uuid = lc($2);
       } else {
         print OUT "SKIPPING!\n";
         next;
       }
-      print OUT "ANALYSIS FULL URL: $aurl\n";
-      if (!$skip_down) { download($aurl, "xml/data_$i.xml"); }
-      my $adoc = $parser->parsefile ("xml/data_$i.xml");
-      my $adoc2 = XML::LibXML->new->parse_file("xml/data_$i.xml");
+      print OUT "ANALYSIS FULL URL: $aurl $analysis_uuid\n";
+      if (!$skip_down) { download($aurl, "xml/data_$analysis_uuid.xml", $skip_cached); }
+      my $adoc = $parser->parsefile ("xml/data_$analysis_uuid.xml");
+      my $adoc2 = XML::LibXML->new->parse_file("xml/data_$analysis_uuid.xml");
       my $analysisId = getVal($adoc, 'analysis_id');
       my $analysisDataURI = getVal($adoc, 'analysis_data_uri');
       my $submitterAliquotId = getCustomVal($adoc2, 'submitter_aliquot_id,submitter_sample_id');
@@ -568,15 +574,17 @@ sub getVal {
 }
 
 sub download {
-  my ($url, $out) = @_;
+  my ($url, $out, $skip) = @_;
 
-  my $r = system("wget -q -O $out $url");
-  if ($r) {
-	  $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME}=0;
-    $r = system("lwp-download $url $out");
+  if (!-e $out || !$skip) { 
+    my $r = system("wget -q -O $out $url");
     if ($r) {
-	    print "ERROR DOWNLOADING: $url\n";
-	    exit(1);
+  	  $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME}=0;
+      $r = system("lwp-download $url $out");
+      if ($r) {
+  	    print "ERROR DOWNLOADING: $url\n";
+  	    exit(1);
+      }
     }
   }
 }

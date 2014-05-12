@@ -22,10 +22,14 @@ my $total_aligned = 0;
 my $total_unaligned = 0;
 
 # queries each gnos repo
-foreach my $i ("gtrepo-bsc", "gtrepo-dkfz", "gtrepo-osdc", "gtrepo-etri", "gtrepo-ebi", "gtrepo-riken") {
-#foreach my $i ("gtrepo-dkfz") {
+#foreach my $i ("gtrepo-bsc", "gtrepo-dkfz", "gtrepo-osdc", "gtrepo-etri", "gtrepo-ebi", "gtrepo-riken") {
+foreach my $i ("gtrepo-cghub") {
   system("rm -rf xml");
   my $cmd = "perl workflow_decider.pl --gnos-url https://$i.annailabs.com --report $i.log --ignore-lane-count --upload-results --test";
+  # hack for CGHub
+  if ($i =~ /gtrepo-cghub/) {
+    $cmd = "perl workflow_decider.pl --gnos-url https://cghub.ucsc.edu --report $i.log --ignore-lane-count --upload-results --test";
+  }
   print "$cmd";
   my $result = system($cmd);
   if ($result) {
