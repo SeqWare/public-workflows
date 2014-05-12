@@ -291,6 +291,7 @@ sub schedule_samples {
 
 sub read_sample_info {
 
+  system("mkdir -p $working_dir");
   open OUT, ">$working_dir/xml_parse.log" or die;
   my $d = {};
 
