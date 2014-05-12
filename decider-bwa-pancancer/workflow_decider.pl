@@ -332,8 +332,8 @@ sub read_sample_info {
       #print OUT "Analysis Full URL: $aurl\n";
       my $analysis_uuid = $i;
       if($aurl =~ /^(.*)\/([^\/]+)$/) {
-      $aurl = $1."/".lc($2);
-      my $analysis_uuid = lc($2);
+        $aurl = $1."/".lc($2);
+        $analysis_uuid = lc($2);
       } else {
         print OUT "SKIPPING!\n";
         next;

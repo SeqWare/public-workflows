@@ -9,12 +9,14 @@ use Cwd;
 
 my $output = "index.html";
 my $cluster_json = "cluster.json";
+my $template = "template/map.html";
 
-if (scalar(@ARGV) != 4) { print "USAGE: generate_gnos_map.pl --output index.html --cluster-json cluster.json"; }
+if (scalar(@ARGV) != 4) { print "USAGE: generate_gnos_map.pl --output index.html --cluster-json cluster.json --template template/map.html"; }
 
-GetOptions("output=s" => \$output, "cluster-json=s" => \$cluster_json);
+GetOptions("output=s" => \$output, "cluster-json=s" => \$cluster_json, "template=s" => \$template);
 
-my $t = `cat template/map.html`;
+
+my $t = `cat $template`;
 
 # 3000 specimens for ICGC see https://docs.google.com/spreadsheet/ccc?key=0AnBqxOn9BY8ldGN6dnNqNmxiYlhBNUlCZ3VIYVpPRlE&usp=sharing#gid=0
 my $specimens = 3000;
