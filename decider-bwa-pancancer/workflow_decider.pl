@@ -329,6 +329,7 @@ sub read_sample_info {
       my $aurl = getVal($node, "analysis_full_uri"); # ->getElementsByTagName('analysis_full_uri')->item(0)->getFirstChild->getNodeValue;
       # have to ensure the UUID is lower case, known GNOS issue
       #print OUT "Analysis Full URL: $aurl\n";
+      my $analysis_uuid = $i;
       if($aurl =~ /^(.*)\/([^\/]+)$/) {
       $aurl = $1."/".lc($2);
       my $analysis_uuid = lc($2);
