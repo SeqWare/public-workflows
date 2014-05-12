@@ -25,10 +25,10 @@ my $total_unaligned = 0;
 #foreach my $i ("gtrepo-bsc", "gtrepo-dkfz", "gtrepo-osdc", "gtrepo-etri", "gtrepo-ebi", "gtrepo-riken") {
 foreach my $i ("gtrepo-cghub") {
   system("rm -rf xml");
-  my $cmd = "perl workflow_decider.pl --gnos-url https://$i.annailabs.com --report $i.log --ignore-lane-count --upload-results --test";
+  my $cmd = "perl workflow_decider.pl --gnos-url https://$i.annailabs.com --report $i.log --ignore-lane-count --upload-results --test --working-dir $i --skip-cached";
   # hack for CGHub
   if ($i =~ /gtrepo-cghub/) {
-    $cmd = "perl workflow_decider.pl --gnos-url https://cghub.ucsc.edu --report $i.log --ignore-lane-count --upload-results --test";
+    $cmd = "perl workflow_decider.pl --gnos-url https://cghub.ucsc.edu --report $i.log --ignore-lane-count --upload-results --test --working-dir $i --skip-cached";
   }
   print "$cmd";
   my $result = system($cmd);
