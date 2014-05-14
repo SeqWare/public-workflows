@@ -10,3 +10,4 @@
 /workflow-DKFZ-SNV-Calling/links/
 /workflow-bwa-pancancer/workflow/scripts/*.pem
 /workflow-bwa-pancancer/workflow/scripts/xml/
+*~
