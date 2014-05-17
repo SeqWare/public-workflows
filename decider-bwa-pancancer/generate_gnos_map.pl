@@ -11,7 +11,7 @@ my $output = "index.html";
 my $cluster_json = "cluster.json";
 my $template = "template/map.html";
 
-if (scalar(@ARGV) != 4) { print "USAGE: generate_gnos_map.pl --output index.html --cluster-json cluster.json --template template/map.html"; }
+if (scalar(@ARGV) != 6) { die "USAGE: generate_gnos_map.pl --output index.html --cluster-json cluster.json --template template/map.html"; }
 
 GetOptions("output=s" => \$output, "cluster-json=s" => \$cluster_json, "template=s" => \$template);
 
