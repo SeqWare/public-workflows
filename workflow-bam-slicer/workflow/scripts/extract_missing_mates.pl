@@ -14,7 +14,7 @@ while(<STDIN>){
 
     my @F = split /\t/;
 
-    my $uniq_read_name = $F[0]."~".$rg;
+    my $uniq_read_name = join ("~", ($F[0], $rg, $F[2], $F[3]));
 
     print "$_\n" if $missing_mate_names->{$uniq_read_name};
 }
@@ -48,7 +48,7 @@ sub get_missing_mate_names {
 
         my @F = split /\t/;
 
-        $missing_mate_names->{$F[3]}++;
+        $missing_mate_names->{$F[3]."~".$F[0]."~".$F[2]}++;
     }
     close(BED);
 
