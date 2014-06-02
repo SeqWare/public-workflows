@@ -139,6 +139,17 @@ public class WorkflowClient extends OicrWorkflow {
     	  headerJob.addParent(downloadJob);
       }
       
+      // build BAM index file if it does not exist
+      Job buildBamIndex = this.getWorkflow().createBashJob("buildBamIndex" + i);
+      buildBamIndex.getCommand().addArgument(
+    		  "test -s " + file + ".bai || "
+    		  + "cat " + file + " | "
+    		  + this.getWorkflowBaseDir() + pcapPath + "/bin/bamindex "
+    		  + "> " + file + ".bai");
+
+      buildBamIndex.setMaxMemory("4000");
+      buildBamIndex.addParent(headerJob);      
+      
       // slice out the reads within the specified regions in a BED file
       Job firstSliceJob = this.getWorkflow().createBashJob("firstSlice" + i);
       firstSliceJob.getCommand().addArgument(
@@ -148,7 +159,7 @@ public class WorkflowClient extends OicrWorkflow {
     		  + " > firstSlice." + i + ".bam");
       
       firstSliceJob.setMaxMemory("4000");
-      firstSliceJob.addParent(headerJob);
+      firstSliceJob.addParent(buildBamIndex);
       
       // find out the orphaned reads in the sliced out BAM
       Job orphanedRead = this.getWorkflow().createBashJob("orphanedReads" + i);
@@ -266,7 +277,7 @@ public class WorkflowClient extends OicrWorkflow {
     job.getCommand().addArgument(
     		this.isTesting ?
     		    "mkdir " + analysisId + " && " + "cp " + getProperty("testBamPath") + " " + file :
-    		    "gtdownload -c "+gnosKey+" -v -d "+fileURL
+    		    "gtdownload -c "+gnosKey+" -v -d "+ fileURL
     		);
 
 
