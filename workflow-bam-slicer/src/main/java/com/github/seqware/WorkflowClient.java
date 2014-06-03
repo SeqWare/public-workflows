@@ -153,7 +153,7 @@ public class WorkflowClient extends OicrWorkflow {
       // slice out the reads within the specified regions in a BED file
       Job firstSliceJob = this.getWorkflow().createBashJob("firstSlice" + i);
       firstSliceJob.getCommand().addArgument(
-    		  this.getWorkflowBaseDir() + pcapPath + "/bin/samtools view -h -b -F 4 -L "
+    		  this.getWorkflowBaseDir() + pcapPath + "/bin/samtools view -h -b -L "  // this will include single-end-mapped reads and their unmapped mates (which share the same rname and pos)
     		  + this.getWorkflowBaseDir() + "/scripts/encodeRegions.bed "
     		  + file
     		  + " > firstSlice." + i + ".bam");
@@ -187,7 +187,7 @@ public class WorkflowClient extends OicrWorkflow {
 
       Job secondSliceJob = this.getWorkflow().createBashJob("secondSlice" + i);
       secondSliceJob.getCommand().addArgument(
-    		  this.getWorkflowBaseDir() + pcapPath + "/bin/samtools view -F 4 -L "
+    		  this.getWorkflowBaseDir() + pcapPath + "/bin/samtools view -F 4 -L "  // this will capture mapped ends which are out side of the target regions, but their mates were captured in the first slicing
     		  + "missing_mates." + i + ".bed "
     		  + file
     		  + " | "
