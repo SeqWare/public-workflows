@@ -153,9 +153,12 @@ public class WorkflowClient extends OicrWorkflow {
       // slice out the reads within the specified regions in a BED file
       Job firstSliceJob = this.getWorkflow().createBashJob("firstSlice" + i);
       firstSliceJob.getCommand().addArgument(
-    		  this.getWorkflowBaseDir() + pcapPath + "/bin/samtools view -h -b -L "  // this will include single-end-mapped reads and their unmapped mates (which share the same rname and pos)
+    		  this.getWorkflowBaseDir() + pcapPath + "/bin/samtools view -h -L "  // this will include single-end-mapped reads and their unmapped mates (which share the same rname and pos)
     		  + this.getWorkflowBaseDir() + "/scripts/encodeRegions.bed "
     		  + file
+    		  + " | perl " + this.getWorkflowBaseDir() + "/scripts/remove_both_ends_unmapped_reads.pl "  // this is necessary because samtools -L outputs both-ends-unmapped reads
+    		  + " | "
+    		  + this.getWorkflowBaseDir() + pcapPath + "/bin/samtools view -S -b - "
     		  + " > firstSlice." + i + ".bam");
       
       firstSliceJob.setMaxMemory("4000");
@@ -187,7 +190,7 @@ public class WorkflowClient extends OicrWorkflow {
 
       Job secondSliceJob = this.getWorkflow().createBashJob("secondSlice" + i);
       secondSliceJob.getCommand().addArgument(
-    		  this.getWorkflowBaseDir() + pcapPath + "/bin/samtools view -F 4 -F 8 -L "  // this will capture mapped ends which are out side of the target regions, but their mates were captured in the first slicing
+    		  this.getWorkflowBaseDir() + pcapPath + "/bin/samtools view -F 12 -L "  // this will capture mapped ends which are out side of the target regions, but their mates were captured in the first slicing
     		  + "missing_mates." + i + ".bed "
     		  + file
     		  + " | "
@@ -238,8 +241,7 @@ public class WorkflowClient extends OicrWorkflow {
     }
 
     // PREPARE METADATA & UPLOAD
-    String finalOutDir = this.outputPrefix;
-    if (!useGtUpload) { finalOutDir = this.resultsDir; }
+    String finalOutDir = this.resultsDir;
     Job bamUploadJob = this.getWorkflow().createBashJob("upload");
     bamUploadJob.getCommand().addArgument("perl " + this.getWorkflowBaseDir() + "/scripts/gnos_upload_data.pl")
             .addArgument("--bam " + this.outputPrefix + outputFileName)
