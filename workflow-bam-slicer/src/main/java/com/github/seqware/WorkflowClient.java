@@ -278,7 +278,7 @@ public class WorkflowClient extends OicrWorkflow {
 
     job.getCommand().addArgument(
     		this.isTesting ?
-    		    "mkdir " + analysisId + " && " + "cp " + getProperty("testBamPath") + " " + file :
+    		    "mkdir " + analysisId + " && " + "ln -s " + getProperty("testBamPath") + " " + file :  // using symlink to avoid copying huge test bam
     		    "gtdownload -c "+gnosKey+" -v -d "+ fileURL
     		);
 
