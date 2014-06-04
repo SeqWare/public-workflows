@@ -7,6 +7,7 @@ my $missing_mate_names = &get_missing_mate_names($bed_file);
 
 print &header($header_file);
 
+# sliced out BAM entries from the second round
 while(<STDIN>){
     chomp;
 
@@ -16,7 +17,8 @@ while(<STDIN>){
 
     my $uniq_read_name = join ("~", ($F[0], $rg, $F[2], $F[3]));
 
-    print "$_\n" if $missing_mate_names->{$uniq_read_name};
+    print "$_\n" if ($missing_mate_names->{$uniq_read_name}
+                       && $missing_mate_names->{$uniq_read_name} != $F[1]); # the missed mate in the first capture must not have the same flags
 }
 
 # subroutines
@@ -47,8 +49,9 @@ sub get_missing_mate_names {
         chomp;
 
         my @F = split /\t/;
+        my ($qname,$readgroup,$flags) = split /~/, $F[3];
 
-        $missing_mate_names->{$F[3]."~".$F[0]."~".$F[2]}++;
+        $missing_mate_names->{join("~", ($qname, $readgroup, $F[0], $F[2]))} = $flags;
     }
     close(BED);
 

@@ -187,7 +187,7 @@ public class WorkflowClient extends OicrWorkflow {
 
       Job secondSliceJob = this.getWorkflow().createBashJob("secondSlice" + i);
       secondSliceJob.getCommand().addArgument(
-    		  this.getWorkflowBaseDir() + pcapPath + "/bin/samtools view -F 4 -L "  // this will capture mapped ends which are out side of the target regions, but their mates were captured in the first slicing
+    		  this.getWorkflowBaseDir() + pcapPath + "/bin/samtools view -F 4 -F 8 -L "  // this will capture mapped ends which are out side of the target regions, but their mates were captured in the first slicing
     		  + "missing_mates." + i + ".bed "
     		  + file
     		  + " | "
