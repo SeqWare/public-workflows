@@ -234,8 +234,8 @@ public class WorkflowClient extends OicrWorkflow {
     // CLEANUP ORIGINAL BAM FILES
     for (int i = 0; i < numBamFiles; i++) {
       Job cleanup = this.getWorkflow().createBashJob("cleanup" + i);
-      //cleanup.getCommand().addArgument("rm -fr " + "firstSlice" + i + ".bam " + "secondSlice" + i + ".bam");
-      cleanup.getCommand().addArgument("touch " + "firstSlice" + i + ".bam " + "secondSlice" + i + ".bam");  // touch only for now
+      //cleanup.getCommand().addArgument("rm -fr " + "firstSlice." + i + ".bam " + "secondSlice." + i + ".bam");
+      cleanup.getCommand().addArgument("ls " + "firstSlice." + i + ".bam " + "secondSlice." + i + ".bam");  // ls only for now
       cleanup.addParent(mergeSortJob);
       cleanup.setMaxMemory(smallJobMemM);
     }
