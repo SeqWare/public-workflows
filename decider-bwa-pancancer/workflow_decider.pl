@@ -30,11 +30,19 @@ my $report_name = "workflow_decider_report.txt";
 my $seqware_setting = "seqware.setting";
 # by default skip the upload of results back to GNOS
 my $skip_upload = "true";
+my $use_gtdownload = "true";
+my $use_gtupload = "true";
 my $upload_results = 0;
 my $ignore_failed = 0;
+my $skip_cached = 0;
+my $skip_gtdownload = 0;
+my $skip_gtupload = 0;
+my $output_prefix = "./";
+my $output_dir = "seqware-results/";
+my $input_prefix = "";
 
-if (scalar(@ARGV) < 6 || scalar(@ARGV) > 20) {
-  print "USAGE: 'perl $0 --gnos-url <URL> --cluster-json <cluster.json> [--working-dir <working_dir>] [--sample <sample_id>] [--threads <num_threads_bwa_default_8>] [--test] [--ignore-lane-count] [--force-run] [--skip-meta-download] [--report <workflow_decider_report.txt>] [--settings <seqware_settings_file>] [--upload-results]'\n";
+if (scalar(@ARGV) < 4 || scalar(@ARGV) > 28) {
+  print "USAGE: 'perl $0 --gnos-url <URL> --cluster-json <cluster.json> [--working-dir <working_dir>] [--sample <sample_id>] [--threads <num_threads_bwa_default_8>] [--test] [--ignore-lane-count] [--force-run] [--skip-meta-download] [--report <workflow_decider_report.txt>] [--settings <seqware_settings_file>] [--upload-results] [--skip-cached]'\n";
   print "\t--gnos-url           a URL for a GNOS server, e.g. https://gtrepo-ebi.annailabs.com\n";
   print "\t--cluster-json       a json file that describes the clusters available to schedule workflows to\n";
   print "\t--working-dir        a place for temporary ini and settings files\n";
@@ -42,18 +50,26 @@ if (scalar(@ARGV) < 6 || scalar(@ARGV) > 20) {
   print "\t--threads            number of threads to use for BWA\n";
   print "\t--test               a flag that indicates no workflow should be scheduled, just summary of what would have been run\n";
   print "\t--ignore-lane-count  skip the check that the GNOS XML contains a count of lanes for this sample and the bams count matches\n";
-  print "\t--force-run          schedule workflows even if they were previously run/failed/scheduled\n";
+  print "\t--force-run          schedule workflows even if they were previously completed/failed/scheduled\n";
   print "\t--skip-meta-download use the previously downloaded XML from GNOS, only useful for testing\n";
   print "\t--report             the report file name\n";
   print "\t--settings           the template seqware settings file\n";
   print "\t--upload-results     a flag indicating the resulting BAM files and metadata should be uploaded to GNOS, default is to not upload!!!\n";
   print "\t--ignore-failed      a flag indicating that previously failed runs for this specimen should be ignored and the specimen scheduled again\n";
-  exit;
+  print "\t--skip-cached        a flag indicating that previously download metadata XML files should not be downloaded again\n";
+  print "\t--skip-gtdownload    a flag indicating that input files should be just the bam input paths and not from GNOS\n";
+  print "\t--skip-gtupload      a flag indicating that upload should not take place but output files should be placed in output_prefix/output_dir\n";
+  print "\t--output-prefix      if --skip-gtupload is set, use this to specify the prefix of where output files are written\n";
+  print "\t--output-dir         if --skip-gtupload is set, use this to specify the dir of where output files are written\n";
+  print "\t--input-prefix       if --skip-gtdownload is set, this is the input bam file prefix\n";
+  exit(1);
 }
 
-GetOptions("gnos-url=s" => \$gnos_url, "cluster-json=s" => \$cluster_json, "working-dir=s" => \$working_dir, "sample=s" => \$specific_sample, "test" => \$test, "ignore-lane-count" => \$ignore_lane_cnt, "force-run" => \$force_run, "threads=i" => \$threads, "skip-meta-download" => \$skip_down, "report=s" => \$report_name, "settings=s" => \$seqware_setting, "upload-results" => \$upload_results, "ignore-failed" => \$ignore_failed);
+GetOptions("gnos-url=s" => \$gnos_url, "cluster-json=s" => \$cluster_json, "working-dir=s" => \$working_dir, "sample=s" => \$specific_sample, "test" => \$test, "ignore-lane-count" => \$ignore_lane_cnt, "force-run" => \$force_run, "threads=i" => \$threads, "skip-meta-download" => \$skip_down, "report=s" => \$report_name, "settings=s" => \$seqware_setting, "upload-results" => \$upload_results, "ignore-failed" => \$ignore_failed, "skip-cached" => \$skip_cached, "skip-gtdownload" => \$skip_gtdownload, "skip-gtupload" => \$skip_gtupload, "output-prefix=s" => \$output_prefix, "output-dir=s" => \$output_dir, "input-prefix=s" => \$input_prefix);
 
 if ($upload_results) { $skip_upload = "false"; }
+if ($skip_gtdownload) { $use_gtdownload = "false"; }
+if ($skip_gtupload) { $use_gtupload = "false"; }
 
 
 ##############
@@ -128,46 +144,33 @@ sub schedule_workflow {
   print OUT "input_bam_paths=".join(",",sort(keys(%{$d->{local_bams}})))."\n";
   print OUT "gnos_input_file_urls=".$d->{gnos_input_file_urls}."\n";
   print OUT "gnos_input_metadata_urls=".$d->{analysis_url}."\n";
-  print OUT "gnos_output_file_url=$gnos_url\n";
-  print OUT "readGroup=\n";
-  print OUT "numOfThreads=$threads\n";
-  print OUT "skip_upload=$skip_upload\n";
   print OUT <<END;
-#key=picardSortJobMem:type=integer:display=F:display_name=Memory for Picard merge, sort, index, and md5sum
+gnos_output_file_url=$gnos_url
+numOfThreads=$threads
+use_gtdownload=$use_gtdownload
+use_gtupload=$use_gtupload
+skip_upload=$skip_upload
+output_prefix=$output_prefix
+output_dir=$output_dir
 picardSortJobMem=4
-#key=picardSortMem:type=integer:display=F:display_name=Memory for Picard merge, sort, index, and md5sum
-picardSortMem=4
-#key=input_reference:type=text:display=F:display_name=The reference used for BWA
-input_reference=\${workflow_bundle_dir}/Workflow_Bundle_BWA/\${workflow_version}/data/reference/bwa-0.6.2/genome.fa.gz
-#key=maxInsertSize:type=integer:display=F:display_name=The max insert size if known
-maxInsertSize=
-#key=bwaAlignMemG:type=integer:display=F:display_name=Memory for BWA align step
-bwaAlignMemG=8
-#key=output_prefix:type=text:display=F:display_name=The output_prefix is a convention and used to specify the root of the absolute output path or an S3 bucket name
-output_prefix=./
-#key=additionalPicardParams:type=text:display=F:display_name=Any additional parameters you want to pass to Picard
+picardSortMem=6
 additionalPicardParams=
-#key=bwaSampeMemG:type=integer:display=F:display_name=Memory for BWA sampe step
+input_reference=\${workflow_bundle_dir}/Workflow_Bundle_BWA/$workflow_version/data/reference/bwa-0.6.2/genome.fa.gz
+maxInsertSize=
+bwaAlignMemG=8
 bwaSampeMemG=8
-#key=bwaSampeSortSamMemG:type=integer:display=F:display_name=Memory for BWA sort sam step
 bwaSampeSortSamMemG=4
-#key=bwa_aln_params:type=text:display=F:display_name=Extra params for bwa aln
-bwa_aln_params=
-#key=gnos_key:type=text:display=T:display_name=The path to a GNOS key.pem file
-gnos_key=\${workflow_bundle_dir}/Workflow_Bundle_BWA/\${workflow_version}/scripts/gnostest.pem
-#key=uploadScriptJobMem:type=integer:display=F:display_name=Memory for upload script
-uploadScriptJobMem=2
-#key=output_dir:type=text:display=F:display_name=The output directory is a conventions and used in many workflows to specify a relative output path
-output_dir=seqware-results
-#key=bwa_sampe_params:type=text:display=F:display_name=Extra params for bwa sampe
-bwa_sampe_params=
-# key=bwa_choice:type=pulldown:display=T:display_name=Choice to use bwa-aln or bwa-mem:pulldown_items=mem|mem;aln|aln
 bwa_choice=mem
-# key=bwa_mem_params:type=text:display=F:display_name=Extra params for bwa mem
+bwa_aln_params=
 bwa_mem_params=
-# GTDownload
-# key=gtdownload_retries:type=integer:display=F:display_name=How many retries to attempt before restarting gtdownload, each lasts 1 minute
-gtdownload_retries=120
+bwa_sampe_params=
+readGroup=
+gnos_key=\${workflow_bundle_dir}/Workflow_Bundle_BWA/$workflow_version/scripts/gnostest.pem
+uploadScriptJobMem=3
+gtdownloadRetries=30
+gtdownloadMd5time=120
+gtdownloadMemG=8
+smallJobMemM=3000
 END
   close OUT;
   # now submit the workflow!
@@ -233,7 +236,8 @@ sub schedule_samples {
             $d->{total_lanes} = $total_lanes;
             foreach my $bam (keys %{$sample_info->{$participant}{$sample}{$alignment}{$aliquot}{$library}{files}}) {
               $d->{bams}{$bam} = $sample_info->{$participant}{$sample}{$alignment}{$aliquot}{$library}{files}{$bam}{localpath};
-              $d->{local_bams}{$sample_info->{$participant}{$sample}{$alignment}{$aliquot}{$library}{files}{$bam}{localpath}} = 1;
+              my $local_file_path = $input_prefix.$sample_info->{$participant}{$sample}{$alignment}{$aliquot}{$library}{files}{$bam}{localpath};
+              $d->{local_bams}{$local_file_path} = 1;
               if ($alignment eq "unaligned") {
                 $d->{bams_count}++;
               }
@@ -289,7 +293,8 @@ sub schedule_samples {
 
 sub read_sample_info {
 
-  open OUT, ">xml_parse.log" or die;
+  system("mkdir -p $working_dir");
+  open OUT, ">$working_dir/xml_parse.log" or die;
   my $d = {};
 
   # PARSE XML
@@ -299,13 +304,16 @@ sub read_sample_info {
   #my $doc = $parser->parsefile ('https://cghub.ucsc.edu/cghub/metadata/analysisDetail?study=TCGA_MUT_BENCHMARK_4&state=live');
   #if (!$skip_down) { my $cmd = "mkdir -p xml; cgquery -s $gnos_url --all-states -o xml/data.xml 'study=*'"; print OUT "$cmd\n"; system($cmd); }
   # cgquery -o my_data.xml 'study=PAWG&state=live'
-  if (!$skip_down) { 
-    my $cmd = "mkdir -p xml; cgquery -s $gnos_url -o xml/data.xml 'study=*&state=live'"; 
-    print OUT "$cmd\n"; 
-    my $rsult = system($cmd); 
+  if (!$skip_down) {
+    my $cmd = "mkdir -p $working_dir/xml; cgquery -s $gnos_url -o $working_dir/xml/data.xml 'study=*&state=live'";
+    if ($gnos_url =~ /cghub.ucsc.edu/) {
+      $cmd = "mkdir -p $working_dir/xml; cgquery -s $gnos_url -o $working_dir/xml/data.xml 'study=PAWG&state=live'";
+    }
+    print OUT "$cmd\n";
+    my $rsult = system($cmd);
     if ($rsult) { print STDERR "Could not download data via cgquery!\n"; exit (1); }
   }
-  my $doc = $parser->parsefile("xml/data.xml");
+  my $doc = $parser->parsefile("$working_dir/xml/data.xml");
 
   # print OUT all HREF attributes of all CODEBASE elements
   my $nodes = $doc->getElementsByTagName ("Result");
@@ -324,16 +332,18 @@ sub read_sample_info {
       my $aurl = getVal($node, "analysis_full_uri"); # ->getElementsByTagName('analysis_full_uri')->item(0)->getFirstChild->getNodeValue;
       # have to ensure the UUID is lower case, known GNOS issue
       #print OUT "Analysis Full URL: $aurl\n";
+      my $analysis_uuid = $i;
       if($aurl =~ /^(.*)\/([^\/]+)$/) {
-      $aurl = $1."/".lc($2);
+        $aurl = $1."/".lc($2);
+        $analysis_uuid = lc($2);
       } else {
         print OUT "SKIPPING!\n";
         next;
       }
-      print OUT "ANALYSIS FULL URL: $aurl\n";
-      if (!$skip_down) { download($aurl, "xml/data_$i.xml"); }
-      my $adoc = $parser->parsefile ("xml/data_$i.xml");
-      my $adoc2 = XML::LibXML->new->parse_file("xml/data_$i.xml");
+      print OUT "ANALYSIS FULL URL: $aurl $analysis_uuid\n";
+      if (!$skip_down) { download($aurl, "$working_dir/xml/data_$analysis_uuid.xml", $skip_cached); }
+      my $adoc = $parser->parsefile ("$working_dir/xml/data_$analysis_uuid.xml");
+      my $adoc2 = XML::LibXML->new->parse_file("$working_dir/xml/data_$analysis_uuid.xml");
       my $analysisId = getVal($adoc, 'analysis_id');
       my $analysisDataURI = getVal($adoc, 'analysis_data_uri');
       my $submitterAliquotId = getCustomVal($adoc2, 'submitter_aliquot_id,submitter_sample_id');
@@ -450,7 +460,7 @@ sub read_cluster_info {
           my $wr = `wget -O - --http-user='$user' --http-password=$pass -q $web/workflows/$acc/runs`;
           #print "WR: $wr\n";
           my $dom2 = XML::LibXML->new->parse_string($wr);
-  
+
           # find available clusters
           my $running = 0;
           print R "\tWORKFLOWS ON THIS CLUSTER\n";
@@ -568,15 +578,17 @@ sub getVal {
 }
 
 sub download {
-  my ($url, $out) = @_;
+  my ($url, $out, $skip) = @_;
 
-  my $r = system("wget -q -O $out $url");
-  if ($r) {
-	  $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME}=0;
-    $r = system("lwp-download $url $out");
+  if (!-e $out || !$skip) {
+    my $r = system("wget -q -O $out $url");
     if ($r) {
-	    print "ERROR DOWNLOADING: $url\n";
-	    exit(1);
+  	  $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME}=0;
+      $r = system("lwp-download $url $out");
+      if ($r) {
+  	    print "ERROR DOWNLOADING: $url\n";
+  	    exit(1);
+      }
     }
   }
 }
