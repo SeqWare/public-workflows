@@ -1,0 +1,5 @@
+/vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5/Sanger/CGP/Vcf.pm
+/vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5/Sanger/CGP/Vcf/Contig.pm
+/vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5/Sanger/CGP/Vcf/Sample.pm
+/vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5/Sanger/CGP/Vcf/VcfProcessLog.pm
+/vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5/Sanger/CGP/Vcf/VcfUtil.pm

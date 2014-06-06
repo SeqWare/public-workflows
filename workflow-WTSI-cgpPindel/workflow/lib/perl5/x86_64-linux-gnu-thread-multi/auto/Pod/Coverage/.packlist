@@ -1,0 +1,9 @@
+/vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/bin/pod_cover
+/vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5/Pod/Coverage.pm
+/vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5/Pod/Coverage/CountParents.pm
+/vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5/Pod/Coverage/ExportOnly.pm
+/vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5/Pod/Coverage/Overloader.pm
+/vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/man/man3/Pod::Coverage.3pm
+/vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/man/man3/Pod::Coverage::CountParents.3pm
+/vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/man/man3/Pod::Coverage::ExportOnly.3pm
+/vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/man/man3/Pod::Coverage::Overloader.3pm

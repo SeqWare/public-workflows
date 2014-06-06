@@ -1,0 +1,12 @@
+prefix=/vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: libmaus
+Description: succinct data structures
+Requires: zlib
+Version: 0.0.124
+Libs: -L${libdir} -lmaus  -L/vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib -lsnappy -ldl -fopenmp
+Cflags:   -I/vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/include -fopenmp  -std=gnu++0x    -I${includedir}
+Dllib: -ldl

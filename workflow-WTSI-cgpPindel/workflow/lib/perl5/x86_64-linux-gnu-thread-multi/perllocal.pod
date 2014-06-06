@@ -1,0 +1,924 @@
+=head2 Fri Jun  6 10:16:44 2014: C<Module> L<File::ShareDir::Install|File::ShareDir::Install>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.08>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:17:11 2014: C<Module> L<ExtUtils::MakeMaker|ExtUtils::MakeMaker>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 6.98>
+
+=item *
+
+C<EXE_FILES: bin/instmodsh>
+
+=back
+
+=head2 Fri Jun  6 10:17:12 2014: C<Module> L<Class::Inspector|Class::Inspector>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.28>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:17:13 2014: C<Module> L<File::ShareDir|File::ShareDir>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.102>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:17:29 2014: C<Module> L<Test::Harness|Test::Harness>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 3.30>
+
+=item *
+
+C<EXE_FILES: bin/prove>
+
+=back
+
+=head2 Fri Jun  6 10:17:30 2014: C<Module> L<ExtUtils::Helpers|ExtUtils::Helpers>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.022>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:17:32 2014: C<Module> L<ExtUtils::Config|ExtUtils::Config>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.007>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:17:33 2014: C<Module> L<ExtUtils::InstallPaths|ExtUtils::InstallPaths>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.010>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:17:37 2014: C<Module> L<Try::Tiny|Try::Tiny>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.22>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:17:38 2014: C<Module> L<Test::Fatal|Test::Fatal>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.013>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:17:39 2014: C<Module> L<Sub::Exporter::Progressive|Sub::Exporter::Progressive>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.001011>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:43:46 2014: C<Module> L<Capture::Tiny|Capture::Tiny>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.24>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:43:48 2014: C<Module> L<Probe::Perl|Probe::Perl>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.03>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:43:50 2014: C<Module> L<IPC::Run3|IPC::Run3>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.048>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:43:51 2014: C<Module> L<Test::Script|Test::Script>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.07>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:43:52 2014: C<Module> L<File::Which|File::Which>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.09>
+
+=item *
+
+C<EXE_FILES: script/pwhich>
+
+=back
+
+=head2 Fri Jun  6 10:43:56 2014: C<Module> L<List::Util|List::Util>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.39>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:44:03 2014: C<Module> L<GD|GD>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 2.53>
+
+=item *
+
+C<EXE_FILES: bdf_scripts/bdf2gdfont.pl>
+
+=back
+
+=head2 Fri Jun  6 10:44:05 2014: C<Module> L<Devel::Symdump|Devel::Symdump>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 2.11>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:44:06 2014: C<Module> L<Pod::Coverage|Pod::Coverage>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.23>
+
+=item *
+
+C<EXE_FILES: bin/pod_cover>
+
+=back
+
+=head2 Fri Jun  6 10:44:08 2014: C<Module> L<Term::UI|Term::UI>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.42>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:44:36 2014: C<Module> L<Data|Data>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.14>
+
+=item *
+
+C<EXE_FILES: scripts/stag-autoschema.pl scripts/stag-db.pl scripts/stag-diff.pl scripts/stag-drawtree.pl scripts/stag-filter.pl scripts/stag-findsubtree.pl scripts/stag-flatten.pl scripts/stag-grep.pl scripts/stag-handle.pl scripts/stag-itext2simple.pl scripts/stag-itext2sxpr.pl scripts/stag-itext2xml.pl scripts/stag-join.pl scripts/stag-merge.pl scripts/stag-mogrify.pl scripts/stag-parse.pl scripts/stag-query.pl scripts/stag-splitter.pl scripts/stag-view.pl scripts/stag-xml2itext.pl scripts/stag-itext2simple.pl>
+
+=back
+
+=head2 Fri Jun  6 10:44:39 2014: C<Module> L<Sub::Uplevel|Sub::Uplevel>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.24>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:44:42 2014: C<Module> L<Devel::StackTrace|Devel::StackTrace>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.32>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:44:44 2014: C<Module> L<Class::Data::Inheritable|Class::Data::Inheritable>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.08>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:44:44 2014: C<Module> L<Exception::Class|Exception::Class>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.38>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:44:46 2014: C<Module> L<Text::Diff|Text::Diff>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.41>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:44:49 2014: C<Module> L<Carp|Carp>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.3301>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:44:49 2014: C<Module> L<Test::Warn|Test::Warn>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.30>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:44:53 2014: C<Module> L<Test::Tester|Test::Tester>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.109>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:44:54 2014: C<Module> L<Test::NoWarnings|Test::NoWarnings>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.04>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:44:55 2014: C<Module> L<Test::Deep|Test::Deep>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.112>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:44:55 2014: C<Module> L<Test::Most|Test::Most>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.33>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:45:17 2014: C<Module> L<Data::UUID|Data::UUID>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.219>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:45:19 2014: C<Module> L<Math::Gradient|Math::Gradient>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.04>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:45:20 2014: C<Module> L<IPC::System::Simple|IPC::System::Simple>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.25>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:45:23 2014: C<Module> L<Proc::ProcessTable|Proc::ProcessTable>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.50>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 10:45:32 2014: C<Module> L<Devel::Cover|Devel::Cover>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.15>
+
+=item *
+
+C<EXE_FILES: bin/cover bin/gcov2perl bin/cpancover>
+
+=back
+
+=head2 Fri Jun  6 11:45:41 2014: C<Module> L<PCAP|PCAP>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.0.4>
+
+=item *
+
+C<EXE_FILES: bin/bam_to_sra_sub.pl bin/bwa_aln.pl bin/bwa_mem.pl bin/bam_stats.pl bin/diff_bams.pl bin/monitor.pl>
+
+=back
+
+=head2 Fri Jun  6 11:57:40 2014: C<Module> L<Tabix|Tabix>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.2.0>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 11:58:04 2014: C<Module> L<cgpVcf|cgpVcf>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 1.0.0>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Fri Jun  6 11:59:43 2014: C<Module> L<cgpPindel|cgpPindel>
+
+=over 4
+
+=item *
+
+C<installed into: /vagrant/io.seqware_cgpPindel_jar_1.0-SNAPSHOT/workflow/lib/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.2.0>
+
+=item *
+
+C<EXE_FILES: bin/pindel.pl bin/pindel_input_gen.pl>
+
+=back
+
