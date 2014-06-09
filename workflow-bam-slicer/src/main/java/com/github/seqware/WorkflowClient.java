@@ -276,21 +276,23 @@ public class WorkflowClient extends OicrWorkflow {
     String[] pathElements = file.split("/");
     String analysisId = pathElements[0];
 
-    job.getCommand().addArgument(
-    		this.isTesting ?
-    		    "mkdir " + analysisId + " && " + "ln -s " + getProperty("testBamPath") + " " + file :  // using symlink to avoid copying huge test bam
-    		    "gtdownload -c "+gnosKey+" -v -d "+ fileURL
+    if (this.isTesting){ 
+        job.getCommand().addArgument(
+    		    "mkdir " + analysisId + " && " + "ln -s " + getProperty("testBamPath") + " " + file  // using symlink to avoid copying huge test bam
     		);
 
+    } else {
 
-    /*
-    job.getCommand().addArgument("perl " + this.getWorkflowBaseDir() + "/scripts/launch_and_monitor_gnos.pl")
-    .addArgument("--command 'gtdownload -c "+gnosKey+" -v -d "+fileURL+"'")
-    .addArgument("--file-grep "+analysisId)
-    .addArgument("--search-path .")
-    .addArgument("--retries "+gtdownloadRetries)
-    .addArgument("--md5-retries "+gtdownloadMd5Time);
-    */
+        //job.getCommand().addArgument( "gtdownload -c "+gnosKey+" -v -d "+ fileURL);
+    	
+    	job.getCommand().addArgument("perl " + this.getWorkflowBaseDir() + "/scripts/launch_and_monitor_gnos.pl")
+    	    .addArgument("--command 'gtdownload -c " + gnosKey + " -v -d " + fileURL + "'")
+            .addArgument("--file-grep " + analysisId)
+            .addArgument("--search-path .")
+            .addArgument("--retries " + gtdownloadRetries)
+            .addArgument("--md5-retries " + gtdownloadMd5Time);
+    
+    }
     
     return(job);
   }
