@@ -84,6 +84,7 @@ public class WorkflowClient extends OicrWorkflow {
       gnosUploadFileURL = getProperty("gnos_output_file_url");
       gnosKey = getProperty("gnos_key");
       jobDescription = getProperty("job_description");
+      jobDescription = jobDescription.replace(" ", "\\ ");
 
       skipUpload = getProperty("skip_upload") == null ? "true" : getProperty("skip_upload");
       gtdownloadRetries = getProperty("gtdownloadRetries") == null ? "30" : getProperty("gtdownloadRetries");
@@ -286,7 +287,7 @@ public class WorkflowClient extends OicrWorkflow {
     // MERGE unmapped reads
     Job mergeUnmappedJob = null;
     if (extract_and_upload_unmapped_reads) {
-        mergeUnmappedJob = this.getWorkflow().createBashJob("mergeBAM");
+        mergeUnmappedJob = this.getWorkflow().createBashJob("mergeUnmappedBAM");
 
         numThreads = 1;
         if (getProperty("numOfThreads") != null && !getProperty("numOfThreads").isEmpty()) {
@@ -303,7 +304,7 @@ public class WorkflowClient extends OicrWorkflow {
             mergeUnmappedJob.getCommand().addArgument(" I=unmappedReads1." + i + ".bam" + " I=unmappedReads2." + i + ".bam" + " I=unmappedReads3." + i + ".bam");
         }
         // now compute md5sum for the bai file
-        mergeJob.getCommand().addArgument(" && md5sum " + this.outputPrefix + outputUnmappedFileName + ".bai | awk '{print $1}'"
+        mergeUnmappedJob.getCommand().addArgument(" && md5sum " + this.outputPrefix + outputUnmappedFileName + ".bai | awk '{print $1}'"
             + " > " + this.outputPrefix + outputUnmappedFileName + ".bai.md5");
         
         for (Job pJob : firstPartUnmappedReadJobs) {
