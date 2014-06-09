@@ -27,6 +27,8 @@ public class WorkflowClient extends OicrWorkflow {
 
   String gnosUploadFileURL = null;
   String gnosKey = null;
+  String jobDescription = null;
+  
   boolean useGtDownload = true;
   boolean useGtUpload = true;
   boolean isTesting = true;
@@ -81,6 +83,7 @@ public class WorkflowClient extends OicrWorkflow {
       
       gnosUploadFileURL = getProperty("gnos_output_file_url");
       gnosKey = getProperty("gnos_key");
+      jobDescription = getProperty("job_description");
 
       skipUpload = getProperty("skip_upload") == null ? "true" : getProperty("skip_upload");
       gtdownloadRetries = getProperty("gtdownloadRetries") == null ? "30" : getProperty("gtdownloadRetries");
@@ -271,6 +274,10 @@ public class WorkflowClient extends OicrWorkflow {
     for (int i = 0; i < numBamFiles; i++) {
     	mergeJob.getCommand().addArgument(" I=firstSlice." + i + ".bam" + " I=secondSlice." + i + ".bam");
     }
+    // now compute md5sum for the bai file
+    mergeJob.getCommand().addArgument(" && md5sum " + this.outputPrefix + outputFileName + ".bai | awk '{print $1}'"
+        + " > " + this.outputPrefix + outputFileName + ".bai.md5");
+    
     for (Job pJob : firstPartJobs) {
     	mergeJob.addParent(pJob);
     }
@@ -295,6 +302,10 @@ public class WorkflowClient extends OicrWorkflow {
         for (int i = 0; i < numBamFiles; i++) {
             mergeUnmappedJob.getCommand().addArgument(" I=unmappedReads1." + i + ".bam" + " I=unmappedReads2." + i + ".bam" + " I=unmappedReads3." + i + ".bam");
         }
+        // now compute md5sum for the bai file
+        mergeJob.getCommand().addArgument(" && md5sum " + this.outputPrefix + outputUnmappedFileName + ".bai | awk '{print $1}'"
+            + " > " + this.outputPrefix + outputUnmappedFileName + ".bai.md5");
+        
         for (Job pJob : firstPartUnmappedReadJobs) {
             mergeUnmappedJob.addParent(pJob);
         }
@@ -323,6 +334,7 @@ public class WorkflowClient extends OicrWorkflow {
     bamUploadJob.getCommand().addArgument("perl " + this.getWorkflowBaseDir() + "/scripts/gnos_upload_data.pl")
             .addArgument("--bam " + this.outputPrefix + outputFileName)
             .addArgument("--key " + gnosKey)
+            .addArgument("--job-description " + this.jobDescription)
             .addArgument("--outdir " + finalOutDir)
             .addArgument("--metadata-urls " + gnosInputMetadataURLs)
             .addArgument("--upload-url " + gnosUploadFileURL)
@@ -344,6 +356,7 @@ public class WorkflowClient extends OicrWorkflow {
         bamUnmappedUploadJob.getCommand().addArgument("perl " + this.getWorkflowBaseDir() + "/scripts/gnos_upload_data.pl")
             .addArgument("--bam " + this.outputPrefix + outputUnmappedFileName)
             .addArgument("--key " + gnosKey)
+            .addArgument("--job-description " + "The BAM file contains reads failed mapping to reference genome by BWA MEM alignment. These include reads with either one end or both ends of a mate-pair unmapped.")
             .addArgument("--outdir " + finalOutDir)
             .addArgument("--metadata-urls " + gnosInputMetadataURLs)
             .addArgument("--upload-url " + gnosUploadFileURL)

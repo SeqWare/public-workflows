@@ -34,15 +34,25 @@ my $output_dir = "test_output_dir";
 my $key = "gnostest.pem";
 my $md5_file = "";
 my $upload_url = "";
+my $job_description = "";
 my $test = 0;
 # hardcoded
-my $workflow_version = "2.4.0";
+my $workflow_version = "0.1.0";
 # hardcoded
-my $workflow_url = "https://s3.amazonaws.com/oicr.workflow.bundles/released-bundles/Workflow_Bundle_BWA_".$workflow_version."_SeqWare_1.0.13.zip";
+my $workflow_url = "https://s3.amazonaws.com/oicr.workflow.bundles/released-bundles/Workflow_Bundle_BAM_Slicer_".$workflow_version."_SeqWare_1.0.13.zip";
 my $force_copy = 0;
 
-if (scalar(@ARGV) < 12 || scalar(@ARGV) > 14) { die "USAGE: 'perl gnos_upload_data.pl --metadata-urls <URLs_comma_separated> --bam <sample-level_bam_file_path> --bam-md5sum-file <file_with_bam_md5sum> --outdir <output_dir> --key <gnos.pem> --upload-url <gnos_server_url> [--test]\n"; }
-GetOptions("metadata-urls=s" => \$metadata_urls, "bam=s" => \$bam, "outdir=s" => \$output_dir, "key=s" => \$key, "bam-md5sum-file=s" => \$md5_file, "upload-url=s" => \$upload_url, "test" => \$test, "force-copy" => \$force_copy);
+if (scalar(@ARGV) < 14 || scalar(@ARGV) > 16) { die "USAGE: 'perl gnos_upload_data.pl --metadata-urls <URLs_comma_separated> --bam <sample-level_bam_file_path> --bam-md5sum-file <file_with_bam_md5sum> --outdir <output_dir> --key <gnos.pem> --upload-url <gnos_server_url> [--test]\n"; }
+GetOptions(
+    "metadata-urls=s" => \$metadata_urls,
+    "bam=s" => \$bam,
+    "outdir=s" => \$output_dir,
+    "key=s" => \$key,
+    "bam-md5sum-file=s" => \$md5_file,
+    "upload-url=s" => \$upload_url,
+    "job-description=s" => \$job_description,
+    "test" => \$test,
+    "force-copy" => \$force_copy);
 
 # setup output dir
 my $ug = Data::UUID->new;
@@ -51,19 +61,28 @@ system("mkdir -p $output_dir/$uuid");
 $output_dir = $output_dir."/$uuid/";
 # md5sum
 my $bam_check = `cat $md5_file`;
+my $bai_check = `cat $bam.bai.md5`;
 chomp $bam_check;
 if ($force_copy) {
   # rsync to destination
   print ("rsync -rauv `pwd`/$bam $output_dir/$bam_check.bam\n");
   print ("rsync -rauv `pwd`/$md5_file $output_dir/$bam_check.bam.md5\n");
+  print ("rsync -rauv `pwd`/$bam.bai $output_dir/$bam_check.bam.bai\n");
+  print ("rsync -rauv `pwd`/$bam.bai.md5 $output_dir/$bam_check.bam.bai.md5\n");
   system("rsync -rauv `pwd`/$bam $output_dir/$bam_check.bam");
   system("rsync -rauv `pwd`/$md5_file $output_dir/$bam_check.bam.md5");
+  system("rsync -rauv `pwd`/$bam.bai $output_dir/$bam_check.bam.bai");
+  system("rsync -rauv `pwd`/$bam.bai.md5 $output_dir/$bam_check.bam.bai.md5");
 } else {
   # symlink for bam and md5sum file
   print ("ln -s `pwd`/$bam $output_dir/$bam_check.bam\n");
   print ("ln -s `pwd`/$md5_file $output_dir/$bam_check.bam.md5\n");
+  print ("ln -s `pwd`/$bam.bai $output_dir/$bam_check.bam.bai\n");
+  print ("ln -s `pwd`/$bam.bai.md5 $output_dir/$bam_check.bam.bai.md5\n");
   system("ln -s `pwd`/$bam $output_dir/$bam_check.bam");
   system("ln -s `pwd`/$md5_file $output_dir/$bam_check.bam.md5");
+  system("ln -s `pwd`/$bam.bai $output_dir/$bam_check.bam.bai");
+  system("ln -s `pwd`/$bam.bai.md5 $output_dir/$bam_check.bam.bai.md5");
 }
 
 
@@ -211,9 +230,6 @@ sub generate_submission {
       }
     }
   }
-  my $str = to_json($pi2);
-  $global_attr->{"pipeline_input_info"}{$str} = 1;
-  #print Dumper($global_attr);
 
   # FIXME: either custom needs to work or the reference needs to be listed in GNOS
   #<!--CUSTOM DESCRIPTION="hs37d" REFERENCE_SOURCE="ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/README_human_reference_20110707"/-->
@@ -223,7 +239,7 @@ sub generate_submission {
     <ANALYSIS center_name="$analysis_center" analysis_date="$datetime">
       <TITLE>TCGA/ICGC PanCancer Specimen-Level Alignment for Specimen $sample_id from Participant $participant_id</TITLE>
       <STUDY_REF refcenter="$refcenter" refname="icgc_pancancer" />
-      <DESCRIPTION>Specimen-level BAM from the reference alignment of specimen $sample_id from donor $participant_id. This uses the SeqWare BWA-Mem PanCancer Workflow version $workflow_version available at $workflow_url.  This workflow can be created from source, see https://github.com/SeqWare/public-workflows.  New features for this workflow compared to 2.3 include: 1) a gtdownload wrapper that monitors progress and kills and restarts the job if it freezes and 2) an option for skipping download/upload from/to GNOS and instead use local file paths (GNOS is still used to retrieve metadata).  Please note the reference is hs37d, see ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/README_human_reference_20110707 for more information. Briefly this is the integrated reference sequence from the GRCh37 primary assembly (chromosomal plus unlocalized and unplaced contigs), the rCRS mitochondrial sequence (AC:NC_012920), Human herpesvirus 4 type 1 (AC:NC_007605) and the concatenated decoy sequences (hs37d5cs.fa.gz).</DESCRIPTION>
+      <DESCRIPTION>$job_description</DESCRIPTION>
       <ANALYSIS_TYPE>
         <REFERENCE_ALIGNMENT>
           <ASSEMBLY>
@@ -346,29 +362,17 @@ END
           <PROCESSING>
             <PIPELINE>
 END
-            my $i=0;
-            foreach my $url (keys %{$m}) {
-              foreach my $run (@{$m->{$url}{'run'}}) {
-              #print Dumper($run);
-                if (defined($run->{'read_group_label'})) {
-                   #print "READ GROUP LABREL: ".$run->{'read_group_label'}."\n";
-                   my $dbn = $run->{'data_block_name'};
-                   my $rgl = $run->{'read_group_label'};
-                   my $rn = $run->{'refname'};
-                   my $fname = $m->{$url}{'file'}[$i]{'filename'};
+
   $analysis_xml .= <<END;
-              <PIPE_SECTION section_name="Mapping">
-                <STEP_INDEX>$rgl</STEP_INDEX>
+              <PIPE_SECTION section_name="">
+                <STEP_INDEX>NIL</STEP_INDEX>
                 <PREV_STEP_INDEX>NIL</PREV_STEP_INDEX>
-                <PROGRAM>bwa</PROGRAM>
-                <VERSION>0.7.7-r441</VERSION>
-                <NOTES>bwa mem -t 8 -p -T 0 genome.fa.gz $fname</NOTES>
+                <PROGRAM>SeqWare BAM Slicing Workflow</PROGRAM>
+                <VERSION>$workflow_version</VERSION>
+                <NOTES>Workflow URL: $workflow_url</NOTES>
               </PIPE_SECTION>
 END
-                 }
-                 $i++;
-               }
-            }
+
   $analysis_xml .= <<END;
             </PIPELINE>
             <DIRECTIVES>
@@ -392,21 +396,9 @@ END
         <FILES>
 END
 
-       $analysis_xml .= "          <FILE filename=\"$bam_check.bam\" filetype=\"bam\" checksum_method=\"MD5\" checksum=\"$bam_check\" />\n";
+  $analysis_xml .= "          <FILE filename=\"$bam_check.bam\" filetype=\"bam\" checksum_method=\"MD5\" checksum=\"$bam_check\" />\n";
+  $analysis_xml .= "          <FILE filename=\"$bam_check.bam.bai\" filetype=\"bai\" checksum_method=\"MD5\" checksum=\"$bai_check\" />\n";
 
-       # incorrect, there's only one bam!
-       $i=0;
-       foreach my $url (keys %{$m}) {
-       foreach my $run (@{$m->{$url}{'run'}}) {
-       if (defined($run->{'read_group_label'})) {
-          my $fname = $m->{$url}{'file'}[$i]{'filename'};
-          my $ftype= $m->{$url}{'file'}[$i]{'filetype'};
-          my $check = $m->{$url}{'file'}[$i]{'checksum'};
-          #$analysis_xml .= "<FILE filename=\"$fname\" filetype=\"$ftype\" checksum_method=\"MD5\" checksum=\"$check\" />\n";
-       }
-       $i++;
-       }
-       }
 
   $analysis_xml .= <<END;
         </FILES>
@@ -425,12 +417,6 @@ END
       }
     }
 
-  # QC
-  $analysis_xml .= "        <ANALYSIS_ATTRIBUTE>
-          <TAG>qc_metrics</TAG>
-          <VALUE>" . &getQcResult() . "</VALUE>
-        </ANALYSIS_ATTRIBUTE>
-";
 
   $analysis_xml .= <<END;
       </ANALYSIS_ATTRIBUTES>
@@ -660,34 +646,5 @@ sub getVals {
   return(@r);
 }
 
-sub getQcResult {
-  # detect all the QC report files by checking file name pattern
-
-  opendir(DIR, ".");
-
-  my @qc_result_files = grep { /^out_\d+\.bam\.stats\.txt/ } readdir(DIR);
-
-  close(DIR);
-
-  my $ret = { "qc_metrics" => [] };
-
-  foreach (@qc_result_files) {
-
-    open (QC, "< $_");
-
-    my @header = split /\t/, <QC>;
-    my @data = split /\t/, <QC>;
-    chomp ((@header, @data));
-
-    close (QC);
-
-    my $qc_metrics = {};
-    $qc_metrics->{$_} = shift @data for (@header);
-
-    push @{ $ret->{qc_metrics} }, {"read_group_id" => $qc_metrics->{readgroup}, "metrics" => $qc_metrics};
-  }
-
-  return to_json $ret;
-}
 
 0;
