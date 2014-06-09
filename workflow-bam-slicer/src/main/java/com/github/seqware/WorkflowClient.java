@@ -30,14 +30,16 @@ public class WorkflowClient extends OicrWorkflow {
   boolean useGtDownload = true;
   boolean useGtUpload = true;
   boolean isTesting = true;
+  boolean extract_and_upload_unmapped_reads = false;
 
   String outputDir = "results";
   String outputPrefix = "./";
   String resultsDir = outputPrefix + outputDir;
   
   String outputFileName = "merged_output.bam";
+  String outputUnmappedFileName = "merged_output.unmapped.bam";
   
-  String sortJobMemG = "8";
+  String mergeJobMemG = "4";
 
   String skipUpload = null;
 
@@ -86,11 +88,12 @@ public class WorkflowClient extends OicrWorkflow {
       
       gtdownloadMemG = getProperty("gtdownloadMemG") == null ? "8" : getProperty("gtdownloadMemG");
       smallJobMemM = getProperty("smallJobMemM") == null ? "2000" : getProperty("smallJobMemM");
-      sortJobMemG = getProperty("sortJobMemG") == null ? "8" : getProperty("sortJobMemG");
+      mergeJobMemG = getProperty("mergeJobMemG") == null ? "4" : getProperty("mergeJobMemG");
       
       if (getProperty("use_gtdownload") != null && "false".equals(getProperty("use_gtdownload"))) { useGtDownload = false; }
       if (getProperty("use_gtupload") != null && "false".equals(getProperty("use_gtupload"))) { useGtUpload = false; }
       if (getProperty("isTesting") != null && "false".equals(getProperty("isTesting"))) { isTesting = false; }
+      if (getProperty("extract_and_upload_unmapped_reads") != null && "false".equals(getProperty("extract_and_upload_unmapped_reads"))) { extract_and_upload_unmapped_reads = false; }
 
     } catch (Exception e) {
       Logger.getLogger(WorkflowClient.class.getName()).log(Level.SEVERE, null, e);
@@ -111,6 +114,7 @@ public class WorkflowClient extends OicrWorkflow {
 
     int numBamFiles = bamPaths.size();
     ArrayList<Job> firstPartJobs = new ArrayList<Job>();
+    ArrayList<Job> firstPartUnmappedReadJobs = new ArrayList<Job>();
 
     int numInputURLs = this.inputURLs.size();
     for (int i = 0; i < numInputURLs; i++) {
@@ -164,6 +168,48 @@ public class WorkflowClient extends OicrWorkflow {
       firstSliceJob.setMaxMemory("4000");
       firstSliceJob.addParent(buildBamIndex);
       
+      // extract unmapped reads (both ends or either end unmapped)
+      Job unmappedReadsJob1;
+      Job unmappedReadsJob2;
+      Job unmappedReadsJob3;
+      if (extract_and_upload_unmapped_reads) {
+    	  unmappedReadsJob1 = this.getWorkflow().createBashJob("unmappedReads1." + i);
+    	  unmappedReadsJob1.getCommand().addArgument(
+        		  this.getWorkflowBaseDir() + pcapPath + "/bin/samtools view -h -f 4 " // reads unmapped
+        		  + file
+        		  + " | perl " + this.getWorkflowBaseDir() + "/scripts/remove_both_ends_unmapped_reads.pl "  // this is necessary because samtools -f 4 outputs both-ends-unmapped reads
+        		  + " | "
+        		  + this.getWorkflowBaseDir() + pcapPath + "/bin/samtools view -S -b - "
+        		  + " > unmappedReads1." + i + ".bam");
+    	  unmappedReadsJob1.setMaxMemory("4000");
+    	  unmappedReadsJob1.addParent(buildBamIndex);
+    	  
+    	  unmappedReadsJob2 = this.getWorkflow().createBashJob("unmappedReads2." + i);
+    	  unmappedReadsJob2.getCommand().addArgument(
+        		  this.getWorkflowBaseDir() + pcapPath + "/bin/samtools view -h -f 8 " // reads' mate unmapped
+        		  + file
+        		  + " | perl " + this.getWorkflowBaseDir() + "/scripts/remove_both_ends_unmapped_reads.pl "  // this is necessary because samtools -f 8 outputs both-ends-unmapped reads
+        		  + " | "
+        		  + this.getWorkflowBaseDir() + pcapPath + "/bin/samtools view -S -b - "
+        		  + " > unmappedReads2." + i + ".bam");
+    	  unmappedReadsJob2.setMaxMemory("4000");
+    	  unmappedReadsJob2.addParent(buildBamIndex);
+    	  
+    	  unmappedReadsJob3 = this.getWorkflow().createBashJob("unmappedReads3." + i);
+    	  unmappedReadsJob3.getCommand().addArgument(
+        		  this.getWorkflowBaseDir() + pcapPath + "/bin/samtools view -h -b -f 12 " // reads with both ends unmapped
+        		  + file
+        		  + " > unmappedReads3." + i + ".bam");
+    	  unmappedReadsJob3.setMaxMemory("4000");
+    	  unmappedReadsJob3.addParent(buildBamIndex);
+
+    	  firstPartUnmappedReadJobs.add(unmappedReadsJob1);
+    	  firstPartUnmappedReadJobs.add(unmappedReadsJob2);
+    	  firstPartUnmappedReadJobs.add(unmappedReadsJob3);
+    	  
+      }
+
+      
       // find out the orphaned reads in the sliced out BAM
       Job orphanedRead = this.getWorkflow().createBashJob("orphanedReads" + i);
       orphanedRead.getCommand().addArgument("LD_LIBRARY_PATH=" + this.getWorkflowBaseDir() + pcapPath + "/lib") 
@@ -209,13 +255,13 @@ public class WorkflowClient extends OicrWorkflow {
     }
 
     // MERGE 
-    Job mergeSortJob = this.getWorkflow().createBashJob("mergeBAM");
+    Job mergeJob = this.getWorkflow().createBashJob("mergeBAM");
 
     int numThreads = 1;
     if (getProperty("numOfThreads") != null && !getProperty("numOfThreads").isEmpty()) {
       numThreads = Integer.parseInt(getProperty("numOfThreads"));
     }
-    mergeSortJob.getCommand().addArgument("LD_LIBRARY_PATH=" + this.getWorkflowBaseDir() + pcapPath + "/lib") 
+    mergeJob.getCommand().addArgument("LD_LIBRARY_PATH=" + this.getWorkflowBaseDir() + pcapPath + "/lib") 
             .addArgument(this.getWorkflowBaseDir() + pcapPath + "/bin/bammarkduplicates")
             .addArgument("O=" + this.outputPrefix + outputFileName)
             .addArgument("M=" + this.outputPrefix + outputFileName + ".metrics")
@@ -223,20 +269,51 @@ public class WorkflowClient extends OicrWorkflow {
             .addArgument("markthreads=" + numThreads)
             .addArgument("rewritebam=1 rewritebamlevel=1 index=1 md5=1");
     for (int i = 0; i < numBamFiles; i++) {
-    	mergeSortJob.getCommand().addArgument(" I=firstSlice." + i + ".bam" + " I=secondSlice." + i + ".bam");
+    	mergeJob.getCommand().addArgument(" I=firstSlice." + i + ".bam" + " I=secondSlice." + i + ".bam");
     }
     for (Job pJob : firstPartJobs) {
-    	mergeSortJob.addParent(pJob);
+    	mergeJob.addParent(pJob);
     }
+    mergeJob.setMaxMemory(mergeJobMemG + "000");
+    
+    // MERGE unmapped reads
+    Job mergeUnmappedJob = null;
+    if (extract_and_upload_unmapped_reads) {
+        mergeUnmappedJob = this.getWorkflow().createBashJob("mergeBAM");
 
-    mergeSortJob.setMaxMemory(sortJobMemG + "000");
+        numThreads = 1;
+        if (getProperty("numOfThreads") != null && !getProperty("numOfThreads").isEmpty()) {
+            numThreads = Integer.parseInt(getProperty("numOfThreads"));
+            }
+        mergeUnmappedJob.getCommand().addArgument("LD_LIBRARY_PATH=" + this.getWorkflowBaseDir() + pcapPath + "/lib") 
+            .addArgument(this.getWorkflowBaseDir() + pcapPath + "/bin/bammarkduplicates")
+            .addArgument("O=" + this.outputPrefix + outputUnmappedFileName)
+            .addArgument("M=" + this.outputPrefix + outputUnmappedFileName + ".metrics")
+            .addArgument("tmpfile=" + this.outputPrefix + outputUnmappedFileName + ".biormdup")
+            .addArgument("markthreads=" + numThreads)
+            .addArgument("rewritebam=1 rewritebamlevel=1 index=1 md5=1");
+        for (int i = 0; i < numBamFiles; i++) {
+            mergeUnmappedJob.getCommand().addArgument(" I=unmappedReads1." + i + ".bam" + " I=unmappedReads2." + i + ".bam" + " I=unmappedReads3." + i + ".bam");
+        }
+        for (Job pJob : firstPartUnmappedReadJobs) {
+            mergeUnmappedJob.addParent(pJob);
+        }
+        
+        mergeUnmappedJob.setMaxMemory(mergeJobMemG + "000");
+    
+    }
     
     // CLEANUP ORIGINAL BAM FILES
     for (int i = 0; i < numBamFiles; i++) {
       Job cleanup = this.getWorkflow().createBashJob("cleanup" + i);
       //cleanup.getCommand().addArgument("rm -fr " + "firstSlice." + i + ".bam " + "secondSlice." + i + ".bam");
+      //cleanup.getCommand().addArgument("rm -fr " + "unmappedReads1." + i + ".bam " + "unmappedReads2." + i + ".bam" + "unmappedReads3." + i + ".bam");
       cleanup.getCommand().addArgument("ls " + "firstSlice." + i + ".bam " + "secondSlice." + i + ".bam");  // ls only for now
-      cleanup.addParent(mergeSortJob);
+      cleanup.getCommand().addArgument("ls " + "unmappedReads1." + i + ".bam " + "unmappedReads2." + i + ".bam" + "unmappedReads3." + i + ".bam");
+      cleanup.addParent(mergeJob);
+      if (extract_and_upload_unmapped_reads){
+          cleanup.addParent(mergeUnmappedJob);
+      }
       cleanup.setMaxMemory(smallJobMemM);
     }
 
@@ -258,13 +335,41 @@ public class WorkflowClient extends OicrWorkflow {
     	bamUploadJob.getCommand().addArgument("--test");
     }
     bamUploadJob.setMaxMemory(smallJobMemM);
-    bamUploadJob.addParent(mergeSortJob);
+    bamUploadJob.addParent(mergeJob);
+
+    // upload extracted unmapped reads as another GNOS submission
+    Job bamUnmappedUploadJob = null;
+    if (extract_and_upload_unmapped_reads) {
+        bamUnmappedUploadJob = this.getWorkflow().createBashJob("upload");
+        bamUnmappedUploadJob.getCommand().addArgument("perl " + this.getWorkflowBaseDir() + "/scripts/gnos_upload_data.pl")
+            .addArgument("--bam " + this.outputPrefix + outputUnmappedFileName)
+            .addArgument("--key " + gnosKey)
+            .addArgument("--outdir " + finalOutDir)
+            .addArgument("--metadata-urls " + gnosInputMetadataURLs)
+            .addArgument("--upload-url " + gnosUploadFileURL)
+            .addArgument("--bam-md5sum-file " + this.outputPrefix + outputUnmappedFileName + ".md5");
+    
+        if (!useGtUpload) {
+    	    bamUnmappedUploadJob.getCommand().addArgument("--force-copy");
+        }
+        if ("true".equals(skipUpload) || !useGtUpload) {
+    	    bamUnmappedUploadJob.getCommand().addArgument("--test");
+        }
+        bamUnmappedUploadJob.setMaxMemory(smallJobMemM);
+        bamUnmappedUploadJob.addParent(mergeUnmappedJob);
+    }
+    
     
     // CLEANUP FINAL BAM
     Job cleanup2 = this.getWorkflow().createBashJob("cleanup2");
     //cleanup3.getCommand().addArgument("rm -f " + this.outputPrefix + outputFileName);
+    //cleanup3.getCommand().addArgument("rm -f " + this.outputPrefix + outputUnmappedFileName);
     cleanup2.getCommand().addArgument("touch " + this.outputPrefix + outputFileName); // touch only for now
+    cleanup2.getCommand().addArgument("touch " + this.outputPrefix + outputUnmappedFileName); // touch only for now
     cleanup2.addParent(bamUploadJob);
+    if (extract_and_upload_unmapped_reads) {
+    	cleanup2.addParent(bamUnmappedUploadJob);
+    }
     cleanup2.setMaxMemory(smallJobMemM);
 
   }
