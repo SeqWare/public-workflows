@@ -84,7 +84,7 @@ public class WorkflowClient extends OicrWorkflow {
       gnosUploadFileURL = getProperty("gnos_output_file_url");
       gnosKey = getProperty("gnos_key");
       jobDescription = getProperty("job_description");
-      jobDescription = jobDescription.replace(" ", "\\ ");
+      jobDescription = jobDescription.replace(" ", "\\ ").replace("(", "\\(").replace(")", "\\)");
 
       skipUpload = getProperty("skip_upload") == null ? "true" : getProperty("skip_upload");
       gtdownloadRetries = getProperty("gtdownloadRetries") == null ? "30" : getProperty("gtdownloadRetries");
@@ -357,7 +357,8 @@ public class WorkflowClient extends OicrWorkflow {
         bamUnmappedUploadJob.getCommand().addArgument("perl " + this.getWorkflowBaseDir() + "/scripts/gnos_upload_data.pl")
             .addArgument("--bam " + this.outputPrefix + outputUnmappedFileName)
             .addArgument("--key " + gnosKey)
-            .addArgument("--job-description " + "The BAM file contains reads failed mapping to reference genome by BWA MEM alignment. These include reads with either one end or both ends of a mate-pair unmapped.")
+            .addArgument("--job-description "
+            + "The BAM file contains reads failed mapping to reference genome by BWA MEM alignment. These include reads with either one end or both ends of a mate-pair unmapped.".replace(" ", "\\ "))
             .addArgument("--outdir " + finalOutDir)
             .addArgument("--metadata-urls " + gnosInputMetadataURLs)
             .addArgument("--upload-url " + gnosUploadFileURL)
