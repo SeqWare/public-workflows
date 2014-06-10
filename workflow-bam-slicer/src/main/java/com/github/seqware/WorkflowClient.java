@@ -27,7 +27,8 @@ public class WorkflowClient extends OicrWorkflow {
 
   String gnosUploadFileURL = null;
   String gnosKey = null;
-  String jobDescription = null;
+  String jobDescription = "";
+  String unmappedReadJobDescription = "";
   
   boolean useGtDownload = true;
   boolean useGtUpload = true;
@@ -85,6 +86,8 @@ public class WorkflowClient extends OicrWorkflow {
       gnosKey = getProperty("gnos_key");
       jobDescription = getProperty("job_description");
       jobDescription = jobDescription.replace(" ", "\\ ").replace("(", "\\(").replace(")", "\\)");
+      unmappedReadJobDescription = getProperty("filejob_description_unmapped");
+      unmappedReadJobDescription = unmappedReadJobDescription.replace(" ", "\\ ").replace("(", "\\(").replace(")", "\\)");
 
       skipUpload = getProperty("skip_upload") == null ? "true" : getProperty("skip_upload");
       gtdownloadRetries = getProperty("gtdownloadRetries") == null ? "30" : getProperty("gtdownloadRetries");
@@ -276,7 +279,7 @@ public class WorkflowClient extends OicrWorkflow {
     	mergeJob.getCommand().addArgument(" I=firstSlice." + i + ".bam" + " I=secondSlice." + i + ".bam");
     }
     // now compute md5sum for the bai file
-    mergeJob.getCommand().addArgument(" && md5sum " + this.outputPrefix + outputFileName + ".bai | awk '{print $1}'"
+    mergeJob.getCommand().addArgument(" && md5sum " + this.outputPrefix + outputFileName + ".bai | awk '{printf $1}'"
         + " > " + this.outputPrefix + outputFileName + ".bai.md5");
     
     for (Job pJob : firstPartJobs) {
@@ -304,7 +307,7 @@ public class WorkflowClient extends OicrWorkflow {
             mergeUnmappedJob.getCommand().addArgument(" I=unmappedReads1." + i + ".bam" + " I=unmappedReads2." + i + ".bam" + " I=unmappedReads3." + i + ".bam");
         }
         // now compute md5sum for the bai file
-        mergeUnmappedJob.getCommand().addArgument(" && md5sum " + this.outputPrefix + outputUnmappedFileName + ".bai | awk '{print $1}'"
+        mergeUnmappedJob.getCommand().addArgument(" && md5sum " + this.outputPrefix + outputUnmappedFileName + ".bai | awk '{printf $1}'"
             + " > " + this.outputPrefix + outputUnmappedFileName + ".bai.md5");
         
         for (Job pJob : firstPartUnmappedReadJobs) {
@@ -334,12 +337,12 @@ public class WorkflowClient extends OicrWorkflow {
     Job bamUploadJob = this.getWorkflow().createBashJob("upload");
     bamUploadJob.getCommand().addArgument("perl " + this.getWorkflowBaseDir() + "/scripts/gnos_upload_data.pl")
             .addArgument("--bam " + this.outputPrefix + outputFileName)
+            .addArgument("--bam-md5sum-file " + this.outputPrefix + outputFileName + ".md5")
             .addArgument("--key " + gnosKey)
             .addArgument("--job-description " + this.jobDescription)
             .addArgument("--outdir " + finalOutDir)
             .addArgument("--metadata-urls " + gnosInputMetadataURLs)
-            .addArgument("--upload-url " + gnosUploadFileURL)
-            .addArgument("--bam-md5sum-file " + this.outputPrefix + outputFileName + ".md5");
+            .addArgument("--upload-url " + gnosUploadFileURL);
     
     if (!useGtUpload) {
     	bamUploadJob.getCommand().addArgument("--force-copy");
@@ -356,13 +359,12 @@ public class WorkflowClient extends OicrWorkflow {
         bamUnmappedUploadJob = this.getWorkflow().createBashJob("upload");
         bamUnmappedUploadJob.getCommand().addArgument("perl " + this.getWorkflowBaseDir() + "/scripts/gnos_upload_data.pl")
             .addArgument("--bam " + this.outputPrefix + outputUnmappedFileName)
+            .addArgument("--bam-md5sum-file " + this.outputPrefix + outputUnmappedFileName + ".md5")
             .addArgument("--key " + gnosKey)
-            .addArgument("--job-description "
-            + "The BAM file contains reads failed mapping to reference genome by BWA MEM alignment. These include reads with either one end or both ends of a mate-pair unmapped.".replace(" ", "\\ "))
+            .addArgument("--job-description " + this.unmappedReadJobDescription)
             .addArgument("--outdir " + finalOutDir)
             .addArgument("--metadata-urls " + gnosInputMetadataURLs)
-            .addArgument("--upload-url " + gnosUploadFileURL)
-            .addArgument("--bam-md5sum-file " + this.outputPrefix + outputUnmappedFileName + ".md5");
+            .addArgument("--upload-url " + gnosUploadFileURL);
     
         if (!useGtUpload) {
     	    bamUnmappedUploadJob.getCommand().addArgument("--force-copy");

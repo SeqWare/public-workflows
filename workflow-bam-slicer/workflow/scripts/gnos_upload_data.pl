@@ -397,8 +397,9 @@ END
 END
 
   $analysis_xml .= "          <FILE filename=\"$bam_check.bam\" filetype=\"bam\" checksum_method=\"MD5\" checksum=\"$bam_check\" />\n";
-  $analysis_xml .= "          <FILE filename=\"$bam_check.bam.bai\" filetype=\"bai\" checksum_method=\"MD5\" checksum=\"$bai_check\" />\n";
 
+  # GNOS seems not like .bai file
+  #$analysis_xml .= "          <FILE filename=\"$bam_check.bam.bai\" filetype=\"bai\" checksum_method=\"MD5\" checksum=\"$bai_check\" />\n";
 
   $analysis_xml .= <<END;
         </FILES>
