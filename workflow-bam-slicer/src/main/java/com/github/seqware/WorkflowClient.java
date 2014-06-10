@@ -86,7 +86,7 @@ public class WorkflowClient extends OicrWorkflow {
       gnosKey = getProperty("gnos_key");
       jobDescription = getProperty("job_description");
       jobDescription = jobDescription.replace(" ", "\\ ").replace("(", "\\(").replace(")", "\\)");
-      unmappedReadJobDescription = getProperty("filejob_description_unmapped");
+      unmappedReadJobDescription = getProperty("job_description_unmapped");
       unmappedReadJobDescription = unmappedReadJobDescription.replace(" ", "\\ ").replace("(", "\\(").replace(")", "\\)");
 
       skipUpload = getProperty("skip_upload") == null ? "true" : getProperty("skip_upload");

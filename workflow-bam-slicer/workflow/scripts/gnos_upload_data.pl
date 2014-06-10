@@ -109,7 +109,7 @@ if (upload_submission($sub_path)) { die "The upload of files did not work!  File
 
 sub validate_submission {
   my ($sub_path) = @_;
-  my $cmd = "cgsubmit --validate-only -s $upload_url -o validation.log -u $sub_path -vv";
+  my $cmd = "cgsubmit --validate-only -s $upload_url -o validation.$bam_check.log -u $sub_path -vv";
   print "VALIDATING: $cmd\n";
   return(system($cmd));
 }
