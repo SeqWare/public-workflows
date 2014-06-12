@@ -116,7 +116,7 @@ sub validate_submission {
 
 sub upload_submission {
   my ($sub_path) = @_;
-  my $cmd = "cgsubmit -s $upload_url -o metadata_upload.log -u $sub_path -vv -c $key";
+  my $cmd = "cgsubmit -s $upload_url -o metadata_upload.$bam_check.log -u $sub_path -vv -c $key";
   print "UPLOADING METADATA: $cmd\n";
   if (!$test) {
     if (system($cmd)) { return(1); }
@@ -225,6 +225,8 @@ sub generate_submission {
 
     # now combine the analysis attr
     foreach my $attName (keys %{$m->{$file}{analysis_attr}}) {
+      next if ($attName eq "qc_metrics" || $attName eq "pipeline_input_info"); # skip unrelevant attributes
+
       foreach my $attVal (keys %{$m->{$file}{analysis_attr}{$attName}}) {
         $global_attr->{$attName}{$attVal} = 1;
       }
@@ -237,7 +239,7 @@ sub generate_submission {
   my $analysis_xml = <<END;
   <ANALYSIS_SET xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.ncbi.nlm.nih.gov/viewvc/v1/trunk/sra/doc/SRA_1-5/SRA.analysis.xsd?view=co">
     <ANALYSIS center_name="$analysis_center" analysis_date="$datetime">
-      <TITLE>TCGA/ICGC PanCancer Specimen-Level Alignment for Specimen $sample_id from Participant $participant_id</TITLE>
+      <TITLE>BAM Slice Result of Specimen-Level Alignment for Specimen $sample_id</TITLE>
       <STUDY_REF refcenter="$refcenter" refname="icgc_pancancer" />
       <DESCRIPTION>$job_description</DESCRIPTION>
       <ANALYSIS_TYPE>
@@ -365,7 +367,7 @@ END
 
   $analysis_xml .= <<END;
               <PIPE_SECTION section_name="">
-                <STEP_INDEX>NIL</STEP_INDEX>
+                <STEP_INDEX>BAM Slicing</STEP_INDEX>
                 <PREV_STEP_INDEX>NIL</PREV_STEP_INDEX>
                 <PROGRAM>SeqWare BAM Slicing Workflow</PROGRAM>
                 <VERSION>$workflow_version</VERSION>
