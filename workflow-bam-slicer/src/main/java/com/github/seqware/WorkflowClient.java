@@ -53,6 +53,7 @@ public class WorkflowClient extends OicrWorkflow {
   String gtdownloadRetries = "30";
   String gtdownloadMd5Time = "120";
   String gtdownloadMemG = "8";
+  String gtuploadMemG = "8";
   String smallJobMemM = "2000";
 
   @Override
@@ -94,6 +95,7 @@ public class WorkflowClient extends OicrWorkflow {
       gtdownloadMd5Time = getProperty("gtdownloadMd5time") == null ? "120" : getProperty("gtdownloadMd5time");
       
       gtdownloadMemG = getProperty("gtdownloadMemG") == null ? "8" : getProperty("gtdownloadMemG");
+      gtuploadMemG = getProperty("gtuploadMemG") == null ? "8" : getProperty("gtuploadMemG");
       smallJobMemM = getProperty("smallJobMemM") == null ? "2000" : getProperty("smallJobMemM");
       mergeJobMemG = getProperty("mergeJobMemG") == null ? "4" : getProperty("mergeJobMemG");
       
@@ -350,7 +352,7 @@ public class WorkflowClient extends OicrWorkflow {
     if ("true".equals(skipUpload) || !useGtUpload) {
     	bamUploadJob.getCommand().addArgument("--test");
     }
-    bamUploadJob.setMaxMemory(smallJobMemM);
+    bamUploadJob.setMaxMemory(gtuploadMemG + "000");
     bamUploadJob.addParent(mergeJob);
 
     // upload extracted unmapped reads as another GNOS submission
@@ -372,7 +374,7 @@ public class WorkflowClient extends OicrWorkflow {
         if ("true".equals(skipUpload) || !useGtUpload) {
     	    bamUnmappedUploadJob.getCommand().addArgument("--test");
         }
-        bamUnmappedUploadJob.setMaxMemory(smallJobMemM);
+        bamUnmappedUploadJob.setMaxMemory(gtuploadMemG + "000");
         bamUnmappedUploadJob.addParent(mergeUnmappedJob);
     }
     
