@@ -323,12 +323,12 @@ public class WorkflowClient extends OicrWorkflow {
     // CLEANUP ORIGINAL BAM FILES
     for (int i = 0; i < numBamFiles; i++) {
       Job cleanup = this.getWorkflow().createBashJob("cleanup" + i);
-      //cleanup.getCommand().addArgument("rm -fr " + "firstSlice." + i + ".bam " + "secondSlice." + i + ".bam");
-      cleanup.getCommand().addArgument("ls " + "firstSlice." + i + ".bam " + "secondSlice." + i + ".bam");  // ls only for now
+      cleanup.getCommand().addArgument("rm -fr " + "firstSlice." + i + ".bam " + "secondSlice." + i + ".bam");
+      // cleanup.getCommand().addArgument("ls " + "firstSlice." + i + ".bam " + "secondSlice." + i + ".bam");  // ls only for now, this is for debugging
       cleanup.addParent(mergeJob);
       if (extract_and_upload_unmapped_reads){
-          //cleanup.getCommand().addArgument(" && rm -fr " + "unmappedReads1." + i + ".bam " + "unmappedReads2." + i + ".bam" + "unmappedReads3." + i + ".bam");
-          cleanup.getCommand().addArgument(" && ls " + "unmappedReads1." + i + ".bam " + "unmappedReads2." + i + ".bam " + "unmappedReads3." + i + ".bam");
+          cleanup.getCommand().addArgument(" && rm -fr " + "unmappedReads1." + i + ".bam " + "unmappedReads2." + i + ".bam " + "unmappedReads3." + i + ".bam");
+          // cleanup.getCommand().addArgument(" && ls " + "unmappedReads1." + i + ".bam " + "unmappedReads2." + i + ".bam " + "unmappedReads3." + i + ".bam"); // this is for debugging
           cleanup.addParent(mergeUnmappedJob);
       }
       cleanup.setMaxMemory(smallJobMemM);
@@ -381,12 +381,12 @@ public class WorkflowClient extends OicrWorkflow {
     
     // CLEANUP FINAL BAM
     Job cleanup2 = this.getWorkflow().createBashJob("cleanup2");
-    //cleanup2.getCommand().addArgument("rm -f " + this.outputPrefix + outputFileName);
-    cleanup2.getCommand().addArgument("ls " + this.outputPrefix + outputFileName); // ls only for now
+    cleanup2.getCommand().addArgument("rm -f " + this.outputPrefix + outputFileName);
+    //cleanup2.getCommand().addArgument("ls " + this.outputPrefix + outputFileName); // ls only for now, this is for debugging
     cleanup2.addParent(bamUploadJob);
     if (extract_and_upload_unmapped_reads) {
-        //cleanup2.getCommand().addArgument(" && rm -f " + this.outputPrefix + outputUnmappedFileName);
-        cleanup2.getCommand().addArgument(" && ls " + this.outputPrefix + outputUnmappedFileName); // ls only for now
+        cleanup2.getCommand().addArgument(" && rm -f " + this.outputPrefix + outputUnmappedFileName);
+        //cleanup2.getCommand().addArgument(" && ls " + this.outputPrefix + outputUnmappedFileName); // ls only for now, this is for debugging
     	cleanup2.addParent(bamUnmappedUploadJob);
     }
     cleanup2.setMaxMemory(smallJobMemM);
@@ -407,8 +407,6 @@ public class WorkflowClient extends OicrWorkflow {
 
     } else {
 
-        //job.getCommand().addArgument( "gtdownload -c "+gnosKey+" -v -d "+ fileURL);
-    	
     	job.getCommand().addArgument("perl " + this.getWorkflowBaseDir() + "/scripts/launch_and_monitor_gnos.pl")
     	    .addArgument("--command 'gtdownload -c " + gnosKey + " -v -d " + fileURL + "'")
             .addArgument("--file-grep " + analysisId)
