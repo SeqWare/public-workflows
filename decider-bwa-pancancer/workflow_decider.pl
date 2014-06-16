@@ -138,7 +138,7 @@ picardSortJobMem=4
 #key=picardSortMem:type=integer:display=F:display_name=Memory for Picard merge, sort, index, and md5sum
 picardSortMem=4
 #key=input_reference:type=text:display=F:display_name=The reference used for BWA
-input_reference=\${workflow_bundle_dir}/Workflow_Bundle_BWA/\${workflow_version}/data/reference/bwa-0.6.2/genome.fa.gz
+input_reference=\${workflow_bundle_dir}/Workflow_Bundle_BWA/\${workflow-version}/data/reference/bwa-0.6.2/genome.fa.gz
 #key=maxInsertSize:type=integer:display=F:display_name=The max insert size if known
 maxInsertSize=
 #key=bwaAlignMemG:type=integer:display=F:display_name=Memory for BWA align step
@@ -154,7 +154,7 @@ bwaSampeSortSamMemG=4
 #key=bwa_aln_params:type=text:display=F:display_name=Extra params for bwa aln
 bwa_aln_params=
 #key=gnos_key:type=text:display=T:display_name=The path to a GNOS key.pem file
-gnos_key=\${workflow_bundle_dir}/Workflow_Bundle_BWA/\${workflow_version}/scripts/gnostest.pem
+gnos_key=\${workflow_bundle_dir}/Workflow_Bundle_BWA/\${workflow-version}/scripts/gnostest.pem
 #key=uploadScriptJobMem:type=integer:display=F:display_name=Memory for upload script
 uploadScriptJobMem=2
 #key=output_dir:type=text:display=F:display_name=The output directory is a conventions and used in many workflows to specify a relative output path
