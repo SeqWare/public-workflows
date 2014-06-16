@@ -21,7 +21,8 @@ my $skip_down = 0;
 my $gnos_url = "https://gtrepo-ebi.annailabs.com";
 my $cluster_json = "";
 my $working_dir = "decider_tmp";
-my $specific_sample;
+my $specific_sample; # submitter specimen ID
+my $aliquot_list_file;
 my $test = 0;
 my $ignore_lane_cnt = 0;
 my $force_run = 0;
@@ -42,11 +43,12 @@ my $output_dir = "seqware-results/";
 my $input_prefix = "";
 
 if (scalar(@ARGV) < 4 || scalar(@ARGV) > 28) {
-  print "USAGE: 'perl $0 --gnos-url <URL> --cluster-json <cluster.json> [--working-dir <working_dir>] [--sample <sample_id>] [--threads <num_threads_bwa_default_8>] [--test] [--ignore-lane-count] [--force-run] [--skip-meta-download] [--report <workflow_decider_report.txt>] [--settings <seqware_settings_file>] [--upload-results] [--skip-cached]'\n";
+  print "USAGE: 'perl $0 --gnos-url <URL> --cluster-json <cluster.json> [--working-dir <working_dir>] [--sample <sample_id>] [--aliquot-list-file <aliquot_list_file>] [--threads <num_threads_bwa_default_8>] [--test] [--ignore-lane-count] [--force-run] [--skip-meta-download] [--report <workflow_decider_report.txt>] [--settings <seqware_settings_file>] [--upload-results] [--skip-cached]'\n";
   print "\t--gnos-url           a URL for a GNOS server, e.g. https://gtrepo-ebi.annailabs.com\n";
   print "\t--cluster-json       a json file that describes the clusters available to schedule workflows to\n";
   print "\t--working-dir        a place for temporary ini and settings files\n";
   print "\t--sample             to only run a particular sample\n";
+  print "\t--aliquot_list_file  to only run particular aliquots in a file listing aliquot_ids\n";
   print "\t--threads            number of threads to use for BWA\n";
   print "\t--test               a flag that indicates no workflow should be scheduled, just summary of what would have been run\n";
   print "\t--ignore-lane-count  skip the check that the GNOS XML contains a count of lanes for this sample and the bams count matches\n";
@@ -65,11 +67,21 @@ if (scalar(@ARGV) < 4 || scalar(@ARGV) > 28) {
   exit(1);
 }
 
-GetOptions("gnos-url=s" => \$gnos_url, "cluster-json=s" => \$cluster_json, "working-dir=s" => \$working_dir, "sample=s" => \$specific_sample, "test" => \$test, "ignore-lane-count" => \$ignore_lane_cnt, "force-run" => \$force_run, "threads=i" => \$threads, "skip-meta-download" => \$skip_down, "report=s" => \$report_name, "settings=s" => \$seqware_setting, "upload-results" => \$upload_results, "ignore-failed" => \$ignore_failed, "skip-cached" => \$skip_cached, "skip-gtdownload" => \$skip_gtdownload, "skip-gtupload" => \$skip_gtupload, "output-prefix=s" => \$output_prefix, "output-dir=s" => \$output_dir, "input-prefix=s" => \$input_prefix);
+GetOptions("gnos-url=s" => \$gnos_url, "cluster-json=s" => \$cluster_json, "working-dir=s" => \$working_dir, "sample=s" => \$specific_sample, "aliquot-list-file=s" => \$aliquot_list_file, "test" => \$test, "ignore-lane-count" => \$ignore_lane_cnt, "force-run" => \$force_run, "threads=i" => \$threads, "skip-meta-download" => \$skip_down, "report=s" => \$report_name, "settings=s" => \$seqware_setting, "upload-results" => \$upload_results, "ignore-failed" => \$ignore_failed, "skip-cached" => \$skip_cached, "skip-gtdownload" => \$skip_gtdownload, "skip-gtupload" => \$skip_gtupload, "output-prefix=s" => \$output_prefix, "output-dir=s" => \$output_dir, "input-prefix=s" => \$input_prefix);
 
 if ($upload_results) { $skip_upload = "false"; }
 if ($skip_gtdownload) { $use_gtdownload = "false"; }
 if ($skip_gtupload) { $use_gtupload = "false"; }
+
+my %aliquots;
+if (-s $aliquot_list_file) { # if file exist and has size > 0
+  open (A, "< $aliquot_list_file") || die "Unable to open file: $aliquot_list_file\n";
+  while(<A>){
+    s/\r\n//g;
+    $aliquots{$_}++;
+  }
+  close(A);
+}
 
 
 ##############
@@ -208,10 +220,16 @@ seqware workflow schedule --accession $workflow_accession --host $host --ini $wo
 }
 
 sub schedule_samples {
+  my $my_sample_info = shift;
+
   print R "SAMPLE SCHEDULING INFORMATION\n\n";
+
+  foreach my $project (keys %{$my_sample_info}) {
+    my $sample_info = $my_sample_info->{$project};
+
   foreach my $participant (keys %{$sample_info}) {
     print R "DONOR/PARTICIPANT: $participant\n\n";
-    foreach my $sample (keys %{$sample_info->{$participant}}) {
+    foreach my $sample (keys %{$sample_info->{$participant}}) { # sample ID is actually submitter speciment ID
       if (defined($specific_sample) && $specific_sample ne '' && $specific_sample ne $sample) { next; }
       # storing some info
       my $d = {};
@@ -289,6 +307,8 @@ sub schedule_samples {
       }
     }
   }
+
+  }
 }
 
 sub read_sample_info {
@@ -341,34 +361,36 @@ sub read_sample_info {
         next;
       }
       print OUT "ANALYSIS FULL URL: $aurl $analysis_uuid\n";
+
       if (!$skip_down) { download($aurl, "$working_dir/xml/data_$analysis_uuid.xml", $skip_cached); }
+
       my $adoc = $parser->parsefile ("$working_dir/xml/data_$analysis_uuid.xml");
       my $adoc2 = XML::LibXML->new->parse_file("$working_dir/xml/data_$analysis_uuid.xml");
+
+      my $aliquotId = getVal($adoc, 'aliquot_id');
+      next if (defined %aliquots && !$aliquots{$aliquotId}); # skip if aliquot_id list file specified and the current one is not included in the list
+
+      my $alignment = getVal($adoc, "refassem_short_name");
+      next if ($alignment eq 'unaligned'); # no need to worry about not aligned BAMs
+
       my $analysisId = getVal($adoc, 'analysis_id');
       my $analysisDataURI = getVal($adoc, 'analysis_data_uri');
-      my $submitterAliquotId = getCustomVal($adoc2, 'submitter_aliquot_id,submitter_sample_id');
-      my $aliquotUUID = getVal($adoc, 'aliquot_id');
-      my $aliquotId = getCustomVal($adoc2, 'aliquot_id,submitter_sample_id');
-      my $submitterParticipantId = getCustomVal($adoc2, 'submitter_participant_id,submitter_donor_id');
-      my $participantId = getCustomVal($adoc2, 'participant_id,submitter_donor_id');
+
+      my $project_code = getCustomVal($adoc2, 'dcc_project_code');
+      my $participantId = getCustomVal($adoc2, 'submitter_donor_id');
       my $submitterSampleId = getCustomVal($adoc2, 'submitter_sample_id');
-      # if donor_id defined then dealing with newer XML
-      if (defined(getCustomVal($adoc2, 'submitter_donor_id')) && getCustomVal($adoc2, 'submitter_donor_id') ne '') {
-        $submitterSampleId = getCustomVal($adoc2, 'submitter_specimen_id');
-      }
-      my $sampleId = getCustomVal($adoc2, 'sample_id,submitter_specimen_id');
+
+      my $submitterSpecimenId = getCustomVal($adoc2, 'submitter_specimen_id');
       my $use_control = getCustomVal($adoc2, "use_cntl");
-      my $alignment = getVal($adoc, "refassem_short_name");
       my $total_lanes = getCustomVal($adoc2, "total_lanes");
-      my $sample_uuid = getXPathAttr($adoc2, "refname", "//ANALYSIS_SET/ANALYSIS/TARGETS/TARGET/\@refname");
+
       print OUT "ANALYSIS:  $analysisDataURI \n";
       print OUT "ANALYSISID: $analysisId\n";
+      print OUT "PROJECT: $project_code\n";
       print OUT "PARTICIPANT ID: $participantId\n";
-      print OUT "SAMPLE ID: $sampleId\n";
-      print OUT "ALIQUOTID: $aliquotId\n";
-      print OUT "SUBMITTER PARTICIPANT ID: $submitterParticipantId\n";
+      print OUT "SUBMITTER SPECIMEN ID: $submitterSpecimenId\n";
       print OUT "SUBMITTER SAMPLE ID: $submitterSampleId\n";
-      print OUT "SUBMITTER ALIQUOTID: $submitterAliquotId\n";
+      print OUT "ALIQUOTID: $aliquotId\n";
       my $libName = getVal($adoc, 'LIBRARY_NAME');
       my $libStrategy = getVal($adoc, 'LIBRARY_STRATEGY');
       my $libSource = getVal($adoc, 'LIBRARY_SOURCE');
@@ -379,18 +401,16 @@ sub read_sample_info {
         print OUT "  gtdownload -c gnostest.pem -v -d $analysisDataURI\n";
         #system "gtdownload -c gnostest.pem -vv -d $analysisId\n";
         print OUT "\n";
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{analysis_id}{$analysisId} = 1;
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{analysis_url}{$analysisDataURI} = 1;
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{library_name}{$libName} = 1;
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{library_strategy}{$libStrategy} = 1;
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{library_source}{$libSource} = 1;
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{alignment_genome}{$alignment} = 1;
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{use_control}{$use_control} = 1;
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{total_lanes}{$total_lanes} = 1;
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{submitter_participant_id}{$submitterParticipantId} = 1;
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{submitter_sample_id}{$submitterSampleId} = 1;
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{submitter_aliquot_id}{$submitterAliquotId} = 1;
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{sample_uuid}{$sample_uuid} = 1;
+        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$alignment}{$aliquotId}{$libName}{analysis_id}{$analysisId} = 1;
+        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$alignment}{$aliquotId}{$libName}{analysis_url}{$analysisDataURI} = 1;
+        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$alignment}{$aliquotId}{$libName}{library_name}{$libName} = 1;
+        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$alignment}{$aliquotId}{$libName}{library_strategy}{$libStrategy} = 1;
+        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$alignment}{$aliquotId}{$libName}{library_source}{$libSource} = 1;
+        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$alignment}{$aliquotId}{$libName}{alignment_genome}{$alignment} = 1;
+        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$alignment}{$aliquotId}{$libName}{use_control}{$use_control} = 1;
+        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$alignment}{$aliquotId}{$libName}{total_lanes}{$total_lanes} = 1;
+        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$alignment}{$aliquotId}{$libName}{submitter_sample_id}{$submitterSampleId} = 1;
+
         # need to add
         # input_bam_paths=9c414428-9446-11e3-86c1-ab5c73f0e08b/hg19.chr22.5x.normal.bam
         # gnos_input_file_urls=https://gtrepo-ebi.annailabs.com/cghub/data/analysis/download/9c414428-9446-11e3-86c1-ab5c73f0e08b
@@ -405,9 +425,9 @@ sub read_sample_info {
       foreach my $file(keys %{$files}) {
         print OUT "  FILE: $file SIZE: ".$files->{$file}{size}." CHECKSUM: ".$files->{$file}{checksum}."\n";
         print OUT "  LOCAL FILE PATH: $analysisId/$file\n";
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{files}{$file}{size} = $files->{$file}{size};
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{files}{$file}{checksum} = $files->{$file}{checksum};
-        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{files}{$file}{localpath} = "$analysisId/$file";
+        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$alignment}{$aliquotId}{$libName}{files}{$file}{size} = $files->{$file}{size};
+        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$alignment}{$aliquotId}{$libName}{files}{$file}{checksum} = $files->{$file}{checksum};
+        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$alignment}{$aliquotId}{$libName}{files}{$file}{localpath} = "$analysisId/$file";
         # URLs?
       }
 
