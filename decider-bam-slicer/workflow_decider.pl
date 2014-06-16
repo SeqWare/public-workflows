@@ -411,17 +411,10 @@ sub read_sample_info {
       # get files
       # now if these are defined then move onto the next step
       if (defined($analysisId) && defined($analysisDataURI)) {
-        print OUT "  gtdownload -c gnostest.pem -v -d $analysisDataURI\n";
-        #system "gtdownload -c gnostest.pem -vv -d $analysisId\n";
         $d->{$project_code}{$participantId}{$submitterSpecimenId}{$aliquotId}{analysis_id}{$analysisId} = 1;
         $d->{$project_code}{$participantId}{$submitterSpecimenId}{$aliquotId}{analysis_url}{$analysisDataURI} = 1;
         $d->{$project_code}{$participantId}{$submitterSpecimenId}{$aliquotId}{submitter_sample_id}{$submitterSampleId} = 1;
         $d->{$project_code}{$participantId}{$submitterSpecimenId}{$aliquotId}{description}{$description} = 1;
-
-        # need to add
-        # input_bam_paths=9c414428-9446-11e3-86c1-ab5c73f0e08b/hg19.chr22.5x.normal.bam
-        # gnos_input_file_urls=https://gtrepo-ebi.annailabs.com/cghub/data/analysis/download/9c414428-9446-11e3-86c1-ab5c73f0e08b
-        # gnos_input_metadata_urls=https://gtrepo-ebi.annailabs.com/cghub/metadata/analysisFull/9c414428-9446-11e3-86c1-ab5c73f0e08b
 
       } else {
         print OUT "ERROR: one or more critical fields not defined, will skip $analysisId\n\n";
