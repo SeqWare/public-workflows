@@ -347,9 +347,14 @@ sub read_sample_info {
   for (my $i = 0; $i < $n; $i++)
   {
       my $node = $nodes->item ($i);
+
+      my $alignment = getVal($node, "refassem_short_name");
+      next if ($alignment eq 'unaligned'); # skip download/process this if it's unaligned
+
       #$node->getElementsByTagName('analysis_full_uri')->item(0)->getAttributeNode('errors')->getFirstChild->getNodeValue;
       #print OUT $node->getElementsByTagName('analysis_full_uri')->item(0)->getFirstChild->getNodeValue;
       my $aurl = getVal($node, "analysis_full_uri"); # ->getElementsByTagName('analysis_full_uri')->item(0)->getFirstChild->getNodeValue;
+
       # have to ensure the UUID is lower case, known GNOS issue
       #print OUT "Analysis Full URL: $aurl\n";
       my $analysis_uuid = $i;
@@ -360,6 +365,7 @@ sub read_sample_info {
         print OUT "SKIPPING!\n";
         next;
       }
+      print OUT "\n";
       print OUT "ANALYSIS FULL URL: $aurl $analysis_uuid\n";
 
       if (!$skip_down) { download($aurl, "$working_dir/xml/data_$analysis_uuid.xml", $skip_cached); }
@@ -368,21 +374,30 @@ sub read_sample_info {
       my $adoc2 = XML::LibXML->new->parse_file("$working_dir/xml/data_$analysis_uuid.xml");
 
       my $aliquotId = getVal($adoc, 'aliquot_id');
-      next if (defined %aliquots && !$aliquots{$aliquotId}); # skip if aliquot_id list file specified and the current one is not included in the list
+      if (keys %aliquots && !$aliquots{$aliquotId}){ # skip if aliquot_id list file specified and the current one is not included in the list
+        print OUT "Skip as the aliquot ID is not in the list if specified aliquots\n";
+        next;
+      };
 
-      my $alignment = getVal($adoc, "refassem_short_name");
-      next if ($alignment eq 'unaligned'); # no need to worry about not aligned BAMs
-
+      my $description = getVal($adoc, 'DESCRIPTION');
+      if ($description =~ /^Specimen-level BAM from the reference alignment/) {
+         $description = "BWA aligned";
+      }elsif ($description =~ /^BAM slice: ENCODE target regions/) {
+         $description = "ENCODE reads";
+      }elsif ($description =~ /^BAM slice: unmapped reads/) {
+         $description = "Unmapped reads";
+      }else{
+         print OUT "SKIPPING! Unrelated AO: $description\n";
+         next; # ignore if it's none of this
+      }
+      
       my $analysisId = getVal($adoc, 'analysis_id');
       my $analysisDataURI = getVal($adoc, 'analysis_data_uri');
 
       my $project_code = getCustomVal($adoc2, 'dcc_project_code');
       my $participantId = getCustomVal($adoc2, 'submitter_donor_id');
-      my $submitterSampleId = getCustomVal($adoc2, 'submitter_sample_id');
-
       my $submitterSpecimenId = getCustomVal($adoc2, 'submitter_specimen_id');
-      my $use_control = getCustomVal($adoc2, "use_cntl");
-      my $total_lanes = getCustomVal($adoc2, "total_lanes");
+      my $submitterSampleId = getCustomVal($adoc2, 'submitter_sample_id');
 
       print OUT "ANALYSIS:  $analysisDataURI \n";
       print OUT "ANALYSISID: $analysisId\n";
@@ -391,25 +406,17 @@ sub read_sample_info {
       print OUT "SUBMITTER SPECIMEN ID: $submitterSpecimenId\n";
       print OUT "SUBMITTER SAMPLE ID: $submitterSampleId\n";
       print OUT "ALIQUOTID: $aliquotId\n";
-      my $libName = getVal($adoc, 'LIBRARY_NAME');
-      my $libStrategy = getVal($adoc, 'LIBRARY_STRATEGY');
-      my $libSource = getVal($adoc, 'LIBRARY_SOURCE');
-      print OUT "LibName: $libName LibStrategy: $libStrategy LibSource: $libSource\n";
+      print OUT "DESCRIPTION: $description\n";
+
       # get files
       # now if these are defined then move onto the next step
-      if (defined($libName) && defined($libStrategy) && defined($libSource) && defined($analysisId) && defined($analysisDataURI)) {
+      if (defined($analysisId) && defined($analysisDataURI)) {
         print OUT "  gtdownload -c gnostest.pem -v -d $analysisDataURI\n";
         #system "gtdownload -c gnostest.pem -vv -d $analysisId\n";
-        print OUT "\n";
-        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$alignment}{$aliquotId}{$libName}{analysis_id}{$analysisId} = 1;
-        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$alignment}{$aliquotId}{$libName}{analysis_url}{$analysisDataURI} = 1;
-        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$alignment}{$aliquotId}{$libName}{library_name}{$libName} = 1;
-        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$alignment}{$aliquotId}{$libName}{library_strategy}{$libStrategy} = 1;
-        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$alignment}{$aliquotId}{$libName}{library_source}{$libSource} = 1;
-        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$alignment}{$aliquotId}{$libName}{alignment_genome}{$alignment} = 1;
-        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$alignment}{$aliquotId}{$libName}{use_control}{$use_control} = 1;
-        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$alignment}{$aliquotId}{$libName}{total_lanes}{$total_lanes} = 1;
-        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$alignment}{$aliquotId}{$libName}{submitter_sample_id}{$submitterSampleId} = 1;
+        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$aliquotId}{analysis_id}{$analysisId} = 1;
+        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$aliquotId}{analysis_url}{$analysisDataURI} = 1;
+        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$aliquotId}{submitter_sample_id}{$submitterSampleId} = 1;
+        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$aliquotId}{description}{$description} = 1;
 
         # need to add
         # input_bam_paths=9c414428-9446-11e3-86c1-ab5c73f0e08b/hg19.chr22.5x.normal.bam
@@ -419,16 +426,6 @@ sub read_sample_info {
       } else {
         print OUT "ERROR: one or more critical fields not defined, will skip $analysisId\n\n";
         next;
-      }
-      my $files = readFiles($adoc);
-      print OUT "FILE:\n";
-      foreach my $file(keys %{$files}) {
-        print OUT "  FILE: $file SIZE: ".$files->{$file}{size}." CHECKSUM: ".$files->{$file}{checksum}."\n";
-        print OUT "  LOCAL FILE PATH: $analysisId/$file\n";
-        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$alignment}{$aliquotId}{$libName}{files}{$file}{size} = $files->{$file}{size};
-        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$alignment}{$aliquotId}{$libName}{files}{$file}{checksum} = $files->{$file}{checksum};
-        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$alignment}{$aliquotId}{$libName}{files}{$file}{localpath} = "$analysisId/$file";
-        # URLs?
       }
 
   }
@@ -527,23 +524,6 @@ sub read_cluster_info {
   #print Dumper($d);
   return($d, $run_samples);
 
-}
-
-sub readFiles {
-  my ($d) = @_;
-  my $ret = {};
-  my $nodes = $d->getElementsByTagName ("file");
-  my $n = $nodes->getLength;
-  for (my $i = 0; $i < $n; $i++)
-  {
-    my $node = $nodes->item ($i);
-	    my $currFile = getVal($node, 'filename');
-	    my $size = getVal($node, 'filesize');
-	    my $check = getVal($node, 'checksum');
-            $ret->{$currFile}{size} = $size;
-            $ret->{$currFile}{checksum} = $check;
-  }
-  return($ret);
 }
 
 sub getCustomVal {
