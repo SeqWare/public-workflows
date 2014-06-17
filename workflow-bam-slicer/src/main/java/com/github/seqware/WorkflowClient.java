@@ -85,7 +85,7 @@ public class WorkflowClient extends OicrWorkflow {
       
       gnosUploadFileURL = getProperty("gnos_output_file_url");
       gnosKey = getProperty("gnos_key");
-      jobDescription = getProperty("job_description");
+      jobDescription = getProperty("job_description_encode");
       jobDescription = jobDescription.replace(" ", "\\ ").replace("(", "\\(").replace(")", "\\)");
       unmappedReadJobDescription = getProperty("job_description_unmapped");
       unmappedReadJobDescription = unmappedReadJobDescription.replace(" ", "\\ ").replace("(", "\\(").replace(")", "\\)");
