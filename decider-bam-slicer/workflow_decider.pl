@@ -77,7 +77,8 @@ my %aliquots;
 if (-s $aliquot_list_file) { # if file exist and has size > 0
   open (A, "< $aliquot_list_file") || die "Unable to open file: $aliquot_list_file\n";
   while(<A>){
-    s/\r\n//g;
+    s/[\r\n]//g;
+    next unless length == 36; # UUID
     $aliquots{$_}++;
   }
   close(A);
@@ -336,7 +337,7 @@ sub read_sample_info {
       my $adoc2 = XML::LibXML->new->parse_file("$working_dir/xml/data_$analysis_uuid.xml");
 
       my $aliquotId = getVal($adoc, 'aliquot_id');
-      if (keys %aliquots && !$aliquots{$aliquotId}){ # skip if aliquot_id list file specified and the current one is not included in the list
+      if (0 + keys %aliquots > 0 && !$aliquots{$aliquotId}){ # skip if aliquot_id list file specified and the current one is not included in the list
         print OUT "Skip as the aliquot ID is not in the list if specified aliquots\n";
         next;
       };

@@ -1,6 +1,7 @@
 {
   "cluster-name-1": {
-     "workflow_accession": "2",
+     "workflow_accession": "43",
+     "workflow_version": "0.1.0",
      "username": "admin@admin.com",
      "password": "admin",
      "webservice": "http://master:8080/SeqWareWebService",
