@@ -518,6 +518,7 @@ sub readFiles {
   {
     my $node = $nodes->item ($i);
 	    my $currFile = getVal($node, 'filename');
+	    next if ($currFile =~ /\.bai$/);
 	    my $size = getVal($node, 'filesize');
 	    my $check = getVal($node, 'checksum');
             $ret->{$currFile}{size} = $size;
