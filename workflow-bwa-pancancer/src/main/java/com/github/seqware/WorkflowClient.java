@@ -55,7 +55,7 @@ public class WorkflowClient extends OicrWorkflow {
   String gtdownloadRetries = "30";
   String gtdownloadMd5Time = "120";
   String gtdownloadMem = "8";
-  String smallJobMemM = "2000";
+  String smallJobMemM = "3000";
 
   @Override
   public Map<String, SqwFile> setupFiles() {
@@ -97,7 +97,7 @@ public class WorkflowClient extends OicrWorkflow {
       gtdownloadRetries = getProperty("gtdownloadRetries") == null ? "30" : getProperty("gtdownloadRetries");
       gtdownloadMd5Time = getProperty("gtdownloadMd5time") == null ? "120" : getProperty("gtdownloadMd5time");
       gtdownloadMem = getProperty("gtdownloadMemG") == null ? "8" : getProperty("gtdownloadMemG");
-      smallJobMemM = getProperty("smallJobMemM") == null ? "2000" : getProperty("smallJobMemM");
+      smallJobMemM = getProperty("smallJobMemM") == null ? "3000" : getProperty("smallJobMemM");
       if (getProperty("use_gtdownload") != null) { if("false".equals(getProperty("use_gtdownload"))) { useGtDownload = false; } }
       if (getProperty("use_gtupload") != null) { if("false".equals(getProperty("use_gtupload"))) { useGtUpload = false; } }
 
@@ -132,6 +132,10 @@ public class WorkflowClient extends OicrWorkflow {
       String file = bamPaths.get(i);
       // the URL to download this from
       String fileURL = inputURLs.get(i);
+      
+    /* Job job05 = this.getWorkflow().createBashJob("upload");
+    job05.getCommand().addArgument(""
+      + "synapse -u <uSERNAME > -p <PASSWORD> -parentId add " + fileURL + " > " + file +".synapse" ); */
         
       // the download job that either downloads or locates the file on the filesystem
       Job downloadJob = null;
@@ -208,10 +212,12 @@ public class WorkflowClient extends OicrWorkflow {
         qcJobs.add(qcJob);
         
         // CLEANUP DOWNLOADED INPUT UNALIGNED BAM FILES
-        Job cleanup1 = this.getWorkflow().createBashJob("cleanup_" + i);
-        cleanup1.getCommand().addArgument("rm -f " + file);
-        cleanup1.setMaxMemory(smallJobMemM);
-        cleanup1.addParent(job03);
+        if (useGtDownload) {
+          Job cleanup1 = this.getWorkflow().createBashJob("cleanup_" + i);
+          cleanup1.getCommand().addArgument("rm -f " + file);
+          cleanup1.setMaxMemory(smallJobMemM);
+          cleanup1.addParent(job03);
+        }
 
       } else if ("mem".equals(bwaChoice)) {
 
@@ -254,10 +260,12 @@ public class WorkflowClient extends OicrWorkflow {
         qcJobs.add(qcJob);
         
         // CLEANUP DOWNLOADED INPUT UNALIGNED BAM FILES
-        Job cleanup1 = this.getWorkflow().createBashJob("cleanup2_" + i);
-        cleanup1.getCommand().addArgument("rm -f " + file);
-        cleanup1.setMaxMemory(smallJobMemM);
-        cleanup1.addParent(job01);
+        if (useGtDownload) {
+          Job cleanup1 = this.getWorkflow().createBashJob("cleanup2_" + i);
+          cleanup1.getCommand().addArgument("rm -f " + file);
+          cleanup1.setMaxMemory(smallJobMemM);
+          cleanup1.addParent(job01);
+        }
 
       } else {
         // not sure if there's a better way to do this
@@ -342,6 +350,13 @@ public class WorkflowClient extends OicrWorkflow {
     for (Job qcJob : qcJobs) {
       job05.addParent(qcJob);
     }
+    
+    /* Job job05 = this.getWorkflow().createBashJob("upload");
+    job05.getCommand().addArgument(""
+     for (int i = 0; i < numBamFiles; i++) {
+        job04.getCommand().addArgument(" I=out_" + i + ".bam");
+      }
+     */
     
     // CLEANUP FINAL BAM
     Job cleanup3 = this.getWorkflow().createBashJob("cleanup4");
