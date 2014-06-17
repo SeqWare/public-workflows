@@ -125,7 +125,7 @@ sub schedule_workflow {
   my $rand = substr(rand(), 2);
   my $host = "unknown";
   my $workflow_accession = 0;
-  my $workflow_version = "2.4.0";
+  my $workflow_version = "0.1.0";
   # parse cluster info
   my $settings = `cat $seqware_setting`;
   my $cluster_found = 0;
@@ -153,41 +153,36 @@ sub schedule_workflow {
 
   # ini file
   open OUT, ">$working_dir/$rand/workflow.ini" or die;
-  print OUT "input_bam_paths=".join(",",sort(keys(%{$d->{local_bams}})))."\n";
+  print OUT "input_bam_paths=".$d->{input_bam_paths}."\n";
   print OUT "gnos_input_file_urls=".$d->{gnos_input_file_urls}."\n";
-  print OUT "gnos_input_metadata_urls=".$d->{analysis_url}."\n";
+  my $gnos_input_metadata_urls = $d->{gnos_input_file_urls};
+  $gnos_input_metadata_urls =~ s|data/analysis/download|metadata/analysisFull|;
+  print OUT "gnos_input_metadata_urls=$gnos_input_metadata_urls\n";
   print OUT <<END;
-gnos_output_file_url=$gnos_url
-numOfThreads=$threads
-use_gtdownload=$use_gtdownload
-use_gtupload=$use_gtupload
-skip_upload=$skip_upload
-output_prefix=$output_prefix
-output_dir=$output_dir
-picardSortJobMem=4
-picardSortMem=6
-additionalPicardParams=
-input_reference=\${workflow_bundle_dir}/Workflow_Bundle_BWA/$workflow_version/data/reference/bwa-0.6.2/genome.fa.gz
-maxInsertSize=
-bwaAlignMemG=8
-bwaSampeMemG=8
-bwaSampeSortSamMemG=4
-bwa_choice=mem
-bwa_aln_params=
-bwa_mem_params=
-bwa_sampe_params=
-readGroup=
-gnos_key=\${workflow_bundle_dir}/Workflow_Bundle_BWA/$workflow_version/scripts/gnostest.pem
-uploadScriptJobMem=3
+isTesting=false
+testBamPath=\${workflow_bundle_dir}/Workflow_Bundle_BAM_Slicer/$workflow_version/data/sliceTest.bam
+extract_and_upload_unmapped_reads=true
+job_description_encode=BAM slice: ENCODE target regions. This BAM file contains reads in ENCODE pilot target regions (about 1 percent of the human genome) extracted from specimen-level aligned BAM file. The genome coordinates for these regions were downloaded using UCSC Table Browser using parameters: org is Human, db is hg19, hgta_track is encodeRegions, hgta_table is encodeRegions
+job_description_unmapped=BAM slice: unmapped reads. This BAM file contains reads failed to map to the reference genome by BWA MEM aligner. These include mate-pairs with either one end or both ends unmapped.
+use_gtdownload=true
+use_gtupload=true
+skip_upload=false
+gnos_key=\${workflow_bundle_dir}/Workflow_Bundle_BAM_Slicer/$workflow_version/scripts/gnostest.pem
+gnos_output_file_url=https://gtrepo-ebi.annailabs.com
+output_dir=results/
+output_prefix=./
 gtdownloadRetries=30
 gtdownloadMd5time=120
 gtdownloadMemG=8
-smallJobMemM=3000
+gtuploadMemG=8
+smallJobMemM=2000
+mergeJobMemG=8
+numOfThreads=8
 END
   close OUT;
   # now submit the workflow!
   my $dir = getcwd();
-  my $cmd = "SEQWARE_SETTINGS=$working_dir/$rand/settings /usr/local/bin/seqware workflow schedule --accession $workflow_accession --host $host --ini $working_dir/$rand/workflow.ini";
+  my $cmd = "SEQWARE_SETTINGS=$working_dir/$rand/settings seqware workflow schedule --accession $workflow_accession --host $host --ini $working_dir/$rand/workflow.ini";
   if (!$test && $cluster_found) {
     print R "\tLAUNCHING WORKFLOW: $working_dir/$rand/workflow.ini\n";
     print R "\t\tCLUSTER HOST: $host ACCESSION: $workflow_accession URL: $url\n";
@@ -226,87 +221,54 @@ sub schedule_samples {
 
   foreach my $project (keys %{$my_sample_info}) {
     my $sample_info = $my_sample_info->{$project};
+    print R "PROJECT: $project\n\n";
 
-  foreach my $participant (keys %{$sample_info}) {
-    print R "DONOR/PARTICIPANT: $participant\n\n";
-    foreach my $sample (keys %{$sample_info->{$participant}}) { # sample ID is actually submitter speciment ID
-      if (defined($specific_sample) && $specific_sample ne '' && $specific_sample ne $sample) { next; }
-      # storing some info
-      my $d = {};
-      $d->{gnos_url} = $gnos_url;
-      my $aligns = {};
-      print R "\tSAMPLE OVERVIEW\n";
-      print R "\tSPECIMEN/SAMPLE: $sample\n";
-      foreach my $alignment (keys %{$sample_info->{$participant}{$sample}}) {
-        print R "\t\tALIGNMENT: $alignment\n";
-        $aligns->{$alignment} = 1;
-        foreach my $aliquot (keys %{$sample_info->{$participant}{$sample}{$alignment}}) {
-          print R "\t\t\tANALYZED SAMPLE/ALIQUOT: $aliquot\n";
-          foreach my $library (keys %{$sample_info->{$participant}{$sample}{$alignment}{$aliquot}}) {
-            print R "\t\t\t\tLIBRARY: $library\n";
-            #print "$participant\t$sample\t$alignment\t$aliquot\t$library\n";
-            # read lane counts
-            my $total_lanes = 0;
-            foreach my $lane (keys %{$sample_info->{$participant}{$sample}{$alignment}{$aliquot}{$library}{total_lanes}}) {
-              if ($lane > $total_lanes) { $total_lanes = $lane; }
+    foreach my $participant (keys %{$sample_info}) {
+      print R "DONOR/PARTICIPANT: $participant\n\n";
+      foreach my $specimen (keys %{$sample_info->{$participant}}) {
+
+        print R "\tSAMPLE OVERVIEW\n";
+        print R "\tSPECIMEN: $specimen\n";
+        foreach my $aliquot (keys %{$sample_info->{$participant}{$specimen}}) {
+          print R "\t\tALIQUOT: $aliquot\n";
+
+          # storing some info
+          my $d = {};
+
+          if (defined $sample_info->{$participant}{$specimen}{$aliquot}{description}{"BWA aligned"}
+              && ( $force_run # forced to run
+                   || !exists $sample_info->{$participant}{$specimen}{$aliquot}{description}{"ENCODE reads"} 
+                   || !exists $sample_info->{$participant}{$specimen}{$aliquot}{description}{"Unmapped reads"} )) { # has BWA aligned BAM but missing extracted ones
+
+            print R "\t\tCandidate BAM to be scheduled".($force_run ? " (forced)" : "").": ", $sample_info->{$participant}{$specimen}{$aliquot}{description}{"BWA aligned"}->[0]->[2], "\n";
+            $d->{gnos_input_file_urls} = $sample_info->{$participant}{$specimen}{$aliquot}{description}{"BWA aligned"}->[0]->[1];
+            $d->{input_bam_paths} = $sample_info->{$participant}{$specimen}{$aliquot}{description}{"BWA aligned"}->[0]->[2];
+
+            if (!defined($running_samples->{ $d->{gnos_input_file_urls} }) || $force_run) {
+              print R "\t\tNOT PREVIOUSLY SCHEDULED OR RUN FORCED!\n";
+              schedule_workflow($d);
+      
+            } elsif ($running_samples->{ $d->{gnos_input_file_urls} } eq "failed" && $ignore_failed) {
+              print R "\t\tPREVIOUSLY FAILED BUT RUN FORCED VIA IGNORE FAILED OPTION!\n";
+              schedule_workflow($d);
+      
+            } else {
+              print R "\t\tIS PREVIOUSLY SCHEDULED, RUNNING, OR FAILED!\n";
+              print R "\t\t\tSTATUS: ".$running_samples->{ $d->{gnos_input_file_urls} }."\n";
+      
             }
-            $d->{total_lanes_hash}{$total_lanes} = 1;
-            $d->{total_lanes} = $total_lanes;
-            foreach my $bam (keys %{$sample_info->{$participant}{$sample}{$alignment}{$aliquot}{$library}{files}}) {
-              $d->{bams}{$bam} = $sample_info->{$participant}{$sample}{$alignment}{$aliquot}{$library}{files}{$bam}{localpath};
-              my $local_file_path = $input_prefix.$sample_info->{$participant}{$sample}{$alignment}{$aliquot}{$library}{files}{$bam}{localpath};
-              $d->{local_bams}{$local_file_path} = 1;
-              if ($alignment eq "unaligned") {
-                $d->{bams_count}++;
-              }
-            }
-            # analysis
-            foreach my $analysis (sort keys %{$sample_info->{$participant}{$sample}{$alignment}{$aliquot}{$library}{analysis_id}}) {
-              $d->{analysisURL}{"$gnos_url/cghub/metadata/analysisFull/$analysis"} = 1;
-              $d->{downloadURL}{"$gnos_url/cghub/data/analysis/download/$analysis"} = 1;
-            }
-            $d->{gnos_input_file_urls} = join (",", (sort keys %{$d->{downloadURL}}));
-            print R "\t\t\t\t\tBAMS: ", join(",", (keys %{$sample_info->{$participant}{$sample}{$alignment}{$aliquot}{$library}{files}})), "\n";
-            print R "\t\t\t\t\tANALYSIS_IDS: ", join(",", (keys %{$sample_info->{$participant}{$sample}{$alignment}{$aliquot}{$library}{analysis_id}})), "\n\n";
+
+          } elsif (defined $sample_info->{$participant}{$specimen}{$aliquot}{description}{"BWA aligned"}) { # already done
+
+            print R "\t\tENCODE and unmapped reads extraction already done: ", $sample_info->{$participant}{$specimen}{$aliquot}{description}{"BWA aligned"}->[0]->[0], "\n";
+
+          } else { # no BWA aligned Sample level BAM, skip
+            print R "\t\tCould not find aligned sample level BAM for this aliquot: $aliquot. Skip!\n";
+
           }
         }
       }
-      print R "\tSAMPLE WORKLFOW ACTION OVERVIEW\n";
-      print R "\t\tLANES SPECIFIED FOR SAMPLE: $d->{total_lanes}\n";
-      #print Dumper($d->{total_lanes_hash});
-      print R "\t\tBAMS FOUND: $d->{bams_count}\n";
-      #print Dumper($d->{bams});
-      my $veto = 0;
-      # so, do I run this?
-      if ((scalar(keys %{$aligns}) == 1 && defined($aligns->{unaligned})) || $force_run) { print R "\t\tONLY UNALIGNED OR RUN FORCED!\n"; }
-      else { print R "\t\tCONTAINS ALIGNMENT!\n"; $veto = 1; }
-      # now check if this is alreay scheduled
-      my $analysis_url_str = join(",", sort(keys(%{$d->{analysisURL}})));
-      $d->{analysis_url} = $analysis_url_str;
-      #print "ANALYSISURL $analysis_url_str\n";
-      if (!defined($running_samples->{$analysis_url_str}) || $force_run) {
-        print R "\t\tNOT PREVIOUSLY SCHEDULED OR RUN FORCED!\n";
-      } elsif ($running_samples->{$analysis_url_str} eq "failed" && $ignore_failed) {
-        print R "\t\tPREVIOUSLY FAILED BUT RUN FORCED VIA IGNORE FAILED OPTION!\n";
-      } else {
-        print R "\t\tIS PREVIOUSLY SCHEDULED, RUNNING, OR FAILED!\n";
-        print R "\t\t\tSTATUS: ".$running_samples->{$analysis_url_str}."\n";
-        $veto = 1;
-      }
-      # now check the number of bams == lane count (or this check is suppressed)
-      if ($d->{total_lanes} == $d->{bams_count} || $ignore_lane_cnt || $force_run) {
-        print R "\t\tLANE COUNT MATCHES OR IGNORED OR RUN FORCED: $ignore_lane_cnt $d->{total_lanes} $d->{bams_count}\n";
-      } else {
-        print R "\t\tLANE COUNT MISMATCH!\n";
-        $veto=1;
-      }
-      if ($veto) { print R "\t\tCONCLUSION: WILL NOT SCHEDULE THIS SAMPLE FOR ALIGNMENT!\n\n"; }
-      else {
-        print R "\t\tCONCLUSION: SCHEDULING WORKFLOW FOR THIS SAMPLE!\n\n";
-        schedule_workflow($d);
-      }
     }
-  }
 
   }
 }
@@ -409,13 +371,28 @@ sub read_sample_info {
       print OUT "DESCRIPTION: $description\n";
 
       # get files
-      # now if these are defined then move onto the next step
-      if (defined($analysisId) && defined($analysisDataURI)) {
-        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$aliquotId}{analysis_id}{$analysisId} = 1;
-        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$aliquotId}{analysis_url}{$analysisDataURI} = 1;
-        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$aliquotId}{submitter_sample_id}{$submitterSampleId} = 1;
-        $d->{$project_code}{$participantId}{$submitterSpecimenId}{$aliquotId}{description}{$description} = 1;
+      my $files = &readFiles($adoc);
+      if (0 + keys %{$files} > 1) {
+        print OUT "ERROR: one GNOS Ananlysis Object expects only one BAM file, will skip $analysisId\n\n";
+        next;
+      }
 
+      my $bam_file;
+      print OUT "FILE:\n";
+      foreach my $file(keys %{$files}) {
+        print OUT "  FILE: $file SIZE: ".$files->{$file}{size}." CHECKSUM: ".$files->{$file}{checksum}."\n";
+        print OUT "  LOCAL FILE PATH: $analysisId/$file\n";
+        $bam_file = "$analysisId/$file";
+      }
+
+      # now if these are defined then move onto the next step
+      if (defined $analysisId && defined $analysisDataURI && defined $bam_file) {
+        if ($description eq "BWA aligned" && exists $d->{$project_code}{$participantId}{$submitterSpecimenId}{$aliquotId}{description}{$description}) {
+          print OUT "ERROR: more than one BWA aligned BAM found for aliquot_id: $aliquotId, will skip this GNOS analysis_id $analysisId\n";
+          next;
+        }
+
+        push @{ $d->{$project_code}{$participantId}{$submitterSpecimenId}{$aliquotId}{description}{$description} }, [$analysisId, $analysisDataURI, $bam_file];
       } else {
         print OUT "ERROR: one or more critical fields not defined, will skip $analysisId\n\n";
         next;
@@ -484,7 +461,7 @@ sub read_cluster_info {
             for my $node2 ($dom2->findnodes('//WorkflowRunList2/list/iniFile/text()')) {
               $j++;
               my $ini_contents = $node2->toString();
-              $ini_contents =~ /gnos_input_metadata_urls=(\S+)/;
+              $ini_contents =~ /gnos_input_file_urls=(\S+)/;
               my @urls = split /,/, $1;
               my $sorted_urls = join(",", sort @urls);
               if ($i==$j) { $run_samples->{$sorted_urls} = $node->toString(); print R "\t\t\tINPUTS: $sorted_urls\n"; }
@@ -517,6 +494,24 @@ sub read_cluster_info {
   #print Dumper($d);
   return($d, $run_samples);
 
+}
+
+sub readFiles {
+  my ($d) = @_;
+  my $ret = {};
+  my $nodes = $d->getElementsByTagName ("file");
+  my $n = $nodes->getLength;
+  for (my $i = 0; $i < $n; $i++) {
+    my $node = $nodes->item ($i);
+    my $currFile = getVal($node, 'filename');
+    next unless ($currFile =~ /\.bam$/); # only deal with BAM files
+
+    my $size = getVal($node, 'filesize');
+    my $check = getVal($node, 'checksum');
+    $ret->{$currFile}{size} = $size;
+    $ret->{$currFile}{checksum} = $check;
+  }
+  return($ret);
 }
 
 sub getCustomVal {
