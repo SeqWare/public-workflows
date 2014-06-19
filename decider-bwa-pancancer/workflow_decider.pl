@@ -270,8 +270,8 @@ sub schedule_samples {
       my $analysis_url_str = join(",", sort(keys(%{$d->{analysisURL}})));
       $d->{analysis_url} = $analysis_url_str;
       #print "ANALYSISURL $analysis_url_str\n";
-      if (!defined($running_samples->{$analysis_url_str}) || $force_run) {
-        print R "\t\tNOT PREVIOUSLY SCHEDULED OR RUN FORCED!\n";
+      if (!defined($running_samples->{$analysis_url_str})) {
+        print R "\t\tNOT PREVIOUSLY SCHEDULED!\n";
       } elsif ($running_samples->{$analysis_url_str} eq "failed" && $ignore_failed) {
         print R "\t\tPREVIOUSLY FAILED BUT RUN FORCED VIA IGNORE FAILED OPTION!\n";
       } else {
@@ -280,8 +280,8 @@ sub schedule_samples {
         $veto = 1;
       }
       # now check the number of bams == lane count (or this check is suppressed)
-      if ($d->{total_lanes} == $d->{bams_count} || $ignore_lane_cnt || $force_run) {
-        print R "\t\tLANE COUNT MATCHES OR IGNORED OR RUN FORCED: $ignore_lane_cnt $d->{total_lanes} $d->{bams_count}\n";
+      if ($d->{total_lanes} == $d->{bams_count} || $ignore_lane_cnt) {
+        print R "\t\tLANE COUNT MATCHES OR IGNORED MISMATCH: $ignore_lane_cnt $d->{total_lanes} $d->{bams_count}\n";
       } else {
         print R "\t\tLANE COUNT MISMATCH!\n";
         $veto=1;
