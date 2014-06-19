@@ -235,17 +235,21 @@ sub schedule_samples {
             $d->{total_lanes_hash}{$total_lanes} = 1;
             $d->{total_lanes} = $total_lanes;
             foreach my $bam (keys %{$sample_info->{$participant}{$sample}{$alignment}{$aliquot}{$library}{files}}) {
-              $d->{bams}{$bam} = $sample_info->{$participant}{$sample}{$alignment}{$aliquot}{$library}{files}{$bam}{localpath};
-              my $local_file_path = $input_prefix.$sample_info->{$participant}{$sample}{$alignment}{$aliquot}{$library}{files}{$bam}{localpath};
-              $d->{local_bams}{$local_file_path} = 1;
+              # only unaligned
               if ($alignment eq "unaligned") {
+                $d->{bams}{$bam} = $sample_info->{$participant}{$sample}{$alignment}{$aliquot}{$library}{files}{$bam}{localpath};
+                my $local_file_path = $input_prefix.$sample_info->{$participant}{$sample}{$alignment}{$aliquot}{$library}{files}{$bam}{localpath};
+                $d->{local_bams}{$local_file_path} = 1;
                 $d->{bams_count}++;
               }
             }
             # analysis
             foreach my $analysis (sort keys %{$sample_info->{$participant}{$sample}{$alignment}{$aliquot}{$library}{analysis_id}}) {
-              $d->{analysisURL}{"$gnos_url/cghub/metadata/analysisFull/$analysis"} = 1;
-              $d->{downloadURL}{"$gnos_url/cghub/data/analysis/download/$analysis"} = 1;
+              # only unaligned
+              if ($alignment eq "unaligned") {
+                $d->{analysisURL}{"$gnos_url/cghub/metadata/analysisFull/$analysis"} = 1;
+                $d->{downloadURL}{"$gnos_url/cghub/data/analysis/download/$analysis"} = 1;
+              }
             }
             $d->{gnos_input_file_urls} = join (",", (sort keys %{$d->{downloadURL}}));
             print R "\t\t\t\t\tBAMS: ", join(",", (keys %{$sample_info->{$participant}{$sample}{$alignment}{$aliquot}{$library}{files}})), "\n";
