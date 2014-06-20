@@ -32,6 +32,7 @@ my $seqware_setting = "seqware.setting";
 my $skip_upload = "true";
 my $use_gtdownload = "true";
 my $use_gtupload = "true";
+my $use_gtvalidate = "true";
 my $upload_results = 0;
 my $ignore_failed = 0;
 my $skip_cached = 0;
@@ -58,18 +59,20 @@ if (scalar(@ARGV) < 4 || scalar(@ARGV) > 28) {
   print "\t--ignore-failed      a flag indicating that previously failed runs for this specimen should be ignored and the specimen scheduled again\n";
   print "\t--skip-cached        a flag indicating that previously download metadata XML files should not be downloaded again\n";
   print "\t--skip-gtdownload    a flag indicating that input files should be just the bam input paths and not from GNOS\n";
-  print "\t--skip-gtupload      a flag indicating that upload should not take place but output files should be placed in output_prefix/output_dir\n";
+print "\t--skip-gtupload      a flag indicating that upload should not take place but output files should be placed in output_prefix/output_dir\n";
+  print "\t--skip-gtvalidate    a flag indicating that no metadata upload and validation should take place against GNOS.\n";
   print "\t--output-prefix      if --skip-gtupload is set, use this to specify the prefix of where output files are written\n";
   print "\t--output-dir         if --skip-gtupload is set, use this to specify the dir of where output files are written\n";
   print "\t--input-prefix       if --skip-gtdownload is set, this is the input bam file prefix\n";
   exit(1);
 }
 
-GetOptions("gnos-url=s" => \$gnos_url, "cluster-json=s" => \$cluster_json, "working-dir=s" => \$working_dir, "sample=s" => \$specific_sample, "test" => \$test, "ignore-lane-count" => \$ignore_lane_cnt, "force-run" => \$force_run, "threads=i" => \$threads, "skip-meta-download" => \$skip_down, "report=s" => \$report_name, "settings=s" => \$seqware_setting, "upload-results" => \$upload_results, "ignore-failed" => \$ignore_failed, "skip-cached" => \$skip_cached, "skip-gtdownload" => \$skip_gtdownload, "skip-gtupload" => \$skip_gtupload, "output-prefix=s" => \$output_prefix, "output-dir=s" => \$output_dir, "input-prefix=s" => \$input_prefix);
+GetOptions("gnos-url=s" => \$gnos_url, "cluster-json=s" => \$cluster_json, "working-dir=s" => \$working_dir, "sample=s" => \$specific_sample, "test" => \$test, "ignore-lane-count" => \$ignore_lane_cnt, "force-run" => \$force_run, "threads=i" => \$threads, "skip-meta-download" => \$skip_down, "report=s" => \$report_name, "settings=s" => \$seqware_setting, "upload-results" => \$upload_results, "ignore-failed" => \$ignore_failed, "skip-cached" => \$skip_cached, "skip-gtdownload" => \$skip_gtdownload, "skip-gtupload" => \$skip_gtupload, "skip-gtvalidate" => \$skip_gtvalidate, "output-prefix=s" => \$output_prefix, "output-dir=s" => \$output_dir, "input-prefix=s" => \$input_prefix);
 
 if ($upload_results) { $skip_upload = "false"; }
 if ($skip_gtdownload) { $use_gtdownload = "false"; }
 if ($skip_gtupload) { $use_gtupload = "false"; }
+if ($skip_gtvalidate) { $use_gtvalidate = "false"; }
 
 
 ##############
@@ -149,6 +152,7 @@ gnos_output_file_url=$gnos_url
 numOfThreads=$threads
 use_gtdownload=$use_gtdownload
 use_gtupload=$use_gtupload
+use_gtvalidation=$use_gtvalidate
 skip_upload=$skip_upload
 output_prefix=$output_prefix
 output_dir=$output_dir
