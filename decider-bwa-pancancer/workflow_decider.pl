@@ -42,7 +42,7 @@ my $output_prefix = "./";
 my $output_dir = "seqware-results/";
 my $input_prefix = "";
 
-if (scalar(@ARGV) < 4 || scalar(@ARGV) > 28) {
+if (scalar(@ARGV) < 4 || scalar(@ARGV) > 30) {
   print "USAGE: 'perl $0 --gnos-url <URL> --cluster-json <cluster.json> [--working-dir <working_dir>] [--sample <sample_id>] [--threads <num_threads_bwa_default_8>] [--test] [--ignore-lane-count] [--force-run] [--skip-meta-download] [--report <workflow_decider_report.txt>] [--settings <seqware_settings_file>] [--upload-results] [--skip-cached]'\n";
   print "\t--gnos-url           a URL for a GNOS server, e.g. https://gtrepo-ebi.annailabs.com\n";
   print "\t--cluster-json       a json file that describes the clusters available to schedule workflows to\n";
@@ -59,7 +59,7 @@ if (scalar(@ARGV) < 4 || scalar(@ARGV) > 28) {
   print "\t--ignore-failed      a flag indicating that previously failed runs for this specimen should be ignored and the specimen scheduled again\n";
   print "\t--skip-cached        a flag indicating that previously download metadata XML files should not be downloaded again\n";
   print "\t--skip-gtdownload    a flag indicating that input files should be just the bam input paths and not from GNOS\n";
-print "\t--skip-gtupload      a flag indicating that upload should not take place but output files should be placed in output_prefix/output_dir\n";
+  print "\t--skip-gtupload      a flag indicating that upload should not take place but output files should be placed in output_prefix/output_dir\n";
   print "\t--skip-gtvalidate    a flag indicating that no metadata upload and validation should take place against GNOS.\n";
   print "\t--output-prefix      if --skip-gtupload is set, use this to specify the prefix of where output files are written\n";
   print "\t--output-dir         if --skip-gtupload is set, use this to specify the dir of where output files are written\n";
