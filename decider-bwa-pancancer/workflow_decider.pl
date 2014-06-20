@@ -38,6 +38,7 @@ my $ignore_failed = 0;
 my $skip_cached = 0;
 my $skip_gtdownload = 0;
 my $skip_gtupload = 0;
+my $skip_gtvalidate = 0;
 my $output_prefix = "./";
 my $output_dir = "seqware-results/";
 my $input_prefix = "";
