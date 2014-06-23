@@ -146,7 +146,7 @@ public class WorkflowClient extends OicrWorkflow {
       headerJob = this.getWorkflow().createBashJob("headerJob" + i);
       //headerJob.getCommand().addArgument(this.getWorkflowBaseDir() + pcapPath + "/bin/samtools view -H " + file + " | sed 's/\\t/\\\\t/g' > bam_header." + i + ".txt");
       headerJob.getCommand().addArgument("samtools view -H " + file + " | sed 's/\\t/\\\\t/g' > bam_header." + i + ".txt");
-      headerJob.setMaxMemory("8000");
+      headerJob.setMaxMemory("6000");
 
       if (useGtDownload) {
     	  headerJob.addParent(downloadJob);
