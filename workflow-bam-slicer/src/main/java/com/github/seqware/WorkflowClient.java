@@ -157,6 +157,7 @@ public class WorkflowClient extends OicrWorkflow {
       buildBamIndex.getCommand().addArgument(
     		  "test -s " + file + ".bai || "
     		  + "cat " + file + " | "
+    		  + "LD_LIBRARY_PATH=" + this.getWorkflowBaseDir() + pcapPath + "/lib "
     		  + this.getWorkflowBaseDir() + pcapPath + "/bin/bamindex "
     		  + "> " + file + ".bai");
 
@@ -171,9 +172,12 @@ public class WorkflowClient extends OicrWorkflow {
     		  + file
     		  + " | perl " + this.getWorkflowBaseDir() + "/scripts/remove_both_ends_unmapped_reads.pl "  // this is necessary because samtools -L outputs both-ends-unmapped reads
     		  + " | "
-    		  + this.getWorkflowBaseDir() + pcapPath + "/bin/samtools view -S -b - "
-    		  + " > firstSlice." + i + ".bam");
-      
+    		  + "LD_LIBRARY_PATH=" + this.getWorkflowBaseDir() + pcapPath + "/lib "
+              + this.getWorkflowBaseDir() + pcapPath + "/bin/bamsort "
+              + "inputformat=sam level=1 outputthreads=2 "
+              + "tmpfile=firstSlice." + i + ".sorttmp "
+              + "O=firstSlice." + i + ".bam");
+
       firstSliceJob.setMaxMemory("4000");
       firstSliceJob.addParent(buildBamIndex);
       
@@ -253,8 +257,11 @@ public class WorkflowClient extends OicrWorkflow {
     		  + "bam_header." + i + ".txt "
     		  + "missing_mates." + i + ".bed "
     		  + " | "
-    		  + this.getWorkflowBaseDir() + pcapPath + "/bin/samtools view -S -b - "
-    		  + "> secondSlice." + i + ".bam");
+    		  + "LD_LIBRARY_PATH=" + this.getWorkflowBaseDir() + pcapPath + "/lib "
+              + this.getWorkflowBaseDir() + pcapPath + "/bin/bamsort "
+              + "inputformat=sam level=1 outputthreads=2 "
+              + "tmpfile=secondSlice." + i + ".sorttmp "
+              + "O=secondSlice." + i + ".bam");    		  
       
       secondSliceJob.setMaxMemory("4000");
       secondSliceJob.addParent(getMissingMateRegions);
