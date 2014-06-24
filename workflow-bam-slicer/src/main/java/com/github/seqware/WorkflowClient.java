@@ -54,7 +54,7 @@ public class WorkflowClient extends OicrWorkflow {
   String gtdownloadMd5Time = "120";
   String gtdownloadMemG = "8";
   String gtuploadMemG = "8";
-  String smallJobMemM = "2000";
+  String smallJobMemM = "4000";
 
   @Override
   public Map<String, SqwFile> setupFiles() {
@@ -96,7 +96,7 @@ public class WorkflowClient extends OicrWorkflow {
       
       gtdownloadMemG = getProperty("gtdownloadMemG") == null ? "8" : getProperty("gtdownloadMemG");
       gtuploadMemG = getProperty("gtuploadMemG") == null ? "8" : getProperty("gtuploadMemG");
-      smallJobMemM = getProperty("smallJobMemM") == null ? "2000" : getProperty("smallJobMemM");
+      smallJobMemM = getProperty("smallJobMemM") == null ? "4000" : getProperty("smallJobMemM");
       mergeJobMemG = getProperty("mergeJobMemG") == null ? "4" : getProperty("mergeJobMemG");
       
       if (getProperty("use_gtdownload") != null && "false".equals(getProperty("use_gtdownload"))) { useGtDownload = false; }
