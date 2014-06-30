@@ -2,7 +2,7 @@
   <workflow name="CgpPindel" version="${workflow-version}" seqware_version="${seqware-version}"
   basedir="${workflow_bundle_dir}/Workflow_Bundle_CgpPindel/${workflow-version}">
     <description>${workflow-description}</description>
-    <workflow_class path="${workflow_bundle_dir}/Workflow_Bundle_CgpPindel/${workflow-version}/classes/io/seqware/CgpPindelWorkflow.java"/>
+    <workflow_class path="${workflow_bundle_dir}/Workflow_Bundle_CgpPindel/${workflow-version}/classes/io/seqware/pancancer/CgpPindelWorkflow.java"/>
     <config path="${workflow_bundle_dir}/Workflow_Bundle_CgpPindel/${workflow-version}/config/CgpPindelWorkflow.ini"/>
     <requirements compute="single" memory="20M" network="local"  workflow_engine="Pegasus,Oozie" workflow_type="java"/>
   </workflow>
