@@ -180,9 +180,8 @@ public class CgpAscatWorkflow extends AbstractWorkflowDataModel {
     if(gender.equals("L")) {
       thisJob.getCommand().addArgument("-l Y:2654896-2655740");
     }
-    else {
-      thisJob.getCommand().addArgument("-g " + gender);
-    }
+    thisJob.getCommand().addArgument("-g " + gender);
+    
     return thisJob;
   }
 
