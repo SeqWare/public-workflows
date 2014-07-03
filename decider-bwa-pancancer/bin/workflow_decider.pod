@@ -1,0 +1,134 @@
+=head1 VERSION
+
+Version 0.0.1
+
+=head1 AUTHOR(S)
+
+Brian O'Connor, Adam Wright
+
+=item --usage
+
+=item --help
+
+=item --man
+
+Print the usual program information
+
+=back
+
+=head1 DESCRIPTION
+
+A tool for identifying samples ready for alignment, scheduling on clusters, and monitoring for completion.
+
+=head1 NAME
+
+Workflow Decider - SeqWare
+
+=back
+
+=head1 REQUIRED ARGUMENTS
+
+=over
+
+=item --cluster-json[=][ ]<cluster_json>
+
+JSON file that describes the clusters available to schedule workflows to. Should be located in the config folder.
+
+=back
+
+=head1 OPTIONS
+
+=over
+
+=item --gnos-url[=][ ]<gnos_url>
+
+URL for a GNOS server, e.g. https://gtrepo-ebi.annailas.com
+
+=for Euclid 
+   gnos_url.default: 'https://gtrepo-ebi.annailabs.com'
+
+=item --working-dir[=][ ]<working-directory>
+
+A place for temporary ini and settings files
+
+=for Euclid
+    working-directory.default: 'decider_tmp'
+
+=item --sample[=][ ]<sample_uuid>
+
+For only running one particular sample based on its uuid
+
+=item threads[=][ ]<thread_count>
+
+Number of threads to use for BWA
+
+=for Euclid
+   thread_count.default: 8
+
+=item --test
+
+Indicates no workflow should be scheduled, just summary of what would have been run.
+
+=item --ignore-lane-count
+
+Skip the check that the GNOS XML contains a count of lanes for this sample and the bams count matches
+
+=item --force-run
+
+Schedule workflows even if they were previously completed
+
+=item --skip-meta-download
+
+Use the previously downloaded XML from GNOS (only useful for testing).
+
+=item --report[=][ ]<report_file>
+
+The report file name that the results will be placed in by the decider
+
+=for Euclid
+   report_file.default: 'workflow_decider_report.txt'
+
+=item settings[=][ ]<seqware_settings>
+
+The template seqware settings file
+
+=for Euclid
+   seqware_settings.default: 'seqware.settings'
+
+=item --upload-results
+
+A flag indicating the resulting BAM files and metadata should be uploaded to GNOS, default is to not upload!!!
+
+=item --ignore-failed 
+
+A flag indicating that previously failed runs for this specimen should be ignored and the specimen scheduled again
+
+=item --skip-cached
+
+A flag indicating that previously download metadata XML files should not be downloaded again
+
+=item --skip-gtdownload
+
+A flag indicating that input files should be just the bam input paths and not from GNOS
+
+=item --skip-gtupload
+
+A flag indicating that upload should not take place but output files should be placed in output_prefix/output_dir
+
+=item --output-prefix[=][]<output-prefix>
+
+If --skip-gtupload is set, use this to specify the prefix of where output files are written
+
+=for Euclid
+    output-prefix.default: './'
+
+=item --output-dir[=]<output-directory>
+
+if --skip-gtupload is set, use this to specify the dir of where output files are written
+
+=for Euclid
+   output-directory.defualt: 'seqware-results/'
+
+=item --input-prefix[=]<prefix>
+
+if --skip-gtdownload is set, this is the input bam file prefix

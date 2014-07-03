@@ -1,4 +1,4 @@
-package Samples::Schedule
+package SeqWare::Schedule;
 
 use common::sense;
 
@@ -16,26 +16,43 @@ use autodie qw(:all);
 #use XML::LibXML;
 #use Cwd;
 
+sub schedule_samples {
+    my ($class, $sample_info, $report_file, $specific_sample, $gnos_url, $input_prefix, $ignore_lane_count, $seqware_settings_file) = @_;
+  
+    say $report_file "SAMPLE SCHEDULING INFORMATION\n";
+
+    foreach my $participant (keys %{$sample_info}) {
+        schedule_participant($report_file,
+                             $sample_info, 
+                             $participant, 
+                             $specific_sample,
+                             $gnos_url,
+                             $input_prefix, 
+                             $ignore_lane_count,
+                             $seqware_settings_file);
+    }
+}
+
 sub schedule_workflow {
-    my ($d, $seqware_settings_file, $report_file) = @_;
+    my ($d, $seqware_settings_file, $report_file, $cluster_information, $working_dir, $threads, $gnos_url, $skip_gtdownload, $skip_gtupload, $test, $upload_results, $output_prefix, $output_dir, $force_run, $running_samples ) = @_;
 
     my $rand = substr(rand(), 2);
 
     my $settings = new Config::Simple($seqware_settings_file);
  
-    my $cluster = (keys %{$cluster_info})[0];
+    my $cluster = (keys %{$cluster_information})[0];
     my  $cluster_found = (defined $cluster)? 1: 0;
-    my $url = $cluster_info->{$cluster}{webservice};
-    my $username = $cluster_info->{$cluster}{username};
-    my $password = $cluster_info->{$cluster}{password};
-    my $workflow_accession = $cluster_info->{$cluster}{workflow_accession};
+    my $url = $cluster_information->{$cluster}{webservice};
+    my $username = $cluster_information->{$cluster}{username};
+    my $password = $cluster_information->{$cluster}{password};
+    my $workflow_accession = $cluster_information->{$cluster}{workflow_accession};
     $workflow_accession //= 0;
-    my $workflow_version = $cluster_info->{$cluster}{workflow_version};
+    my $workflow_version = $cluster_information->{$cluster}{workflow_version};
     $workflow_version //= '2.5.0';
-    my $host = $cluster_info->{$cluster}{host};
+    my $host = $cluster_information->{$cluster}{host};
     $host //= 'unknown';
 
-    delete $cluster_info->{$cluster};
+    delete $cluster_information->{$cluster};
 
     $settings->update('SW_REST_URL', $url);
     $settings->update('SW_REST_USER', $username);
@@ -116,34 +133,21 @@ seqware workflow schedule --accession $workflow_accession --host $host --ini $wo
     say $report_file;
 }
 
-sub schedule_samples {
-    my ($sample_info, $report_file, $specific_sample) = @_;
-  
-    say $report_file "SAMPLE SCHEDULING INFORMATION\n";
-
-    foreach my $participant (keys %{$sample_info}) {
-        schedule_participant($report_file,
-                             $sample_info, 
-                             $participant, 
-                             $specific_sample);
-    }
-}
-
-sub schedule_patricipant {
-    my ($report_file, $sample_info, $participant, $specific_sample) = @_;
+sub schedule_participant {
+    my ($report_file, $sample_info, $participant, $specific_sample, $gnos_url, $input_prefix, $ignore_lane_count, $seqware_settings_file) = @_;
 
     say $report_file "DONOR/PARTICIPANT: $participant\n";
 
     foreach my $sample (keys %{$sample_info->{$participant}}) {        
         if (not defined $specific_sample || $specific_sample eq $sample) {
             my $alignments = $sample_info->{$participant}{$sample}{$sample};
-            schedule_sample($sample, $sample_info, $report_file, $alignments, $gnos_url);
+            schedule_sample($sample, $sample_info, $report_file, $alignments, $gnos_url, $input_prefix, $ignore_lane_count, $seqware_settings_file);
         }
     }
 }
 
 sub schedule_sample {
-    my($sample, $sample_info, $report_file, $alignments, $gnos_url) = @_;
+    my($sample, $sample_info, $report_file, $alignments, $gnos_url, $input_prefix, $force_run, $running_samples, $ignore_failed, $ignore_lane_count, $seqware_settings_file) = @_;
 
     say $report_file "\tSAMPLE OVERVIEW";
     say $report_file "\tSPECIMEN/SAMPLE: $sample";
@@ -193,13 +197,13 @@ sub schedule_sample {
    
 
     schedule_workflow($sample, $seqware_settings_file)
-       if should_be_scheduled($aligns, $force_run, $report_file, $sample, $running_samples);
+       if should_be_scheduled($aligns, $force_run, $report_file, $sample, $running_samples, $ignore_failed, $ignore_lane_count);
 }
 
 sub should_be_scheduled {
-    my ($aligns, $force_run, $report_file, $sample, $running_samples) = @_;
+    my ($aligns, $force_run, $report_file, $sample, $running_samples, $ignore_failed, $ignore_lane_count) = @_;
 
-    if ((unaligned($aligns, $report_file) or scheduled($report_file, $sample, $running_samples, $sample))
+    if ((unaligned($aligns, $report_file) or scheduled($report_file, $sample, $running_samples, $sample, $force_run, $ignore_failed, $ignore_lane_count))
                                                          and not $force_run) { 
         say $report_file "\t\tCONCLUSION: WILL NOT SCHEDULE THIS SAMPLE FOR ALIGNMENT!"; 
         return 0;
@@ -224,7 +228,7 @@ sub unaligned {
 }
 
 sub scheduled {
-    my ($report_file, $sample, $running_samples ) = @_; 
+    my ($report_file, $sample, $running_samples, $force_run, $ignore_failed, $ignore_lane_count ) = @_; 
 
     my $analysis_url_str = join ',', sort keys %{$sample->{analysis_url}};
     $sample->{analysis_url} = $analysis_url_str;
