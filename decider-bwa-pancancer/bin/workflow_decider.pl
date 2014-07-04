@@ -14,23 +14,47 @@ use SeqWare::Cluster;
 use SeqWare::Schedule;
 use GNOS::SampleInformation;
 
-my $skip_upload = 1;
-my $use_gtdownload = 1;
-my $use_gtupload = 1;
-my $upload_results = 0;
-my $ignore_failed = 0;
-my $skip_cached = 0;
-my $skip_gtdownload = 0;
-my $skip_gtupload = 0;
-my $input_prefix = "";
+use Cwd 'abs_path';
 
 open my $report_file, '>', $ARGV{'--report'};
 
-my ($cluster_info, $running_samples) = SeqWare::Cluster->cluster_seqware_information($ARGV{'--json-cluster'}, $report_file);
+say 'Getting SeqWare Cluster Information';
 
-my $sample_info = GNOS::SampleInformation->get($ARGV{'--working-dir'}, $ARGV{'--gnos_url'}, $ARGV{'--skip-gtdownload'}, $skip_cached, $ARGV{'--test'});
+my ($cluster_information, $running_samples) 
+          = SeqWare::Cluster->cluster_seqware_information( $report_file,
+                                                           $ARGV{'--cluster-json'}, 
+                                                           $ARGV{'--ignore-failed'});
 
-# now look at each sample, see if it's already schedule, launch if not and a cluster is available, and then exit
-SeqWare::Schedule->schedule_samples($sample_info, $report_file, $ARGV{'--sample'}, $gnos_url, $input_prefix, $ARGV{'--ignore_lane_count'}, $ARGV{'settings'}, $ARGV{'--output-dir'}, $ARGV{'--output-prefix'}, $ARGV{'--force-run'}, $ARGV{'--threads'});
+
+say 'Getting Sample Information from GNOS';
+
+my $sample_information = GNOS::SampleInformation->get( $ARGV{'--working-dir'},
+                                                       $ARGV{'--gnos-url'},
+                                                       $ARGV{'--skip-meta-download'},
+                                                       $ARGV{'--skip-cached'});
+
+say 'Scheduling Samples';
+
+SeqWare::Schedule->schedule_samples( $report_file,
+                                     $sample_information,
+                                     $cluster_information,
+                                     $running_samples,
+                                     $ARGV{'--test'},
+                                     $ARGV{'--sample'}, 
+                                     $ARGV{'--ignore_lane_count'},
+                                     abs_path($ARGV{'--settings'}),
+                                     $ARGV{'--output-dir'},
+                                     $ARGV{'--output-prefix'},
+                                     $ARGV{'--force-run'},
+                                     $ARGV{'--threads'},
+                                     $ARGV{'--skip-gtdownload'}, 
+                                     $ARGV{'--skip-gtupload'},
+                                     $ARGV{'--upload-results'}, 
+                                     $ARGV{'--input-prefix'},
+                                     $ARGV{'--gnos-url'},
+                                     $ARGV{'--ignore-failed'},
+                                     $ARGV{'--working-dir'});
 
 close $report_file;
+
+say 'Finished!!'

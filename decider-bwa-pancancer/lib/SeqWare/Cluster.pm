@@ -5,45 +5,43 @@ use common::sense;
 use IPC::System::Simple;
 use autodie qw(:all);
 
-#use Capture::Tiny ':all';
-
 use File::Slurp;
 
 use XML::DOM;
-#use Data::Dumper;
 use JSON;
 use XML::LibXML;
-#use Cwd;
 
 sub cluster_seqware_information {
-    my ($class, $cluster_info, $report_file) = @_;
+    my ($class, $report_file, $json_cluster, $ignore_failed) = @_;
 
-    my $document = {};
-    my $run_samples = {};
+    my $clusters = decode_json( read_file( "conf/$json_cluster" ));
 
-    my $json_txt = read_file( "conf/$cluster_info" );
+    my $cluster_information = {};
+    my $running_samples = {};
 
-    my $clusters = decode_json($json_txt);
-
-
-    foreach my $cluster (keys %{$clusters}) {
-        my $cluster_info = $clusters->{$cluster};
-        seqware_information($cluster, $cluster_info, $document, $run_samples, $report_file);
+    foreach my $cluster_name (keys %{$clusters}) {
+        my $cluster_metadata = $clusters->{$cluster_name};
+        seqware_information( $report_file,
+                             $cluster_name, 
+                             $cluster_metadata,
+                             $cluster_information,
+                             $running_samples);
     }
 
-    return ($document, $run_samples);
+    return ($cluster_information, $running_samples);
 }
 
 sub seqware_information {
-    my ($cluster, $cluster_info, $document, $run_samples, $report_file) = @_;
+    my ($report_file, $cluster_name, $cluster_metadata, 
+                                   $cluster_information, $running_samples) = @_;
 
 
-    my $user = $cluster_info->{username};
-    my $password = $cluster_info->{password};
-    my $web = $cluster_info->{webservice};
-    my $workflow_accession = $cluster_info->{workflow_accession};
-    my $max_running = $cluster_info->{max_workflows};
-    my $max_scheduled_workflows = $cluster_info->{max_scheduled_workflows};
+    my $user = $cluster_metadata->{username};
+    my $password = $cluster_metadata->{password};
+    my $web = $cluster_metadata->{webservice};
+    my $workflow_accession = $cluster_metadata->{workflow_accession};
+    my $max_running = $cluster_metadata->{max_workflows};
+    my $max_scheduled_workflows = $cluster_metadata->{max_scheduled_workflows};
 
     $max_running = 1 if ($max_running <= 0 || $max_running eq "");
 
@@ -52,7 +50,7 @@ sub seqware_information {
                   || $max_scheduled_workflows eq "" 
                   || $max_scheduled_workflows > $max_running);
 
-    say $report_file "EXAMINING CLUSER: $cluster";
+    say $report_file "EXAMINING CLUSER: $cluster_name";
 
    my $workflow_information = `wget --timeout=60 -t 2 -O - --http-user='$user' --http-password=$password -q $web/workflows/$workflow_accession`;
 
@@ -66,13 +64,14 @@ sub seqware_information {
    if ($dom->findnodes('//Workflow/name/text()')) {
        my $workflow_runs = `wget -O - --http-user='$user' --http-password=$password -q $web/workflows/$workflow_accession/runs`;
        my $seqware_runs_domain = XML::LibXML->new->parse_string($workflow_runs);
-       $running = find_available_clusters($report_file, $seqware_runs_domain, $workflow_accession, $run_samples);
+       $running = find_available_clusters($report_file, $seqware_runs_domain,
+                                          $workflow_accession, $running_samples);
    }
 
    if ($running < $max_running ) {
        say $report_file  "\tTHERE ARE $running RUNNING WORKFLOWS WHICH IS LESS THAN MAX OF $max_running, ADDING TO LIST OF AVAILABLE CLUSTERS";
        for (my $i=0; $i<$max_scheduled_workflows; $i++) {
-           $document->{"$cluster\_$i"} = $cluster_info;
+           $cluster_information->{"$cluster_name\_$i"} = $cluster_metadata;
        }
    } 
    else {
@@ -126,11 +125,11 @@ sub find_running_samples {
                                               if defined $working_directory_node;
 
     my $seqware_accessions = $seqware_runs_domain->findnodes('//WorkflowRunList2/list/swAccession/text()');
-    my $accession_node =$seqware_accessions->[$i];
-    say $report_file "\t\t\tWORKFLOW ACCESSION: ".$accession_node->toString()."\n";
+    my $accession_node = (defined $seqware_accessions->[$i])?
+                                                $seqware_accessions->[$i]->toString() : '';
+    say $report_file "\t\t\tWORKFLOW ACCESSION: ".$accession_node."\n";
 
     return;
-
 } 
 
 

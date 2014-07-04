@@ -5,43 +5,81 @@ use common::sense;
 use IPC::System::Simple;
 use autodie qw(:all);
 
-#use Capture::Tiny ':all';
-
-#use File::Slurp;
-
-#use XML::DOM;
-#use Data::Dumper;
-#use JSON;
-#use Getopt::Long;
-#use XML::LibXML;
-#use Cwd;
+use Config::Simple;
+use Capture::Tiny ':all';
+use Cwd;
 
 sub schedule_samples {
-    my ($class, $sample_info, $report_file, $specific_sample, $gnos_url, $input_prefix, $ignore_lane_count, $seqware_settings_file) = @_;
+    my ($class, $report_file,
+                $sample_information, 
+                $cluster_information, 
+                $running_samples, 
+                $test,
+                $specific_sample,
+                $ignore_lane_count,
+                $seqware_settings_file,
+                $output_dir,
+                $output_prefix,
+                $force_run,
+                $threads,
+                $skip_gtdownload,
+                $skip_gtupload,
+                $upload_results,
+                $input_prefix, 
+                $gnos_url,
+                $ignore_failed, 
+                $working_dir) = @_;
   
     say $report_file "SAMPLE SCHEDULING INFORMATION\n";
 
-    foreach my $participant (keys %{$sample_info}) {
+    foreach my $participant (keys %{$sample_information}) {
+        my $participant_information = $sample_information->{$participant};
         schedule_participant($report_file,
-                             $sample_info, 
                              $participant, 
+                             $participant_information,
+                             $cluster_information, 
+                             $running_samples, 
+                             $test,
                              $specific_sample,
-                             $gnos_url,
-                             $input_prefix, 
                              $ignore_lane_count,
-                             $seqware_settings_file);
+                             $seqware_settings_file,
+                             $output_dir,
+                             $output_prefix,
+                             $force_run,
+                             $threads,
+                             $skip_gtdownload,
+                             $skip_gtupload,
+                             $upload_results,
+                             $input_prefix, 
+                             $gnos_url,
+                             $ignore_failed, 
+                             $working_dir);
     }
 }
 
 sub schedule_workflow {
-    my ($d, $seqware_settings_file, $report_file, $cluster_information, $working_dir, $threads, $gnos_url, $skip_gtdownload, $skip_gtupload, $test, $upload_results, $output_prefix, $output_dir, $force_run, $running_samples ) = @_;
+    my ( $sample, 
+         $seqware_settings_file, 
+         $report_file,
+         $cluster_information,
+         $working_dir,
+         $threads,
+         $gnos_url,
+         $skip_gtdownload,
+         $skip_gtupload,
+         $test,
+         $upload_results,
+         $output_prefix,
+         $output_dir,
+         $force_run,
+         $running_samples ) = @_;
 
     my $rand = substr(rand(), 2);
+    system("mkdir -p $working_dir/$rand");
 
-    my $settings = new Config::Simple($seqware_settings_file);
- 
     my $cluster = (keys %{$cluster_information})[0];
-    my  $cluster_found = (defined $cluster)? 1: 0;
+    my $cluster_found = (defined $cluster)? 1: 0;
+
     my $url = $cluster_information->{$cluster}{webservice};
     my $username = $cluster_information->{$cluster}{username};
     my $password = $cluster_information->{$cluster}{password};
@@ -51,108 +89,170 @@ sub schedule_workflow {
     $workflow_version //= '2.5.0';
     my $host = $cluster_information->{$cluster}{host};
     $host //= 'unknown';
+    $cluster_found = 1;
 
     delete $cluster_information->{$cluster};
 
-    $settings->update('SW_REST_URL', $url);
-    $settings->update('SW_REST_USER', $username);
-    $settings->update('SW_REST_PASS',$password);
+    create_settings_file($seqware_settings_file, $url, $username, $password, $working_dir, $rand);
 
-    # can only assign one workflow here per cluster
-    $cluster_found = 1;
-
-    system("mkdir -p $working_dir/$rand");
-
-    $settings->write("$working_dir/$rand/settings");
-
-    my $template_ini = read_file( "template/ini/workflow-$workflow_version.json" ) ; 
-    my %workflow_ini = JSON->new->allow_nonref->decode( $template_ini );
-
-    $workflow_ini{input_bam_paths} = join ',', sort keys %{$d->{local_bams}} ;
-    $workflow_ini{gnos_input_file_urls} = $d->{gnos_input_file_urls};
-    $workflow_ini{gnos_input_metadata_urls} = $d->{analysis_url};
-    $workflow_ini{gnos_output_file_url} = $gnos_url;
-    $workflow_ini{numOfThreads} = $threads;
-    $workflow_ini{use_gtdownload} = ($skip_gtdownload)? 'false': 'true';
-    $workflow_ini{use_gtupload} =  ($skip_gtupload)? 'false': 'true';
-    $workflow_ini{skip_upload} = ($upload_results)? 'false': 'true';
-    $workflow_ini{output_prefix} = $output_prefix;
-    $workflow_ini{output_dir} = $output_dir;
-
-    my $settings = new Config::Simple("$working_dir/$rand/workflow.ini");
-    foreach my $parameter (keys %workflow_ini) {
-        $settings->param($parameter, $workflow_ini{$parameter});
-    }
-    $settings->save();
+    create_workflow_ini($workflow_version, $sample, $gnos_url, $threads, $skip_gtdownload, $skip_gtupload, $upload_results, $output_prefix, $output_dir, $working_dir, $rand);
 
     submit_workflow($working_dir, $rand, $workflow_accession, $host, $test, $cluster_found, $report_file, $url);
 }
+
+sub create_settings_file {
+    my ($seqware_settings_file, $url, $username, $password, $working_dir, $rand) = @_;
+
+    my $settings = new Config::Simple($seqware_settings_file);
+
+    $settings->param('SW_REST_URL', $url);
+    $settings->param('SW_REST_USER', $username);
+    $settings->param('SW_REST_PASS',$password);
+
+    $settings->write("$working_dir/$rand/settings");
+}
+
+sub create_workflow_ini {
+    my ($workflow_version, $sample, $gnos_url, $threads, $skip_gtdownload, $skip_gtupload, $upload_results, $output_prefix, $output_dir, $working_dir, $rand) = @_;
+
+    my $workflow_ini = new Config::Simple("template/ini/workflow-$workflow_version.ini" );
+
+    $workflow_ini->param('input_bam_paths', join ',', sort keys %{$sample->{local_bams}});
+    $workflow_ini->param('gnos_input_file_urls', $sample->{gnos_input_file_urls});
+    $workflow_ini->param('gnos_input_metadata_urls', $sample->{analysis_url});
+    $workflow_ini->param('gnos_output_file_url', $gnos_url);
+    $workflow_ini->param('numOfThreads', $threads);
+    $workflow_ini->param('use_gtdownload', ($skip_gtdownload)? 'false': 'true');
+    $workflow_ini->param('use_gtupload',  ($skip_gtupload)? 'false': 'true');
+    $workflow_ini->param('skip_upload', ($upload_results)? 'false': 'true');
+    $workflow_ini->param('output_prefix', $output_prefix);
+    $workflow_ini->param('output_dir', $output_dir);
+  
+    $workflow_ini->write("$working_dir/$rand/workflow.ini");
+}
+
 
 sub submit_workflow {
     my ($working_dir, $rand, $workflow_accession, $host, $test, $cluster_found, $report_file, $url) = @_;
 
     my $dir = getcwd();
 
+    say "Submitting sample in direcotry $working_dir/$rand";
+
     my $launch_command = "SEQWARE_SETTINGS=$working_dir/$rand/settings /usr/local/bin/seqware workflow schedule --accession $workflow_accession --host $host --ini $working_dir/$rand/workflow.ini";
 
-    if (not $test and $cluster_found) {
+    if ($test) {
+        say $report_file "\tNOT LAUNCHING WORKFLOW BECAUSE --test SPECIFIED: $working_dir/$rand/workflow.ini";
+        say $report_file "\t\tLAUNCH CMD WOULD HAVE BEEN: $launch_command\n";
+        return;
+    }
+ 
+ 
+    if ($cluster_found) {
        
         say $report_file "\tLAUNCHING WORKFLOW: $working_dir/$rand/workflow.ini";
         say $report_file "\t\tCLUSTER HOST: $host ACCESSION: $workflow_accession URL: $url";
         say $report_file "\t\tLAUNCH CMD: $launch_command";
 
-        open my $temp_script, '>', 'temp_script.sh';
-        # FIXME: this is all extremely brittle when executed via cronjobs
-        print $temp_script "#!/usr/bin/env bash
+        my $out_fh = IO::File->new("submission.o", "w+");
+        my $err_fh = IO::File->new("submission.e", "w+");
+ 
+        my ($std_out, $std_err) = capture {
+            no autodie qw(system);
+             system("source ~/.bashrc;
+                      cd $dir;
+                      export SEQWARE_SETTINGS=$working_dir/$rand/settings;
+                      export PATH=\$PATH:/usr/local/bin;
+                      env;
+                     # seqware workflow schedule --accession $workflow_accession --host $host --ini $working_dir/$rand/workflow.ini") } stdout => $out_fh, sterr => $err_fh;
 
-source ~/.bashrc
 
-cd $dir
-export SEQWARE_SETTINGS=$working_dir/$rand/settings
-export PATH=\$PATH:/usr/local/bin
-env
-seqware workflow schedule --accession $workflow_accession --host $host --ini $working_dir/$rand/workflow.ini
-
-";
-        close $temp_script;
-
-        my $temp_script_command = "bash -l $dir/temp_script.sh > submission.out 2> submission.err";
-
-        no autodie qw(system);
         say $report_file "\t\tSOMETHING WENT WRONG WITH SCHEDULING THE WORKFLOW"
-             unless (system($temp_script_command) == 0);
+                                                                       if( $std_err);
     }
-    elsif ( not $test and not $cluster_found) {
+    else {
         say $report_file "\tNOT LAUNCHING WORKFLOW, NO CLUSTER AVAILABLE: $working_dir/$rand/workflow.ini";
         say $report_file "\t\tLAUNCH CMD WOULD HAVE BEEN: $launch_command";
     } 
-    else {
-        say $report_file "\tNOT LAUNCHING WORKFLOW BECAUSE --test SPECIFIED: $working_dir/$rand/workflow.ini";
-        say $report_file "\t\tLAUNCH CMD WOULD HAVE BEEN: $launch_command";
-    }
-    say $report_file;
+    say $report_file '';
 }
 
 sub schedule_participant {
-    my ($report_file, $sample_info, $participant, $specific_sample, $gnos_url, $input_prefix, $ignore_lane_count, $seqware_settings_file) = @_;
+    my ( $report_file,
+         $participant,
+         $participant_information,
+         $cluster_information, 
+         $running_samples, 
+         $test,
+         $specific_sample,
+         $ignore_lane_count,
+         $seqware_settings_file,
+         $output_dir,
+         $output_prefix,
+         $force_run,
+         $threads,
+         $skip_gtdownload,
+         $skip_gtupload,
+         $upload_results,
+         $input_prefix, 
+         $gnos_url,
+         $ignore_failed,
+         $working_dir ) = @_;
 
     say $report_file "DONOR/PARTICIPANT: $participant\n";
 
-    foreach my $sample (keys %{$sample_info->{$participant}}) {        
-        if (not defined $specific_sample || $specific_sample eq $sample) {
-            my $alignments = $sample_info->{$participant}{$sample}{$sample};
-            schedule_sample($sample, $sample_info, $report_file, $alignments, $gnos_url, $input_prefix, $ignore_lane_count, $seqware_settings_file);
-        }
+    foreach my $sample (keys %{$participant_information}) {        
+        next if (defined $specific_sample && $specific_sample eq $sample);
+
+        schedule_sample( $sample,
+                         $participant_information,
+                         $report_file,
+                         $gnos_url,
+                         $input_prefix,
+                         $force_run,
+                         $running_samples,
+                         $ignore_failed,
+                         $ignore_lane_count,
+                         $seqware_settings_file,
+                         $cluster_information,
+                         $working_dir,
+                         $threads,
+                         $skip_gtdownload,
+                         $skip_gtupload,
+                         $test,
+                         $upload_results,
+                         $output_prefix,
+                         $output_dir);
     }
 }
 
 sub schedule_sample {
-    my($sample, $sample_info, $report_file, $alignments, $gnos_url, $input_prefix, $force_run, $running_samples, $ignore_failed, $ignore_lane_count, $seqware_settings_file) = @_;
+    my ( $sample,
+         $participant_information, 
+         $report_file,
+         $gnos_url,
+         $input_prefix,
+         $force_run,
+         $running_samples, 
+         $ignore_failed,
+         $ignore_lane_count, 
+         $seqware_settings_file,
+         $cluster_information,
+         $working_dir,
+         $threads,
+         $skip_gtdownload,
+         $skip_gtupload,
+         $test,
+         $upload_results,
+         $output_prefix,
+         $output_dir,
+         
+) = @_;
 
-    say $report_file "\tSAMPLE OVERVIEW";
-    say $report_file "\tSPECIMEN/SAMPLE: $sample";
+    say $report_file "\tSAMPLE OVERVIEW\n\tSPECIMEN/SAMPLE: $sample";
 
-    my $sample = {gnos_url => $gnos_url};
+    my $alignments = $participant_information->{$sample};
+    my $sample = { gnos_url => $gnos_url};
     my $aligns = {};
     foreach my $alignment (keys %{$alignments}) {
         say $report_file "\t\tALIGNMENT: $alignment";
@@ -196,15 +296,35 @@ sub schedule_sample {
     say $report_file "\t\tBAMS FOUND: $sample->{bams_count}";
    
 
-    schedule_workflow($sample, $seqware_settings_file)
-       if should_be_scheduled($aligns, $force_run, $report_file, $sample, $running_samples, $ignore_failed, $ignore_lane_count);
+    schedule_workflow( $sample, 
+                       $seqware_settings_file, 
+                       $report_file,
+                       $cluster_information,
+                       $working_dir,
+                       $threads,
+                       $gnos_url,
+                       $skip_gtdownload,
+                       $skip_gtupload,
+                       $test,
+                       $upload_results,
+                       $output_prefix,
+                       $output_dir,
+                       $force_run,
+                       $running_samples )
+       if should_be_scheduled( $aligns, 
+                               $force_run, 
+                               $report_file, 
+                               $sample, 
+                               $running_samples, 
+                               $ignore_failed, 
+                               $ignore_lane_count);
 }
 
 sub should_be_scheduled {
     my ($aligns, $force_run, $report_file, $sample, $running_samples, $ignore_failed, $ignore_lane_count) = @_;
 
     if ((unaligned($aligns, $report_file) or scheduled($report_file, $sample, $running_samples, $sample, $force_run, $ignore_failed, $ignore_lane_count))
-                                                         and not $force_run) { 
+                                                         and $force_run) { 
         say $report_file "\t\tCONCLUSION: WILL NOT SCHEDULE THIS SAMPLE FOR ALIGNMENT!"; 
         return 0;
     }

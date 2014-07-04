@@ -6,19 +6,14 @@ use IPC::System::Simple;
 use autodie qw(:all);
 
 use Carp::Always;
-
 use File::Slurp;
-
 use Term::ProgressBar;
-
-
-use Data::Dumper;
 
 sub get {
     my ($class, $working_dir, $gnos_url, $skip_down, $skip_cached) = @_;
 
     system("mkdir -p $working_dir");
-    open my $settings_file, '>', "$working_dir/xml_parse.log";
+    open my $parse_log, '>', "$working_dir/xml_parse.log";
 
     my $participants = {};
     my $parser = new XML::DOM::Parser;
@@ -27,7 +22,7 @@ sub get {
         my $cmd = "mkdir -p $working_dir/xml; cgquery -s $gnos_url -o $working_dir/xml/data.xml";
         $cmd .= ($gnos_url =~ /cghub.ucsc.edu/)? " 'study=PAWG&state=live'":" 'study=*&state=live'";
 
-        say $settings_file "cgquery command: $cmd";
+        say $parse_log "cgquery command: $cmd";
 
         system($cmd);
     }
@@ -37,7 +32,7 @@ sub get {
     # print OUT all HREF attributes of all CODEBASE elements
     my $results = $data->getElementsByTagName("Result");
 
-    say $settings_file '';
+    say $parse_log '';
     
     say 'Downloading Sample Information from GNOS';
     my $progress_bar = Term::ProgressBar->new($results->getLength);
@@ -54,11 +49,11 @@ sub get {
             $analysis_uuid = lc $2;
         } 
         else {
-            say $settings_file "SKIPPING: no analysis url";
+            say $parse_log "SKIPPING: no analysis url";
             next;
         }
 
-        say $settings_file "ANALYSIS FULL URL: $analysis_full_url $analysis_uuid";
+        say $parse_log "ANALYSIS FULL URL: $analysis_full_url $analysis_uuid";
 
         my $out =  "$working_dir/xml/data_$analysis_uuid.xml";
         download($analysis_full_url, $out, $skip_cached) unless ($skip_down);
@@ -85,35 +80,35 @@ sub get {
             my $total_lanes = get_custom_value($adoc2, ['total_lanes']);
             my $sample_uuid = get_xpath_attribute($adoc2, "refname", "//ANALYSIS_SET/ANALYSIS/TARGETS/TARGET/\@refname");
     
-            say $settings_file "ANALYSIS:  $analysis_data_uri";
-            say $settings_file "ANALYSISID: $analysis_id";
-            say $settings_file "PARTICIPANT ID: $participant_id";
-            say $settings_file "SAMPLE ID: $sample_id";
-            say $settings_file "ALIQUOTID: $aliquot_id";
-            say $settings_file "SUBMITTER PARTICIPANT ID: $submitter_participant_id";
-            say $settings_file "SUBMITTER SAMPLE ID: $submitter_sample_id";
-            say $settings_file "SUBMITTER ALIQUOTID: $submitter_aliquot_id";
+            say $parse_log "ANALYSIS:  $analysis_data_uri";
+            say $parse_log "ANALYSISID: $analysis_id";
+            say $parse_log "PARTICIPANT ID: $participant_id";
+            say $parse_log "SAMPLE ID: $sample_id";
+            say $parse_log "ALIQUOTID: $aliquot_id";
+            say $parse_log "SUBMITTER PARTICIPANT ID: $submitter_participant_id";
+            say $parse_log "SUBMITTER SAMPLE ID: $submitter_sample_id";
+            say $parse_log "SUBMITTER ALIQUOTID: $submitter_aliquot_id";
     
             my $library_name = get_value($adoc, 'LIBRARY_NAME');
             my $library_strategy = get_value($adoc, 'LIBRARY_STRATEGY');
             my $library_source = get_value($adoc, 'LIBRARY_SOURCE');
-            say $settings_file "Library Name: $library_name Library Strategy: $library_strategy Library Source: $library_source";
+            say $parse_log "Library\tName:\t$library_name\n\t\tLibrary Strategy:\t$library_strategy\n\t\tLibrary Source:\t$library_source";
     
             # get files
             # now if these are defined then move onto the next step
             unless (defined($library_name) && defined($library_strategy) && defined($library_source) && defined($analysis_id) && defined($analysis_data_uri)) {
-                say $settings_file "ERROR: one or more critical fields not defined, will skip $analysis_id\n";
+                say $parse_log "ERROR: one or more critical fields not defined, will skip $analysis_id\n";
                 next;
             }
     
-            say $settings_file "  gtdownload -c gnostest.pem -v -d $analysis_data_uri\n";
+            say $parse_log "  gtdownload -c gnostest.pem -v -d $analysis_data_uri\n";
     
             our %library;
             my $library =  $participants->{$participant_id}{$sample_id}{$alignment}{$aliquot_id}{$library_name};
     
             $library->{analysis_id}{$analysis_id} = 1;
             $library->{analysis_url}{$analysis_data_uri} = 1;
-            $library->{$library_name} = 1;
+            $library->{library_name}{$library_name} = 1;
             $library->{library_strategy}{$library_strategy} = 1;
             $library->{library_source}{$library_source} = 1;
             $library->{alignment_genome}{$alignment} = 1;
@@ -129,18 +124,21 @@ sub get {
             # gnos_input_metadata_urls=https://gtrepo-ebi.annailabs.com/cghub/metadata/analysisFull/9c414428-9446-11e3-86c1-ab5c73f0e08b
     
             my $files = read_files($adoc);
-            say $settings_file "FILE:";
+            say $parse_log "FILE:";
+
             foreach my $file (keys %{$files}) {
-                say $settings_file "  FILE: $file SIZE: ".$files->{$file}{size}." CHECKSUM: ".$files->{$file}{checksum};
-                say $settings_file "  LOCAL FILE PATH: $analysis_id/$file";
+                say $parse_log "  FILE: $file SIZE: ".$files->{$file}{size}." CHECKSUM: ".$files->{$file}{checksum};
+                say $parse_log "  LOCAL FILE PATH: $analysis_id/$file";
                 $library{files}{$file}{size} = $files->{$file}{size};
                 $library{files}{$file}{checksum} = $files->{$file}{checksum};
                 $library{files}{$file}{localpath} = "$analysis_id/$file";
             }
         }
     }
+
     $results->dispose;
-    close $settings_file;
+
+    close $parse_log;
 
     return $participants;
 }
@@ -155,7 +153,7 @@ sub read_files {
         my $node = $nodes->item($i);
         my $file = get_value($node, 'filename');
 
-        next if ($file =~ /\.bam$/);
+        next unless ($file =~ /\.bam$/);
 
         $files{$file}{size} =  get_value($node, 'filesize');
         $files{$file}{checksum} = get_value($node, 'checksum');
@@ -168,7 +166,7 @@ sub get_custom_value {
     my ($domain, $keys) = @_;
 
     for my $node ($domain->findnodes('//ANALYSIS_ATTRIBUTES/ANALYSIS_ATTRIBUTE')) {
-        my $i=0;
+        my $i = 0;
         for my $current_key ($node->findnodes('//TAG/text()')) {
             $i++;
             my $key_string = $current_key->toString();
