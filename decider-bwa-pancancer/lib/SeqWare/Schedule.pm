@@ -5,6 +5,7 @@ use common::sense;
 use IPC::System::Simple;
 use autodie qw(:all);
 
+use Term::ProgressBar;
 use Config::Simple;
 use Capture::Tiny ':all';
 use Cwd;
@@ -32,6 +33,10 @@ sub schedule_samples {
   
     say $report_file "SAMPLE SCHEDULING INFORMATION\n";
 
+
+    my $progress_bar = Term::ProgressBar->new(scalar keys %{$sample_information});
+
+    my $i = 0;
     foreach my $participant (keys %{$sample_information}) {
         my $participant_information = $sample_information->{$participant};
         schedule_participant($report_file,
@@ -54,6 +59,7 @@ sub schedule_samples {
                              $gnos_url,
                              $ignore_failed, 
                              $working_dir);
+         $progress_bar->update($i++);
     }
 }
 
@@ -75,7 +81,7 @@ sub schedule_workflow {
          $running_samples ) = @_;
 
     my $rand = substr(rand(), 2);
-    system("mkdir -p $working_dir/$rand");
+    system("mkdir -p $working_dir/samples/$rand");
 
     my $cluster = (keys %{$cluster_information})[0];
     my $cluster_found = (defined $cluster)? 1: 0;
@@ -89,7 +95,6 @@ sub schedule_workflow {
     $workflow_version //= '2.5.0';
     my $host = $cluster_information->{$cluster}{host};
     $host //= 'unknown';
-    $cluster_found = 1;
 
     delete $cluster_information->{$cluster};
 
@@ -103,13 +108,13 @@ sub schedule_workflow {
 sub create_settings_file {
     my ($seqware_settings_file, $url, $username, $password, $working_dir, $rand) = @_;
 
-    my $settings = new Config::Simple($seqware_settings_file);
+    my $settings = new Config::Simple("template/ini/$seqware_settings_file");
 
     $settings->param('SW_REST_URL', $url);
     $settings->param('SW_REST_USER', $username);
     $settings->param('SW_REST_PASS',$password);
 
-    $settings->write("$working_dir/$rand/settings");
+    $settings->write("$working_dir/samples/$rand/settings");
 }
 
 sub create_workflow_ini {
@@ -117,7 +122,7 @@ sub create_workflow_ini {
 
     my $workflow_ini = new Config::Simple("template/ini/workflow-$workflow_version.ini" );
 
-    $workflow_ini->param('input_bam_paths', join ',', sort keys %{$sample->{local_bams}});
+    $workflow_ini->param('input_bam_paths', $sample->{local_bams_string});
     $workflow_ini->param('gnos_input_file_urls', $sample->{gnos_input_file_urls});
     $workflow_ini->param('gnos_input_metadata_urls', $sample->{analysis_url});
     $workflow_ini->param('gnos_output_file_url', $gnos_url);
@@ -128,7 +133,7 @@ sub create_workflow_ini {
     $workflow_ini->param('output_prefix', $output_prefix);
     $workflow_ini->param('output_dir', $output_dir);
   
-    $workflow_ini->write("$working_dir/$rand/workflow.ini");
+    $workflow_ini->write("$working_dir/samples/$rand/workflow.ini");
 }
 
 
@@ -136,8 +141,6 @@ sub submit_workflow {
     my ($working_dir, $rand, $workflow_accession, $host, $test, $cluster_found, $report_file, $url) = @_;
 
     my $dir = getcwd();
-
-    say "Submitting sample in direcotry $working_dir/$rand";
 
     my $launch_command = "SEQWARE_SETTINGS=$working_dir/$rand/settings /usr/local/bin/seqware workflow schedule --accession $workflow_accession --host $host --ini $working_dir/$rand/workflow.ini";
 
@@ -154,12 +157,12 @@ sub submit_workflow {
         say $report_file "\t\tCLUSTER HOST: $host ACCESSION: $workflow_accession URL: $url";
         say $report_file "\t\tLAUNCH CMD: $launch_command";
 
-        my $out_fh = IO::File->new("submission.o", "w+");
-        my $err_fh = IO::File->new("submission.e", "w+");
+        my $out_fh = IO::File->new("log/submission/$rand.o", "w+");
+        my $err_fh = IO::File->new("log/submission/$rand.e", "w+");
  
         my ($std_out, $std_err) = capture {
-            no autodie qw(system);
-             system("source ~/.bashrc;
+             no autodie qw(system);
+             system( "source ~/.bashrc;
                       cd $dir;
                       export SEQWARE_SETTINGS=$working_dir/$rand/settings;
                       export PATH=\$PATH:/usr/local/bin;
@@ -245,9 +248,7 @@ sub schedule_sample {
          $test,
          $upload_results,
          $output_prefix,
-         $output_dir,
-         
-) = @_;
+         $output_dir) = @_;
 
     say $report_file "\tSAMPLE OVERVIEW\n\tSPECIMEN/SAMPLE: $sample";
 
@@ -256,20 +257,23 @@ sub schedule_sample {
     my $aligns = {};
     foreach my $alignment (keys %{$alignments}) {
         say $report_file "\t\tALIGNMENT: $alignment";
+
         $aligns->{$alignment} = 1;
         my $aliquotes = $alignments->{$alignment};
         foreach my $aliquot (keys %{$aliquotes}) {
             say $report_file "\t\t\tANALYZED SAMPLE/ALIQUOT: $aliquot";
+
             my $libraries = $aliquotes->{$aliquot};
             foreach my $library (keys %{$libraries}) {
                 say $report_file "\t\t\t\tLIBRARY: $library";
-                # read lane counts
+
                 my $total_lanes = $libraries->{$library}{total_lanes};
                 foreach my $lane (keys %{$total_lanes}) {
                     $total_lanes = $lane if ($lane > $total_lanes);
                 }
                 $sample->{total_lanes_hash}{$total_lanes} = 1;
                 $sample->{total_lanes} = $total_lanes;
+
                 my $files = $library->{files};
                 foreach my $file (keys %{$files}) {
                     my $local_path = $file->{localpath};
@@ -277,14 +281,15 @@ sub schedule_sample {
                     my $local_file_path = $input_prefix.$local_path;
                     $sample->{local_bams}{$local_file_path} = 1;
                     $sample->{bam_count} ++ if ($alignment eq "unaligned");
-                 }
-                 # analysis
-                 my $analyses = $library->{analysis_id};
-                 foreach my $analysis (sort keys %{$analyses}) {
+                }
+ 
+                $sample->{local_bams_string} = join ',', sort keys %{$sample->{local_bams}};
+                my $analyses = $library->{analysis_id};
+                foreach my $analysis (sort keys %{$analyses}) {
                      $sample->{analysis_url}{"$gnos_url/cghub/metadata/analysisFull/$analysis"} = 1;
                      $sample->{download_url}{"$gnos_url/cghub/data/analysis/download/$analysis"} = 1;
                  }
-                 $sample->{gnos_input_file_urls} = join ',', sort keys %{$sample->{downloadURL}};
+                 $sample->{gnos_input_file_urls} = join ',', sort keys %{$sample->{download_url}};
                  say $report_file "\t\t\t\t\tBAMS: ", join ',', keys %{$files};
                  say $report_file "\t\t\t\t\tANALYSIS_IDS: ", join ',', keys %{$library->{analysis_id}}. "\n";
             }

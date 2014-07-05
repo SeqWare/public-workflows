@@ -14,9 +14,11 @@ use SeqWare::Cluster;
 use SeqWare::Schedule;
 use GNOS::SampleInformation;
 
-use Cwd 'abs_path';
-
 open my $report_file, '>', $ARGV{'--report'};
+
+say "Removing cached ini and settings samples if cached";
+
+`rm $ARGV{'--working-dir'}/samples/ -rf`;
 
 say 'Getting SeqWare Cluster Information';
 
@@ -42,7 +44,7 @@ SeqWare::Schedule->schedule_samples( $report_file,
                                      $ARGV{'--test'},
                                      $ARGV{'--sample'}, 
                                      $ARGV{'--ignore_lane_count'},
-                                     abs_path($ARGV{'--settings'}),
+                                     $ARGV{'--settings'},
                                      $ARGV{'--output-dir'},
                                      $ARGV{'--output-prefix'},
                                      $ARGV{'--force-run'},
