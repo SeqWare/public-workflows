@@ -21,7 +21,6 @@ say "Removing cached ini and settings samples if cached";
 `rm $ARGV{'--working-dir'}/samples/ -rf`;
 
 say 'Getting SeqWare Cluster Information';
-
 my ($cluster_information, $running_samples) 
           = SeqWare::Cluster->cluster_seqware_information( $report_file,
                                                            $ARGV{'--cluster-json'}, 
@@ -29,14 +28,12 @@ my ($cluster_information, $running_samples)
 
 
 say 'Getting Sample Information from GNOS';
-
 my $sample_information = GNOS::SampleInformation->get( $ARGV{'--working-dir'},
                                                        $ARGV{'--gnos-url'},
                                                        $ARGV{'--skip-meta-download'},
                                                        $ARGV{'--skip-cached'});
 
 say 'Scheduling Samples';
-
 SeqWare::Schedule->schedule_samples( $report_file,
                                      $sample_information,
                                      $cluster_information,
