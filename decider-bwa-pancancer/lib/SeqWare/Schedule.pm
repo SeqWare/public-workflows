@@ -173,7 +173,7 @@ sub submit_workflow {
                       export SEQWARE_SETTINGS=$working_dir/$center_name/$sample_id/settings;
                       export PATH=\$PATH:/usr/local/bin;
                       env;
-                     # seqware workflow schedule --accession $workflow_accession --host $host --ini $working_dir/$center_name/$sample_id/workflow.ini") } stdout => $out_fh, sterr => $err_fh;
+                      seqware workflow schedule --accession $workflow_accession --host $host --ini $working_dir/$center_name/$sample_id/workflow.ini") } stdout => $out_fh, sterr => $err_fh;
 
 
         say $report_file "\t\tSOMETHING WENT WRONG WITH SCHEDULING THE WORKFLOW"
@@ -275,34 +275,37 @@ sub schedule_sample {
             foreach my $library_id (keys %{$libraries}) {
                 say $report_file "\t\t\t\tLIBRARY: $library_id";
                 my $library = $libraries->{$library_id};
-                my $total_lanes = $library->{total_lanes};
-                foreach my $lane (keys %{$total_lanes}) {
+                my $lanes = $library->{total_lanes};
+                my $total_lanes = 0;
+                foreach my $lane (keys %{$lanes}) {
                     $total_lanes = $lane if ($lane > $total_lanes);
                 }
-                $sample->{total_lanes_hash}{$total_lanes} = 1;
                 $sample->{total_lanes} = $total_lanes;
-
                 my $files = $library->{files};
                 foreach my $file (keys %{$files}) {
-                    my $local_path = $file->{localpath};
-                    $sample->{files}{$file} = $local_path;
+                    my $local_path = $files->{$file}{local_path};
+                    $sample->{file}{$file} = $local_path;
                     my $local_file_path = $input_prefix.$local_path;
                     $sample->{local_bams}{$local_file_path} = 1;
                     $sample->{bam_count} ++ if ($alignment_id eq "unaligned");
                 }
+
+                my @local_bams = keys %{$sample->{local_bams}};
  
-                $sample->{local_bams_string} = join ',', sort keys %{$sample->{local_bams}};
-                my $analysis_ids = $library->{analysis_id};
+                $sample->{local_bams_string} = join ',', sort @local_bams;
 
-                foreach my $analysis_id (sort keys %{$analysis_ids}) {
-                     $sample->{analysis_url}{"$gnos_url/cghub/metadata/analysisFull/$analysis_id"} = 1;
-                     $sample->{download_url}{"$gnos_url/cghub/data/analysis/download/$analysis_id"} = 1;
-                 }
-
-                 $sample->{gnos_input_file_urls} = join ',', sort keys $sample->{download_url};
-                 say $report_file "\t\t\t\t\tBAMS: ".join ',', keys %{$files};
-                 my @analysis_ids =;
-                 say $report_file "\t\t\t\t\tANALYSIS_IDS: ". join ',', @{ keys $analysis_ids}. "\n";
+                my @analysis_ids = keys %{$library->{analysis_ids}};
+                if ( $alignment_id eq 'unaligned' ) {
+                    foreach my $analysis_id (sort @analysis_ids) {
+                        $sample->{analysis_url}{"$gnos_url/cghub/metadata/analysisFull/$analysis_id"} = 1;
+                        $sample->{download_url}{"$gnos_url/cghub/data/analysis/download/$analysis_id"} = 1;
+                    }
+                }
+                my @download_urls = keys %{$sample->{download_url}};
+                $sample->{gnos_input_file_urls} = join ',', sort @download_urls;
+             
+                say $report_file "\t\t\t\t\tBAMS: ".join ',', keys $files;
+                say $report_file "\t\t\t\t\tANALYSIS_IDS (both aligned and unaligned): ". join ',', @analysis_ids. "\n";
             }
         }
     }
