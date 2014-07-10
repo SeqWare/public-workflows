@@ -54,6 +54,8 @@ SeqWare::Schedule->schedule_samples( $report_file,
                                      $ARGV{'--ignore-failed'},
                                      $ARGV{'--working-dir'});
 
+
+
 close $report_file;
 
 say 'Finished!!'

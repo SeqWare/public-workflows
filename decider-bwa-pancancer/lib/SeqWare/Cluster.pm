@@ -62,7 +62,7 @@ sub seqware_information {
     }
 
 
-    my $xs = XML::Simple->new();
+    my $xs = XML::Simple->new(ForceArray => 1, KeyAttr => 1);
     my $workflow_information = $xs->XMLin($workflow_information_xml);
 
     my $running = 0;

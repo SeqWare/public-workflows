@@ -130,12 +130,12 @@ sub create_workflow_ini {
 
     $workflow_ini->param('input_bam_paths', $sample->{local_bams_string});
     $workflow_ini->param('gnos_input_file_urls', $sample->{gnos_input_file_urls});
-    $workflow_ini->param('gnos_input_metadata_urls', $sample->{analysis_url});
+    $workflow_ini->param('gnos_input_metadata_urls', $sample->{analysis_url_string});
     $workflow_ini->param('gnos_output_file_url', $gnos_url);
     $workflow_ini->param('numOfThreads', $threads);
-    $workflow_ini->param('use_gtdownload', ($skip_gtdownload)? 'false': 'true');
-    $workflow_ini->param('use_gtupload',  ($skip_gtupload)? 'false': 'true');
-    $workflow_ini->param('skip_upload', ($upload_results)? 'false': 'true');
+    $workflow_ini->param('use_gtdownload', (defined $skip_gtdownload)? 'false': 'true');
+    $workflow_ini->param('use_gtupload',  (defined $skip_gtupload)? 'false': 'true');
+    $workflow_ini->param('skip_upload', (defined $upload_results)? 'false': 'true');
     $workflow_ini->param('output_prefix', $output_prefix);
     $workflow_ini->param('output_dir', $output_dir);
   
@@ -212,7 +212,7 @@ sub schedule_participant {
     say $report_file "DONOR/PARTICIPANT: $participant_id\n";
 
     foreach my $sample_id (keys %{$participant_information}) {        
-        next if (defined $specific_sample && $specific_sample eq $sample_id);
+        next if (defined $specific_sample && $specific_sample ne $sample_id);
 
         schedule_sample( $sample_id,
                          $participant_information,
@@ -303,9 +303,12 @@ sub schedule_sample {
                 }
                 my @download_urls = keys %{$sample->{download_url}};
                 $sample->{gnos_input_file_urls} = join ',', sort @download_urls;
-             
+   
+                my @analysis_urls = keys %{$sample->{analysis_url}};
+                $sample->{analysis_url_string} = join ',', @analysis_urls;   
+
                 say $report_file "\t\t\t\t\tBAMS: ".join ',', keys $files;
-                say $report_file "\t\t\t\t\tANALYSIS_IDS (both aligned and unaligned): ". join ',', @analysis_ids. "\n";
+                say $report_file "\t\t\t\t\tANALYSIS_IDS (unaligned): ". $sample->{analysis_url_string}. "\n";
             }
         }
     }
@@ -338,17 +341,22 @@ sub schedule_sample {
                                $sample, 
                                $running_samples, 
                                $ignore_failed, 
-                               $ignore_lane_count);
+                               $ignore_lane_count, 
+                               $cluster_information);
 }
 
 sub should_be_scheduled {
-    my ($aligns, $force_run, $report_file, $sample, $running_samples, $ignore_failed, $ignore_lane_count) = @_;
+    my ($aligns, $force_run, $report_file, $sample, $running_samples, $ignore_failed, $ignore_lane_count, $cluster_information) = @_;
 
     if ((unaligned($aligns, $report_file) or scheduled($report_file, $sample, $running_samples, $sample, $force_run, $ignore_failed, $ignore_lane_count))
                                                          and $force_run) { 
         say $report_file "\t\tCONCLUSION: WILL NOT SCHEDULE THIS SAMPLE FOR ALIGNMENT!"; 
         return 0;
     }
+    elsif (scalar keys %{$cluster_information} == 0) {
+        say $report_file "\t\tCONCLUSTION NO MORE CLUSTERS TO SCHEUDLE ON";
+        return 0;
+    } 
 
     say $report_file "\t\tCONCLUSION: SCHEDULING WORKFLOW FOR THIS SAMPLE!\n";
 
