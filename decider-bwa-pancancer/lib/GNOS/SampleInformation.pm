@@ -63,20 +63,26 @@ sub get {
 
             my $analysis_data = $xs->XMLin($analysis_xml_path); 
             my $analysis_data_result = $analysis_data->{Result};
+        
+            my $analysis_attributes = $analysis_data_result->{analysis_xml}{ANALYSIS_SET}{ANALYSIS}{ANALYSIS_ATTRIBUTES}{ANALYSIS_ATTRIBUTE};
+                
+            my %attributes;
+            foreach my $attribute (@$analysis_attributes) {
+                 $attributes{$attribute->{TAG}} = $attribute->{VALUE};
+            }
 
-            my $analysis_attributes = $analysis_data_result->{analysis_xml}{ANALYSIS_SET}{ANALYSIS};
 
             my $analysis_data_uri = $analysis_data_result->{analysis_data_uri};
             my $submitter_aliquot_id = $analysis_data_result->{submitter_aliquot_id};
-            my $aliquot_uuid = $analysis_data_result->{aliquot_id};
+            my $aliquot_uuid = $attributes{aliquot_id};
             my $aliquot_id = $analysis_data_result->{aliquot_id};
-            my $submitter_participant_id = $analysis_data_result->{submitter_participant_id};;
+            my $submitter_participant_id = $attributes{submitter_participant_id};;
             my $participant_id = $analysis_data_result->{participant_id};
-            my $submitter_sample_id = $analysis_data_result->{submitter_sample_id};
+            my $submitter_sample_id = $attributes{submitter_sample_id};
             my $sample_id = $analysis_data_result->{sample_id};  
             my $use_control = $analysis_data_result->{use_cntl};
             my $alignment = $analysis_data_result->{refassem_short_name};
-            my $total_lanes = $analysis_data_result->{total_lanes};
+            my $total_lanes = $attributes{total_lanes};
             my $center_name = $analysis_data_result->{center_name};
 
             my $sample_uuid = $analysis_data_result->{analysis_xml}{ANALYSIS_SET}{ANALYSIS}{TARGETS}{TARGET}{refname};

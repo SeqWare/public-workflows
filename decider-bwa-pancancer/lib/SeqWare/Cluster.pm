@@ -95,7 +95,7 @@ sub find_available_clusters {
 
     my $running = 0;
     foreach my $seqware_run (@{$seqware_runs}) {
-        my $run_status = $seqware_run->{status};
+        my $run_status = $seqware_run->{status}->[0];
 
         say $report_file "\t\tWORKFLOW: ".$workflow_accession." STATUS: ".$run_status;
 

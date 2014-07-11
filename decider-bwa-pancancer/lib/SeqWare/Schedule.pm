@@ -315,7 +315,7 @@ sub schedule_sample {
 
     say $report_file "\tSAMPLE WORKLFOW ACTION OVERVIEW";
     say $report_file "\t\tLANES SPECIFIED FOR SAMPLE: $sample->{total_lanes}";
-    say $report_file "\t\tBAMS FOUND: $sample->{bams_count}";
+    say $report_file "\t\tUNALIGNED BAMS FOUND: $sample->{bam_count}";
    
 
     schedule_workflow( $sample, 
@@ -394,7 +394,7 @@ sub scheduled {
         return 1;
     }
 
-    if ($sample->{total_lanes} == $sample->{bams_count} || $ignore_lane_count || $force_run) {
+    if ($sample->{total_lanes} == $sample->{bam_count} || $ignore_lane_count || $force_run) {
         say $report_file "\t\tLANE COUNT MATCHES OR IGNORED OR RUN FORCED: ignore_lane_count: $ignore_lane_count total lanes: $sample->{total_lanes} bam count: $sample->{bams_count}\n";
     } 
     else {
