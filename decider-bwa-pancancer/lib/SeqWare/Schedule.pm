@@ -148,10 +148,10 @@ sub submit_workflow {
 
     my $dir = getcwd();
 
-    my $launch_command = "SEQWARE_SETTINGS=$working_dir/$center_name/$sample_id/settings /usr/local/bin/seqware workflow schedule --accession $workflow_accession --host $host --ini $working_dir/$center_name/$sample_id/workflow.ini";
+    my $launch_command = "SEQWARE_SETTINGS=$working_dir/samples/$center_name/$sample_id/settings /usr/local/bin/seqware workflow schedule --accession $workflow_accession --host $host --ini $working_dir/samples/$center_name/$sample_id/workflow.ini";
 
     if ($test) {
-        say $report_file "\tNOT LAUNCHING WORKFLOW BECAUSE --test SPECIFIED: $working_dir/$center_name/$sample_id/workflow.ini";
+        say $report_file "\tNOT LAUNCHING WORKFLOW BECAUSE --test SPECIFIED: $working_dir/samples/$center_name/$sample_id/workflow.ini";
         say $report_file "\t\tLAUNCH CMD WOULD HAVE BEEN: $launch_command\n";
         return;
     }
@@ -159,28 +159,30 @@ sub submit_workflow {
  
     if ($cluster_found) {
        
-        say $report_file "\tLAUNCHING WORKFLOW: $working_dir/$center_name/$sample_id/workflow.ini";
+        say $report_file "\tLAUNCHING WORKFLOW: $working_dir/samples/$center_name/$sample_id/workflow.ini";
         say $report_file "\t\tCLUSTER HOST: $host ACCESSION: $workflow_accession URL: $url";
         say $report_file "\t\tLAUNCH CMD: $launch_command";
 
-        my $out_fh = IO::File->new("log/submission/$sample_id.o", "w+");
-        my $err_fh = IO::File->new("log/submission/$sample_id.e", "w+");
+        my $submission_path = 'log/submission';
+        `mkdir -p $submission_path`;
+        my $out_fh = IO::File->new("$submission_path/$sample_id.o", "w+");
+        my $err_fh = IO::File->new("$submission_path/$sample_id.e", "w+");
  
         my ($std_out, $std_err) = capture {
              no autodie qw(system);
              system( "source ~/.bashrc;
                       cd $dir;
-                      export SEQWARE_SETTINGS=$working_dir/$center_name/$sample_id/settings;
+                      export SEQWARE_SETTINGS=$working_dir/samples/$center_name/$sample_id/settings;
                       export PATH=\$PATH:/usr/local/bin;
                       env;
-                      seqware workflow schedule --accession $workflow_accession --host $host --ini $working_dir/$center_name/$sample_id/workflow.ini") } stdout => $out_fh, sterr => $err_fh;
+                      seqware workflow schedule --accession $workflow_accession --host $host --ini $working_dir/samples/$center_name/$sample_id/workflow.ini") } stdout => $out_fh, sterr => $err_fh;
 
 
         say $report_file "\t\tSOMETHING WENT WRONG WITH SCHEDULING THE WORKFLOW"
                                                                        if( $std_err);
     }
     else {
-        say $report_file "\tNOT LAUNCHING WORKFLOW, NO CLUSTER AVAILABLE: $working_dir/$center_name/$sample_id/workflow.ini";
+        say $report_file "\tNOT LAUNCHING WORKFLOW, NO CLUSTER AVAILABLE: $working_dir/samples/$center_name/$sample_id/workflow.ini";
         say $report_file "\t\tLAUNCH CMD WOULD HAVE BEEN: $launch_command";
     } 
     say $report_file '';
