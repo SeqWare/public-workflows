@@ -11,6 +11,7 @@ use XML::DOM;
 use JSON;
 use XML::LibXML;
 use XML::Simple;
+use Config::Simple;
 
 use Data::Dumper;
 
@@ -114,11 +115,19 @@ sub find_available_clusters {
 sub find_running_samples {
     my ($report_file, $seqware_run) = @_;
 
-    my @urls = split /,/, $seqware_run->{iniFile}{gnos_input_metadata_urls};
+    my @ini_file =  split "\n", $seqware_run->{iniFile}[0];
 
+    my %parameters;
+    foreach my $line (@ini_file) {
+         my ($parameter, $value) = split '=', $line;
+         $parameters{$parameter} = $value;
+    }
+
+    my @urls = split /,/, $parameters{gnos_input_metadata_urls};
     say $report_file "\t\t\tINPUTS:".join(",", sort @urls);
-    say $report_file "\t\t\tCWD: ".$seqware_run->{iniFile}{currentWorkingDir};
-    say $report_file "\t\t\tWORKFLOW ACCESSION: ".$seqware_run->{iniFile}{swAccession}."\n";
+
+    say $report_file "\t\t\tCWD: ".$parameters{currentWorkingDir};
+    say $report_file "\t\t\tWORKFLOW ACCESSION: ".$parameters{swAccession}."\n";
 } 
 
 
