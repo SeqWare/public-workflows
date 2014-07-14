@@ -16,9 +16,9 @@ use Config::Simple;
 use Data::Dumper;
 
 sub cluster_seqware_information {
-    my ($class, $report_file, $json_cluster, $ignore_failed) = @_;
+    my ($class, $report_file, $clusters_json, $ignore_failed) = @_;
 
-    my $clusters = decode_json( read_file( "conf/$json_cluster" ));
+    my $clusters = decode_json( read_file( "conf/$clusters_json" ));
 
     my $cluster_information = {};
     my $running_samples = {};
@@ -79,7 +79,8 @@ sub seqware_information {
     if ($running < $max_running ) {
         say $report_file  "\tTHERE ARE $running RUNNING WORKFLOWS WHICH IS LESS THAN MAX OF $max_running, ADDING TO LIST OF AVAILABLE CLUSTERS";
         for (my $i=0; $i<$max_scheduled_workflows; $i++) {
-            $cluster_information->{"$cluster_name-$i"} = $cluster_metadata;
+            my %cluster_metadata = %{$cluster_metadata};
+            $cluster_information->{"$cluster_name-$i"} = \%cluster_metadata;
         }
     } 
     else {

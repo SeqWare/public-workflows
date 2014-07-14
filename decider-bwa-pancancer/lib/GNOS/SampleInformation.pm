@@ -20,7 +20,7 @@ sub get {
 
     my $participants = {};
 
-    if ($skip_down == 0) {
+    if (not $skip_down || -e "$working_dir/xml/data.xml") {
         my $cmd = "mkdir -p $working_dir/xml; cgquery -s $gnos_url -o $working_dir/xml/data.xml";
         $cmd .= ($gnos_url =~ /cghub.ucsc.edu/)? " 'study=PAWG&state=live'":" 'study=*&state=live'";
 

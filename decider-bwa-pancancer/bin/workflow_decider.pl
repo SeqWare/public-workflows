@@ -16,42 +16,46 @@ use GNOS::SampleInformation;
 
 open my $report_file, '>', $ARGV{'--report'};
 
-say "Removing cached ini and settings samples if cached";
-
+say 'Removing cached ini and settings samples';
 `rm $ARGV{'--working-dir'}/samples/ -rf`;
 
 say 'Getting SeqWare Cluster Information';
 my ($cluster_information, $running_samples) 
           = SeqWare::Cluster->cluster_seqware_information( $report_file,
-                                                           $ARGV{'--cluster-json'}, 
-                                                           $ARGV{'--ignore-failed'});
+                                                  $ARGV{'--seqware-clusters'}, 
+                                                  $ARGV{'--schedule-ignore-failed'});
+
+use Data::Dumper;
+print Dumper $cluster_information;
+die;
 
 
 say 'Getting Sample Information from GNOS';
 my $sample_information = GNOS::SampleInformation->get( $ARGV{'--working-dir'},
-                                                       $ARGV{'--gnos-url'},
-                                                       $ARGV{'--skip-meta-download'},
-                                                       $ARGV{'--skip-cached'});
+                                              $ARGV{'--gnos-url'},
+                                              $ARGV{'--use-live-cached'},
+                                              $ARGV{'--use-cached-analysis'});
 
 say 'Scheduling Samples';
 SeqWare::Schedule->schedule_samples( $report_file,
                                      $sample_information,
                                      $cluster_information,
                                      $running_samples,
-                                     $ARGV{'--test'},
-                                     $ARGV{'--sample'}, 
-                                     $ARGV{'--ignore_lane_count'},
-                                     $ARGV{'--settings'},
+                                     $ARGV{'--workflow-skip-schedule'},
+                                     $ARGV{'--schedule-sample'}, 
+                                     $ARGV{'--schedule-center'},
+                                     $ARGV{'--schdeule-ignore-lane-count'},
+                                     $ARGV{'--seqware-settings'},
                                      $ARGV{'--output-dir'},
-                                     $ARGV{'--output-prefix'},
-                                     $ARGV{'--force-run'},
-                                     $ARGV{'--threads'},
-                                     $ARGV{'--skip-gtdownload'}, 
-                                     $ARGV{'--skip-gtupload'},
-                                     $ARGV{'--upload-results'}, 
-                                     $ARGV{'--input-prefix'},
+                                     $ARGV{'--workflow-output-prefix'},
+                                     $ARGV{'--schedule-force-run'},
+                                     $ARGV{'--workflow-bwa-threads'},
+                                     $ARGV{'--workflow-skip-gtdownload'}, 
+                                     $ARGV{'--workflow-skip-gtupload'},
+                                     $ARGV{'--workflow-upload-results'}, 
+                                     $ARGV{'--workflow-input-prefix'},
                                      $ARGV{'--gnos-url'},
-                                     $ARGV{'--ignore-failed'},
+                                     $ARGV{'--schedule-ignore-failed'},
                                      $ARGV{'--working-dir'});
 
 

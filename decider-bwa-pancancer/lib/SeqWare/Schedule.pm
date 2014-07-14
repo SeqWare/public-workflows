@@ -19,6 +19,7 @@ sub schedule_samples {
                 $running_samples, 
                 $test,
                 $specific_sample,
+                $specific_center,
                 $ignore_lane_count,
                 $seqware_settings_file,
                 $output_dir,
@@ -39,6 +40,7 @@ sub schedule_samples {
 
     my $i = 0;
     foreach my $center_name (keys %{$sample_information}) {
+        next if (defined $specific_center && $specific_center ne $center_name);
         foreach my $participant_id (keys %{$sample_information->{$center_name}}) {
             my $participant_information = $sample_information->{$center_name}{$participant_id};
             schedule_participant($report_file,
@@ -114,7 +116,7 @@ sub schedule_workflow {
 sub create_settings_file {
     my ($seqware_settings_file, $url, $username, $password, $working_dir, $center_name, $sample_id) = @_;
 
-    my $settings = new Config::Simple("template/ini/$seqware_settings_file");
+    my $settings = new Config::Simple("config/ini/$seqware_settings_file");
 
     $settings->param('SW_REST_URL', $url);
     $settings->param('SW_REST_USER', $username);
@@ -126,7 +128,7 @@ sub create_settings_file {
 sub create_workflow_ini {
     my ($workflow_version, $sample, $gnos_url, $threads, $skip_gtdownload, $skip_gtupload, $upload_results, $output_prefix, $output_dir, $working_dir, $center_name, $sample_id) = @_;
 
-    my $workflow_ini = new Config::Simple("template/ini/workflow-$workflow_version.ini" );
+    my $workflow_ini = new Config::Simple("config/ini/workflow-$workflow_version.ini" );
 
     $workflow_ini->param('input_bam_paths', $sample->{local_bams_string});
     $workflow_ini->param('gnos_input_file_urls', $sample->{gnos_input_file_urls});
@@ -343,25 +345,19 @@ sub schedule_sample {
                                $sample, 
                                $running_samples, 
                                $ignore_failed, 
-                               $ignore_lane_count, 
-                               $cluster_information);
+                               $ignore_lane_count);
 }
 
 sub should_be_scheduled {
-    my ($aligns, $force_run, $report_file, $sample, $running_samples, $ignore_failed, $ignore_lane_count, $cluster_information) = @_;
+    my ($aligns, $force_run, $report_file, $sample, $running_samples, $ignore_failed, $ignore_lane_count) = @_;
 
     if ((unaligned($aligns, $report_file) or scheduled($report_file, $sample, $running_samples, $sample, $force_run, $ignore_failed, $ignore_lane_count))
                                                          and $force_run) { 
         say $report_file "\t\tCONCLUSION: WILL NOT SCHEDULE THIS SAMPLE FOR ALIGNMENT!"; 
         return 0;
     }
-    elsif (scalar keys %{$cluster_information} == 0) {
-        say $report_file "\t\tCONCLUSTION NO MORE CLUSTERS TO SCHEUDLE ON";
-        return 0;
-    } 
 
     say $report_file "\t\tCONCLUSION: SCHEDULING WORKFLOW FOR THIS SAMPLE!\n";
-
     return 1;
 }
 
