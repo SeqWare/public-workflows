@@ -97,6 +97,7 @@ sub schedule_workflow {
     my $url = $cluster_information->{$cluster}{webservice};
     my $username = $cluster_information->{$cluster}{username};
     my $password = $cluster_information->{$cluster}{password};
+
     my $workflow_accession = $cluster_information->{$cluster}{workflow_accession};
     $workflow_accession //= 0;
     my $workflow_version = $cluster_information->{$cluster}{workflow_version};
@@ -104,19 +105,21 @@ sub schedule_workflow {
     my $host = $cluster_information->{$cluster}{host};
     $host //= 'unknown';
 
-    delete $cluster_information->{$cluster};
+
 
     create_settings_file($seqware_settings_file, $url, $username, $password, $working_dir, $center_name, $sample_id);
 
     create_workflow_ini($workflow_version, $sample, $gnos_url, $threads, $skip_gtdownload, $skip_gtupload, $upload_results, $output_prefix, $output_dir, $working_dir, $center_name, $sample_id);
 
     submit_workflow($working_dir, $workflow_accession, $host, $test, $cluster_found, $report_file, $url, $center_name, $sample_id);
+
+    delete $cluster_information->{$cluster};
 }
 
 sub create_settings_file {
     my ($seqware_settings_file, $url, $username, $password, $working_dir, $center_name, $sample_id) = @_;
 
-    my $settings = new Config::Simple("config/ini/$seqware_settings_file");
+    my $settings = new Config::Simple("conf/ini/$seqware_settings_file");
 
     $settings->param('SW_REST_URL', $url);
     $settings->param('SW_REST_USER', $username);
@@ -128,7 +131,10 @@ sub create_settings_file {
 sub create_workflow_ini {
     my ($workflow_version, $sample, $gnos_url, $threads, $skip_gtdownload, $skip_gtupload, $upload_results, $output_prefix, $output_dir, $working_dir, $center_name, $sample_id) = @_;
 
-    my $workflow_ini = new Config::Simple("config/ini/workflow-$workflow_version.ini" );
+    my $workflow_ini = new Config::Simple("conf/ini/workflow-$workflow_version.ini" );
+  
+    
+
 
     $workflow_ini->param('input_bam_paths', $sample->{local_bams_string});
     $workflow_ini->param('gnos_input_file_urls', $sample->{gnos_input_file_urls});
@@ -351,27 +357,25 @@ sub schedule_sample {
 sub should_be_scheduled {
     my ($aligns, $force_run, $report_file, $sample, $running_samples, $ignore_failed, $ignore_lane_count) = @_;
 
-    if ((unaligned($aligns, $report_file) or scheduled($report_file, $sample, $running_samples, $sample, $force_run, $ignore_failed, $ignore_lane_count))
-                                                         and $force_run) { 
-        say $report_file "\t\tCONCLUSION: WILL NOT SCHEDULE THIS SAMPLE FOR ALIGNMENT!"; 
-        return 0;
+    if ((unaligned($aligns, $report_file) or scheduled($report_file, $sample, $running_samples, $sample, $force_run, $ignore_failed, $ignore_lane_count))) { 
+         say $report_file "\t\tCONCLUSION: SCHEDULING WORKFLOW FOR THIS SAMPLE!\n";
+         return 1;
     }
 
-    say $report_file "\t\tCONCLUSION: SCHEDULING WORKFLOW FOR THIS SAMPLE!\n";
-    return 1;
+    say $report_file "\t\tCONCLUSION: WILL NOT SCHEDULE THIS SAMPLE FOR ALIGNMENT!"; 
+    return 0;
 }
 
 sub unaligned {
     my ($aligns, $report_file) = @_;
 
-    my $unaligned = $aligns->{unaligned};
-    if  (not scalar keys %{$aligns} == 1 && not defined $unaligned ) {
-        say $report_file "\t\tCONTAINS ALIGNMENT"; 
-        return 1; 
+    if  ( (scalar keys %{$aligns} == 1 and defined $aligns->{unaligned}) ) {
+        say $report_file "\t\tONLY UNALIGNED";
+        return 1;
     }
     
-    say $report_file "\t\tONLY UNALIGNED";
-    return 0;
+    say $report_file "\t\tCONTAINS ALIGNMENT"; 
+    return 0; 
 }
 
 sub scheduled {
@@ -389,7 +393,7 @@ sub scheduled {
     else {
         say $report_file "\t\tIS PREVIOUSLY SCHEDULED, RUNNING, OR FAILED!";
         say $report_file "\t\t\tSTATUS: ".$running_samples->{$analysis_url_str};
-        return 1;
+        return 0;
     }
 
     if ($sample->{total_lanes} == $sample->{bam_count} || $ignore_lane_count || $force_run) {
@@ -397,10 +401,10 @@ sub scheduled {
     } 
     else {
         say $report_file "\t\tLANE COUNT MISMATCH!";
-        return 1;
+        return 0;
     }
 
-    return 0;
+    return 1;
 }
 
 1;

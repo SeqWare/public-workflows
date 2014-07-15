@@ -25,10 +25,6 @@ my ($cluster_information, $running_samples)
                                                   $ARGV{'--seqware-clusters'}, 
                                                   $ARGV{'--schedule-ignore-failed'});
 
-use Data::Dumper;
-print Dumper $cluster_information;
-die;
-
 
 say 'Getting Sample Information from GNOS';
 my $sample_information = GNOS::SampleInformation->get( $ARGV{'--working-dir'},
@@ -46,7 +42,7 @@ SeqWare::Schedule->schedule_samples( $report_file,
                                      $ARGV{'--schedule-center'},
                                      $ARGV{'--schdeule-ignore-lane-count'},
                                      $ARGV{'--seqware-settings'},
-                                     $ARGV{'--output-dir'},
+                                     $ARGV{'--workflow-output-dir'},
                                      $ARGV{'--workflow-output-prefix'},
                                      $ARGV{'--schedule-force-run'},
                                      $ARGV{'--workflow-bwa-threads'},
