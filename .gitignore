@@ -13,5 +13,7 @@
 /workflow-bam-slicer/target/
 /workflow-bam-slicer/links/
 /decider-bwa-pancancer/decider_tmp/
+/decider-bwa-pancancer/tmp/report.cron.txt
+/decider-bwa-pancancer/tmp/
 /decider-bwa-pancancer/decider_tmp/report.cron.txt
 /decider-bwa-pancancer/report.cron.txt

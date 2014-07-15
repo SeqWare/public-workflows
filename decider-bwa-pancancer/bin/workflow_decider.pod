@@ -54,7 +54,7 @@ URL for a GNOS server, e.g. https://gtrepo-ebi.annailas.com
 A place for temporary ini and settings files
 
 =for Euclid
-    working_directory.default: 'decider_tmp'
+    working_directory.default: 'tmp'
 
 =item --use-cached-analysis
 
