@@ -34,6 +34,10 @@ Workflow Decider - SeqWare
 
 JSON file that describes the clusters available to schedule workflows to. Should be located in the config folder.
 
+=item --workflow-version[=][ ]<workflow_version>
+
+Specify the BWA workflow version you would like to run (eg. 2.6.0)
+
 =back
 
 =head1 OPTIONS
@@ -78,7 +82,7 @@ The report file name that the results will be placed in by the decider
 
 A flag indicating that previously download xml files for each analysis file should not be downloaded again
 
-=cut
+=back
 
 =head2 SCHEDULE
 
@@ -103,7 +107,7 @@ Skip the check that the GNOS XML contains a count of lanes for this sample and t
 
 Schedule workflows even if they were previously completed
 
-=cut
+=back
 
 =head2 WORKFLOW
 
@@ -148,4 +152,4 @@ if --skip-gtupload is set, use this to specify the dir of where output files are
 
 if --skip-gtdownload is set, this is the input bam file prefix
 
-=cut
+=back

@@ -32,7 +32,8 @@ sub schedule_samples {
                 $input_prefix, 
                 $gnos_url,
                 $ignore_failed, 
-                $working_dir) = @_;
+                $working_dir,
+                $run_workflow_version) = @_;
   
     say $report_file "SAMPLE SCHEDULING INFORMATION\n";
 
@@ -41,6 +42,7 @@ sub schedule_samples {
     my $i = 0;
     foreach my $center_name (keys %{$sample_information}) {
         next if (defined $specific_center && $specific_center ne $center_name);
+        say $report_file "SCHEDULING: $center_name";
         foreach my $participant_id (keys %{$sample_information->{$center_name}}) {
             my $participant_information = $sample_information->{$center_name}{$participant_id};
             schedule_participant($report_file,
@@ -63,7 +65,8 @@ sub schedule_samples {
                              $gnos_url,
                              $ignore_failed, 
                              $working_dir, 
-                             $center_name);
+                             $center_name, 
+                             $run_workflow_version);
             $progress_bar->update($i++);
         }
     }
@@ -99,18 +102,14 @@ sub schedule_workflow {
     my $password = $cluster_information->{$cluster}{password};
 
     my $workflow_accession = $cluster_information->{$cluster}{workflow_accession};
-    $workflow_accession //= 0;
     my $workflow_version = $cluster_information->{$cluster}{workflow_version};
-    $workflow_version //= '2.5.0';
     my $host = $cluster_information->{$cluster}{host};
-    $host //= 'unknown';
 
+    if ($cluster_found) {
+        create_settings_file($seqware_settings_file, $url, $username, $password, $working_dir, $center_name, $sample_id);
 
-
-    create_settings_file($seqware_settings_file, $url, $username, $password, $working_dir, $center_name, $sample_id);
-
-    create_workflow_ini($workflow_version, $sample, $gnos_url, $threads, $skip_gtdownload, $skip_gtupload, $upload_results, $output_prefix, $output_dir, $working_dir, $center_name, $sample_id);
-
+        create_workflow_ini($workflow_version, $sample, $gnos_url, $threads, $skip_gtdownload, $skip_gtupload, $upload_results, $output_prefix, $output_dir, $working_dir, $center_name, $sample_id);
+    }
     submit_workflow($working_dir, $workflow_accession, $host, $test, $cluster_found, $report_file, $url, $center_name, $sample_id);
 
     delete $cluster_information->{$cluster};
@@ -131,10 +130,7 @@ sub create_settings_file {
 sub create_workflow_ini {
     my ($workflow_version, $sample, $gnos_url, $threads, $skip_gtdownload, $skip_gtupload, $upload_results, $output_prefix, $output_dir, $working_dir, $center_name, $sample_id) = @_;
 
-    my $workflow_ini = new Config::Simple("conf/ini/workflow-$workflow_version.ini" );
-  
-    
-
+    my $workflow_ini = new Config::Simple("conf/ini/workflow-$workflow_version.ini" ); 
 
     $workflow_ini->param('input_bam_paths', $sample->{local_bams_string});
     $workflow_ini->param('gnos_input_file_urls', $sample->{gnos_input_file_urls});
@@ -166,7 +162,6 @@ sub submit_workflow {
  
  
     if ($cluster_found) {
-       
         say $report_file "\tLAUNCHING WORKFLOW: $working_dir/samples/$center_name/$sample_id/workflow.ini";
         say $report_file "\t\tCLUSTER HOST: $host ACCESSION: $workflow_accession URL: $url";
         say $report_file "\t\tLAUNCH CMD: $launch_command";
@@ -217,7 +212,8 @@ sub schedule_participant {
          $gnos_url,
          $ignore_failed,
          $working_dir,
-         $center_name ) = @_;
+         $center_name,
+         $run_workflow_version ) = @_;
 
     say $report_file "DONOR/PARTICIPANT: $participant_id\n";
 
@@ -243,7 +239,8 @@ sub schedule_participant {
                          $upload_results,
                          $output_prefix,
                          $output_dir,
-                         $center_name);
+                         $center_name,
+                         $run_workflow_version);
     }
 }
 
@@ -267,7 +264,8 @@ sub schedule_sample {
          $upload_results,
          $output_prefix,
          $output_dir,
-         $center_name) = @_;
+         $center_name,
+         $run_workflow_version) = @_;
 
     say $report_file "\tSAMPLE OVERVIEW\n\tSPECIMEN/SAMPLE: $sample_id";
 
@@ -285,6 +283,7 @@ sub schedule_sample {
             foreach my $library_id (keys %{$libraries}) {
                 say $report_file "\t\t\t\tLIBRARY: $library_id";
                 my $library = $libraries->{$library_id};
+                my $current_workflow_version = $library->{workflow_version};
                 my $lanes = $library->{total_lanes};
                 my $total_lanes = 0;
                 foreach my $lane (keys %{$lanes}) {
@@ -297,7 +296,8 @@ sub schedule_sample {
                     $sample->{file}{$file} = $local_path;
                     my $local_file_path = $input_prefix.$local_path;
                     $sample->{local_bams}{$local_file_path} = 1;
-                    $sample->{bam_count} ++ if ($alignment_id eq "unaligned");
+                    $sample->{bam_count} ++ if (($alignment_id eq "unaligned") 
+                       || ($current_workflow_version ge $run_workflow_version));
                 }
 
                 my @local_bams = keys %{$sample->{local_bams}};
@@ -305,7 +305,8 @@ sub schedule_sample {
                 $sample->{local_bams_string} = join ',', sort @local_bams;
 
                 my @analysis_ids = keys %{$library->{analysis_ids}};
-                if ( $alignment_id eq 'unaligned' ) {
+                if (( $alignment_id eq 'unaligned' ) 
+                        || ($current_workflow_version ge $run_workflow_version)) {
                     foreach my $analysis_id (sort @analysis_ids) {
                         $sample->{analysis_url}{"$gnos_url/cghub/metadata/analysisFull/$analysis_id"} = 1;
                         $sample->{download_url}{"$gnos_url/cghub/data/analysis/download/$analysis_id"} = 1;
@@ -344,7 +345,8 @@ sub schedule_sample {
                        $force_run,
                        $running_samples,
                        $sample_id,
-                       $center_name )
+                       $center_name,
+                       $run_workflow_version )
        if should_be_scheduled( $aligns, 
                                $force_run, 
                                $report_file, 

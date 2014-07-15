@@ -53,8 +53,8 @@ sub get {
             say $parse_log "SKIPPING: no analysis url";
             next;
         }
-
-        say $parse_log "ANALYSIS FULL URL: $analysis_full_url $analysis_id";
+        say $parse_log "\n\nANALYSIS\n";
+        say $parse_log "\tANALYSIS FULL URL: $analysis_full_url $analysis_id";
 
         my $analysis_xml_path =  "$working_dir/xml/data_$analysis_id.xml";
         download($analysis_full_url, $analysis_xml_path, $skip_cached) unless ($skip_down);
@@ -84,30 +84,32 @@ sub get {
             my $alignment = $analysis_data_result->{refassem_short_name};
             my $total_lanes = $attributes{total_lanes};
             my $center_name = $analysis_data_result->{center_name};
+            my $workflow_version = $attributes{workflow_version};
 
             my $sample_uuid = $analysis_data_result->{analysis_xml}{ANALYSIS_SET}{ANALYSIS}{TARGETS}{TARGET}{refname};
 
-            say $parse_log "ANALYSIS:  $analysis_data_uri";
-            say $parse_log "ANALYSIS ID: $analysis_id";
-            say $parse_log "PARTICIPANT ID: $participant_id";
-            say $parse_log "SAMPLE ID: $sample_id";
-            say $parse_log "ALIQUOT ID: $aliquot_id";
-            say $parse_log "SUBMITTER PARTICIPANT ID: $submitter_participant_id";
-            say $parse_log "SUBMITTER SAMPLE ID: $submitter_sample_id";
-            say $parse_log "SUBMITTER ALIQUOT ID: $submitter_aliquot_id";
+            say $parse_log "\tANALYSIS:\t$analysis_data_uri";
+            say $parse_log "\tANALYSIS ID:\t$analysis_id";
+            say $parse_log "\tPARTICIPANT ID:\t$participant_id";
+            say $parse_log "\tSAMPLE ID:\t$sample_id";
+            say $parse_log "\tALIQUOT ID:\t$aliquot_id";
+            say $parse_log "\tSUBMITTER PARTICIPANT ID:\t$submitter_participant_id";
+            say $parse_log "\tSUBMITTER SAMPLE ID:\t$submitter_sample_id";
+            say $parse_log "\tSUBMITTER ALIQUOT ID:\t$submitter_aliquot_id";
+            say $parse_log "\tWORKFLOW VERSION:\t$workflow_version";
     
             next unless (my $library_descriptor = eval { $analysis_data_result->{experiment_xml}{EXPERIMENT_SET}{EXPERIMENT}{DESIGN}{LIBRARY_DESCRIPTOR}});
             my $library_name = $library_descriptor->{LIBRARY_NAME};
             my $library_strategy = $library_descriptor->{LIBRARY_STRATEGY};
             my $library_source = $library_descriptor->{LIBRARY_SOURCE};
-            say $parse_log "Library\tName:\t$library_name\n\t\tLibrary Strategy:\t$library_strategy\n\t\tLibrary Source:\t$library_source";
+            say $parse_log "\tLibrary\n\t\tName:\t$library_name\n\t\tLibrary Strategy:\t$library_strategy\n\t\tLibrary Source:\t$library_source";
     
             if (not $library_name or not $library_strategy or not $library_source or not $analysis_id or not $analysis_data_uri) {
-                say $parse_log "ERROR: one or more critical fields not defined, will skip $analysis_id\n";
+                say $parse_log "\tERROR: one or more critical fields not defined, will skip $analysis_id\n";
                 next;
             }
     
-            say $parse_log "  gtdownload -c gnostest.pem -v -d $analysis_data_uri\n";
+            say $parse_log "\tgtdownload -c gnostest.pem -v -d $analysis_data_uri\n";
     
             my $library = {
                          analysis_ids             => $analysis_id,
@@ -122,7 +124,8 @@ sub get {
                          sample_id                => $sample_id,
                          submitter_sample_id      => $submitter_sample_id,
                          submitter_aliquot_id     => $submitter_aliquot_id,
-                         sample_uuid              => $sample_uuid };
+                         sample_uuid              => $sample_uuid,
+                         workflow_version         => $workflow_version };
 
             foreach my $attribute (keys %{$library}) {
                 $participants->{$center_name}{$participant_id}{$sample_uuid}{$alignment}{$aliquot_id}{$library_name}{$attribute}{$library->{$attribute}} = 1;
@@ -143,7 +146,7 @@ sub get {
 sub files {
     my ($results, $parse_log, $analysis_id) = @_;
 
-    say $parse_log "FILE:";
+    say $parse_log "FILES";
 
     my $files = $results->{files}{file};
     $files = [ $files ] if ref($files) ne 'ARRAY';
@@ -158,8 +161,8 @@ sub files {
         $files{$file_name}{checksum} = $file->{checksum};
         $files{$file_name}{local_path} = "$analysis_id/$file_name";
 
-        say $parse_log "  FILE: $file SIZE: ".$files{$file_name}{size}." CHECKSUM: ".$files{$file_name}{checksum};
-        say $parse_log "  LOCAL FILE PATH: $analysis_id/$file_name";
+        say $parse_log "\tFILE: $file_name SIZE: ".$files{$file_name}{size}." CHECKSUM: ".$files{$file_name}{checksum}{content};
+        say $parse_log "\tLOCAL FILE PATH: $analysis_id/$file_name";
 
     }
 

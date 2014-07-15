@@ -23,8 +23,8 @@ say 'Getting SeqWare Cluster Information';
 my ($cluster_information, $running_samples) 
           = SeqWare::Cluster->cluster_seqware_information( $report_file,
                                                   $ARGV{'--seqware-clusters'}, 
-                                                  $ARGV{'--schedule-ignore-failed'});
-
+                                                  $ARGV{'--schedule-ignore-failed'},
+                                                  $ARGV{'--workflow-version'});
 
 say 'Getting Sample Information from GNOS';
 my $sample_information = GNOS::SampleInformation->get( $ARGV{'--working-dir'},
@@ -53,8 +53,6 @@ SeqWare::Schedule->schedule_samples( $report_file,
                                      $ARGV{'--gnos-url'},
                                      $ARGV{'--schedule-ignore-failed'},
                                      $ARGV{'--working-dir'});
-
-
 
 close $report_file;
 

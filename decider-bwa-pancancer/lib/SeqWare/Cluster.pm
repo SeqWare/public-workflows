@@ -16,7 +16,7 @@ use Config::Simple;
 use Data::Dumper;
 
 sub cluster_seqware_information {
-    my ($class, $report_file, $clusters_json, $ignore_failed) = @_;
+    my ($class, $report_file, $clusters_json, $ignore_failed, $run_workflow_version) = @_;
 
     my $clusters = decode_json( read_file( "conf/$clusters_json" ));
 
@@ -30,7 +30,8 @@ sub cluster_seqware_information {
                                    $cluster_name, 
                                    $cluster_metadata,
                                    $cluster_information,
-                                   $running_samples);
+                                   $running_samples,
+                                   $run_workflow_version);
     }
 
     return ($cluster_information, $running_samples);
@@ -38,7 +39,7 @@ sub cluster_seqware_information {
 
 sub seqware_information {
     my ($report_file, $cluster_name, $cluster_metadata, 
-                                   $cluster_information, $running_samples) = @_;
+                   $cluster_information, $running_samples, $run_workflow_version) = @_;
 
 
     my $user = $cluster_metadata->{username};
@@ -73,21 +74,22 @@ sub seqware_information {
         my $seqware_runs = $seqware_runs_list->{list};
 
         $running = find_available_clusters($report_file, $seqware_runs,
-                                           $workflow_accession, $running_samples);
+                          $workflow_accession, $running_samples, $run_workflow_version);
     }
 
     if ($running < $max_running ) {
         say $report_file  "\tTHERE ARE $running RUNNING WORKFLOWS WHICH IS LESS THAN MAX OF $max_running, ADDING TO LIST OF AVAILABLE CLUSTERS";
         for (my $i=0; $i<$max_scheduled_workflows; $i++) {
             my %cluster_metadata = %{$cluster_metadata};
-            $cluster_information->{"$cluster_name-$i"} = \%cluster_metadata;
+            $cluster_information->{"$cluster_name-$i"} = \%cluster_metadata
+                if ($run_workflow_version eq $cluster_metadata{workflow_version});
         }
     } 
     else {
         say $report_file "\tCLUSTER HAS RUNNING WORKFLOWS, NOT ADDING TO AVAILABLE CLUSTERS";
     }
   
-   return ($cluster_information, $running_samples);
+    return ($cluster_information, $running_samples);
 }
 
 sub find_available_clusters {
