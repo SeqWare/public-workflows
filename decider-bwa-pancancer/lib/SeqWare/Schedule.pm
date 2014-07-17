@@ -360,7 +360,7 @@ sub schedule_sample {
 sub should_be_scheduled {
     my ($aligns, $force_run, $report_file, $sample, $running_samples, $ignore_failed, $ignore_lane_count) = @_;
 
-    if ((unaligned($aligns, $report_file) or scheduled($report_file, $sample, $running_samples, $sample, $force_run, $ignore_failed, $ignore_lane_count))) { 
+    if ((unaligned($aligns, $report_file) and not scheduled($report_file, $sample, $running_samples, $sample, $force_run, $ignore_failed, $ignore_lane_count))) { 
          say $report_file "\t\tCONCLUSION: SCHEDULING WORKFLOW FOR THIS SAMPLE!\n";
          return 1;
     }
@@ -396,7 +396,7 @@ sub scheduled {
     else {
         say $report_file "\t\tIS PREVIOUSLY SCHEDULED, RUNNING, OR FAILED!";
         say $report_file "\t\t\tSTATUS: ".$running_samples->{$analysis_url_str};
-        return 0;
+        return 1;
     }
 
     if ($sample->{total_lanes} == $sample->{bam_count} || $ignore_lane_count || $force_run) {
@@ -404,10 +404,10 @@ sub scheduled {
     } 
     else {
         say $report_file "\t\tLANE COUNT MISMATCH!";
-        return 0;
+        return 1;
     }
 
-    return 1;
+    return 0;
 }
 
 1;
