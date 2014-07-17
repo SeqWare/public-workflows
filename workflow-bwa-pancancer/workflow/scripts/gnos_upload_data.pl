@@ -2,6 +2,8 @@ use strict;
 use Data::Dumper;
 use Getopt::Long;
 use XML::DOM;
+use XML::XPath;
+use XML::XPath::XMLParser;
 use JSON;
 use Data::UUID;
 use XML::LibXML;
@@ -37,34 +39,61 @@ my $upload_url = "";
 my $test = 0;
 my $skip_validate = 0;
 # hardcoded
-my $workflow_version = "2.5.0";
+my $workflow_version = "2.6.0";
+my $workflow_name = "Workflow_Bundle_BWA";
 # hardcoded
-my $workflow_url = "https://s3.amazonaws.com/oicr.workflow.bundles/released-bundles/Workflow_Bundle_BWA_".$workflow_version."_SeqWare_1.0.13.zip";
+my $workflow_src_url = "https://github.com/SeqWare/public-workflows";
+my $workflow_url = "https://s3.amazonaws.com/oicr.workflow.bundles/released-bundles/Workflow_Bundle_BWA_".$workflow_version."_SeqWare_1.0.15.zip";
+my $bwa_version = "0.7.8-r455";
+my $biobambam_version = "0.0.148";
+my $pcap_version = "1.1.1";
 my $force_copy = 0;
+my $unmapped_reads_upload = 0;
+my $study_ref_name = "icgc_pancancer";
 
-if (scalar(@ARGV) < 12 || scalar(@ARGV) > 15) { die "USAGE: 'perl gnos_upload_data.pl --metadata-urls <URLs_comma_separated> --bam <sample-level_bam_file_path> --bam-md5sum-file <file_with_bam_md5sum> --outdir <output_dir> --key <gnos.pem> --upload-url <gnos_server_url> [--test]\n"; }
-GetOptions("metadata-urls=s" => \$metadata_urls, "bam=s" => \$bam, "outdir=s" => \$output_dir, "key=s" => \$key, "bam-md5sum-file=s" => \$md5_file, "upload-url=s" => \$upload_url, "test" => \$test, "force-copy" => \$force_copy, "skip-validate" => \$skip_validate);
+if (scalar(@ARGV) < 12 || scalar(@ARGV) > 17) {
+  die "USAGE: 'perl gnos_upload_data.pl
+       --metadata-urls <URLs_comma_separated>
+       --bam <sample-level_bam_file_path>
+       --bam-md5sum-file <file_with_bam_md5sum>
+       --outdir <output_dir>
+       --key <gnos.pem>
+       --upload-url <gnos_server_url>
+       [--study-refname-override <study_refname_override>]
+       [--unmapped-reads-upload]
+       [--skip-validate]
+       [--test]\n"; }
+
+GetOptions(
+     "metadata-urls=s" => \$metadata_urls,
+     "bam=s" => \$bam,
+     "outdir=s" => \$output_dir,
+     "key=s" => \$key,
+     "bam-md5sum-file=s" => \$md5_file,
+     "upload-url=s" => \$upload_url,
+     "test" => \$test,
+     "force-copy" => \$force_copy,
+     "skip-validate" => \$skip_validate,
+     "unmapped-reads-upload" => \$unmapped_reads_upload,
+     "study-refname-override=s" => \$study_ref_name,
+     );
 
 # setup output dir
 my $ug = Data::UUID->new;
 my $uuid = lc($ug->create_str());
-system("mkdir -p $output_dir/$uuid");
+run("mkdir -p $output_dir/$uuid");
 $output_dir = $output_dir."/$uuid/";
 # md5sum
 my $bam_check = `cat $md5_file`;
+my $bai_check = `cat $bam.bai.md5`;
 chomp $bam_check;
+chomp $bai_check;
 if ($force_copy) {
   # rsync to destination
-  print ("mv `pwd`/$bam $output_dir/$bam_check.bam\n");
-  print ("mv `pwd`/$md5_file $output_dir/$bam_check.bam.md5\n");
-  system("mv `pwd`/$bam $output_dir/$bam_check.bam");
-  system("mv `pwd`/$md5_file $output_dir/$bam_check.bam.md5");
+  run("rsync -rauv `pwd`/$bam $output_dir/$bam_check.bam && rsync -rauv `pwd`/$md5_file $output_dir/$bam_check.bam.md5 && rsync -rauv `pwd`/$bam.bai $output_dir/$bam_check.bam.bai && rsync -rauv `pwd`/$bam.bai.md5 $output_dir/$bam_check.bam.bai.md5");
 } else {
   # symlink for bam and md5sum file
-  print ("ln -s `pwd`/$bam $output_dir/$bam_check.bam\n");
-  print ("ln -s `pwd`/$md5_file $output_dir/$bam_check.bam.md5\n");
-  system("ln -s `pwd`/$bam $output_dir/$bam_check.bam");
-  system("ln -s `pwd`/$md5_file $output_dir/$bam_check.bam.md5");
+  run("ln -s `pwd`/$bam $output_dir/$bam_check.bam && ln -s `pwd`/$md5_file $output_dir/$bam_check.bam.md5 && ln -s `pwd`/$bam.bai $output_dir/$bam_check.bam.bai && ln -s `pwd`/$bam.bai.md5 $output_dir/$bam_check.bam.bai.md5");
 }
 
 
@@ -91,25 +120,25 @@ if (upload_submission($sub_path)) { die "The upload of files did not work!  File
 
 sub validate_submission {
   my ($sub_path) = @_;
-  my $cmd = "cgsubmit --validate-only -s $upload_url -o validation.log -u $sub_path -vv";
+  my $cmd = "cgsubmit --validate-only -s $upload_url -o validation.$bam_check.log -u $sub_path -vv";
   print "VALIDATING: $cmd\n";
   if (!$skip_validate) {
-    return(system($cmd));
+    return(run($cmd));
   }
 }
 
 sub upload_submission {
   my ($sub_path) = @_;
-  my $cmd = "cgsubmit -s $upload_url -o metadata_upload.log -u $sub_path -vv -c $key";
+  my $cmd = "cgsubmit -s $upload_url -o metadata_upload.$bam_check.log -u $sub_path -vv -c $key";
   print "UPLOADING METADATA: $cmd\n";
   if (!$test) {
-    if (system($cmd)) { return(1); }
+    if (run($cmd)) { return(1); }
   }
 
   $cmd = "cd $sub_path; gtupload -v -c $key -u ./manifest.xml; cd -";
   if (!$test) {
     print "UPLOADING DATA: $cmd\n";
-    if (system($cmd)) { return(1); }
+    if (run($cmd)) { return(1); }
   }
 
 }
@@ -221,12 +250,18 @@ sub generate_submission {
   # FIXME: either custom needs to work or the reference needs to be listed in GNOS
   #<!--CUSTOM DESCRIPTION="hs37d" REFERENCE_SOURCE="ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/README_human_reference_20110707"/-->
 
+  my $description = "Specimen-level BAM from the reference alignment of specimen $sample_id from donor $participant_id. This uses the SeqWare BWA-MEM PanCancer Workflow version $workflow_version available at $workflow_url. This workflow can be created from source, see https://github.com/SeqWare/public-workflows. Input BAMs are prepared and submitted to GNOS server according to the submission SOP documented at: https://wiki.oicr.on.ca/display/PANCANCER/PCAP+%28a.k.a.+PAWG%29+Sequence+Submission+SOP+-+v1.0";
+
+  if ($unmapped_reads_upload) {
+    $description = "The BAM file includes unmapped reads extracted from specimen-level BAM with the reference alignment of specimen $sample_id from donor $participant_id. This uses the SeqWare BWA-MEM PanCancer Workflow version $workflow_version available at $workflow_url. This workflow can be created from source, see https://github.com/SeqWare/public-workflows. Input BAMs are prepared and submitted to GNOS server according to the submission SOP documented at: https://wiki.oicr.on.ca/display/PANCANCER/PCAP+%28a.k.a.+PAWG%29+Sequence+Submission+SOP+-+v1.0";
+  }
+
   my $analysis_xml = <<END;
   <ANALYSIS_SET xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.ncbi.nlm.nih.gov/viewvc/v1/trunk/sra/doc/SRA_1-5/SRA.analysis.xsd?view=co">
     <ANALYSIS center_name="$analysis_center" analysis_date="$datetime">
       <TITLE>TCGA/ICGC PanCancer Specimen-Level Alignment for Specimen $sample_id from Participant $participant_id</TITLE>
-      <STUDY_REF refcenter="$refcenter" refname="icgc_pancancer" />
-      <DESCRIPTION>Specimen-level BAM from the reference alignment of specimen $sample_id from donor $participant_id. This uses the SeqWare BWA-Mem PanCancer Workflow version $workflow_version available at $workflow_url. This workflow can be created from source, see https://github.com/SeqWare/public-workflows.  New features for this workflow compared to 2.4 include: 1) an option for skipping download/upload from/to GNOS and instead use local file paths (GNOS is still used to retrieve and validate metadata).  Please note the reference is hs37d, see ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/README_human_reference_20110707 for more information. Briefly this is the integrated reference sequence from the GRCh37 primary assembly (chromosomal plus unlocalized and unplaced contigs), the rCRS mitochondrial sequence (AC:NC_012920), Human herpesvirus 4 type 1 (AC:NC_007605) and the concatenated decoy sequences (hs37d5cs.fa.gz).</DESCRIPTION>
+      <STUDY_REF refcenter="$refcenter" refname="$study_ref_name" />
+      <DESCRIPTION>$description</DESCRIPTION>
       <ANALYSIS_TYPE>
         <REFERENCE_ALIGNMENT>
           <ASSEMBLY>
@@ -349,6 +384,8 @@ END
           <PROCESSING>
             <PIPELINE>
 END
+
+  unless ($unmapped_reads_upload) {
             my $i=0;
             foreach my $url (keys %{$m}) {
               foreach my $run (@{$m->{$url}{'run'}}) {
@@ -359,19 +396,42 @@ END
                    my $rgl = $run->{'read_group_label'};
                    my $rn = $run->{'refname'};
                    my $fname = $m->{$url}{'file'}[$i]{'filename'};
-  $analysis_xml .= <<END;
+
+    $analysis_xml .= <<END;
               <PIPE_SECTION section_name="Mapping">
                 <STEP_INDEX>$rgl</STEP_INDEX>
                 <PREV_STEP_INDEX>NIL</PREV_STEP_INDEX>
                 <PROGRAM>bwa</PROGRAM>
-                <VERSION>0.7.7-r441</VERSION>
+                <VERSION>$bwa_version</VERSION>
                 <NOTES>bwa mem -t 8 -p -T 0 genome.fa.gz $fname</NOTES>
               </PIPE_SECTION>
 END
-                 }
-                 $i++;
-               }
+                }
+                $i++;
+              }
             }
+
+    $analysis_xml .= <<END;
+              <PIPE_SECTION section_name="Markduplicates">
+                <STEP_INDEX>markduplicates</STEP_INDEX>
+                <PREV_STEP_INDEX>bwa</PREV_STEP_INDEX>
+                <PROGRAM>bammarkduplicates</PROGRAM>
+                <VERSION>$biobambam_version</VERSION>
+                <NOTES>bammarkduplicates is one of the programs in the biobambam BAM processing package</NOTES>
+              </PIPE_SECTION>
+END
+  }else{
+    $analysis_xml .= <<END;
+              <PIPE_SECTION section_name="UnmappedReadsExtraction">
+                <STEP_INDEX>unmapped_reads</STEP_INDEX>
+                <PREV_STEP_INDEX>bammarkduplicates</PREV_STEP_INDEX>
+                <PROGRAM>samtools</PROGRAM>
+                <VERSION>0.1.19</VERSION>
+                <NOTES>This extracts the unmapped reads out from BWA MEM aligned BAM. Note that mapped reads with unmapped mate are also extracted.</NOTES>
+              </PIPE_SECTION>
+END
+  }
+
   $analysis_xml .= <<END;
             </PIPELINE>
             <DIRECTIVES>
@@ -396,20 +456,7 @@ END
 END
 
        $analysis_xml .= "          <FILE filename=\"$bam_check.bam\" filetype=\"bam\" checksum_method=\"MD5\" checksum=\"$bam_check\" />\n";
-
-       # incorrect, there's only one bam!
-       $i=0;
-       foreach my $url (keys %{$m}) {
-       foreach my $run (@{$m->{$url}{'run'}}) {
-       if (defined($run->{'read_group_label'})) {
-          my $fname = $m->{$url}{'file'}[$i]{'filename'};
-          my $ftype= $m->{$url}{'file'}[$i]{'filetype'};
-          my $check = $m->{$url}{'file'}[$i]{'checksum'};
-          #$analysis_xml .= "<FILE filename=\"$fname\" filetype=\"$ftype\" checksum_method=\"MD5\" checksum=\"$check\" />\n";
-       }
-       $i++;
-       }
-       }
+       $analysis_xml .= "          <FILE filename=\"$bam_check.bam.bai\" filetype=\"bai\" checksum_method=\"MD5\" checksum=\"$bai_check\" />\n";
 
   $analysis_xml .= <<END;
         </FILES>
@@ -420,6 +467,10 @@ END
     # this is a merge of the key-values from input XML
     foreach my $key (keys %{$global_attr}) {
       foreach my $val (keys %{$global_attr->{$key}}) {
+      	if ($unmapped_reads_upload){
+      	  next if ($key eq "pipeline_input_info");
+      	  next if ($key eq "pipeline_input_info");
+      	}
         $analysis_xml .= "        <ANALYSIS_ATTRIBUTE>
           <TAG>$key</TAG>
           <VALUE>$val</VALUE>
@@ -428,6 +479,43 @@ END
       }
     }
 
+  # some metadata about this workflow
+  # TODO: add runtime info in here too, possibly other info
+  # see https://jira.oicr.on.ca/browse/PANCANCER-43
+  # see https://jira.oicr.on.ca/browse/PANCANCER-6
+  $analysis_xml .= "        <ANALYSIS_ATTRIBUTE>
+          <TAG>workflow_name</TAG>
+          <VALUE>$workflow_name</VALUE>
+        </ANALYSIS_ATTRIBUTE>
+        <ANALYSIS_ATTRIBUTE>
+          <TAG>workflow_version</TAG>
+          <VALUE>$workflow_version</VALUE>
+        </ANALYSIS_ATTRIBUTE>
+        <ANALYSIS_ATTRIBUTE>
+          <TAG>workflow_source_url</TAG>
+          <VALUE>$workflow_src_url</VALUE>
+        </ANALYSIS_ATTRIBUTE>
+        <ANALYSIS_ATTRIBUTE>
+          <TAG>workflow_bundle_url</TAG>
+          <VALUE>$workflow_url</VALUE>
+        </ANALYSIS_ATTRIBUTE>
+";
+
+unless ($unmapped_reads_upload) {
+  $analysis_xml .= "        <ANALYSIS_ATTRIBUTE>
+          <TAG>bwa_version</TAG>
+          <VALUE>$bwa_version</VALUE>
+        </ANALYSIS_ATTRIBUTE>
+        <ANALYSIS_ATTRIBUTE>
+          <TAG>biobambam_version</TAG>
+          <VALUE>$biobambam_version</VALUE>
+        </ANALYSIS_ATTRIBUTE>
+        <ANALYSIS_ATTRIBUTE>
+          <TAG>PCAP-core_version</TAG>
+          <VALUE>$pcap_version</VALUE>
+        </ANALYSIS_ATTRIBUTE>
+";
+
   # QC
   $analysis_xml .= "        <ANALYSIS_ATTRIBUTE>
           <TAG>qc_metrics</TAG>
@@ -435,6 +523,20 @@ END
         </ANALYSIS_ATTRIBUTE>
 ";
 
+  # Runtime
+  $analysis_xml .= "        <ANALYSIS_ATTRIBUTE>
+          <TAG>timing_metrics</TAG>
+          <VALUE>" . &getRuntimeInfo() . "</VALUE>
+        </ANALYSIS_ATTRIBUTE>
+";
+
+  # Markduplicates metrics
+  $analysis_xml .= "        <ANALYSIS_ATTRIBUTE>
+          <TAG>markduplicates_metrics</TAG>
+          <VALUE>" . &getMarkduplicatesMetrics() . "</VALUE>
+        </ANALYSIS_ATTRIBUTE>
+";
+}
   $analysis_xml .= <<END;
       </ANALYSIS_ATTRIBUTES>
     </ANALYSIS>
@@ -522,7 +624,7 @@ sub read_header {
 sub download_metadata {
   my ($urls_str) = @_;
   my $metad = {};
-  system("mkdir -p xml2");
+  run("mkdir -p xml2");
   my @urls = split /,/, $urls_str;
   my $i = 0;
   foreach my $url (@urls) {
@@ -544,34 +646,32 @@ sub parse_metadata {
   push @{$m->{'target'}}, getValsMulti($doc, 'TARGET', "refcenter,refname");
   push @{$m->{'file'}}, getValsMulti($doc, 'FILE', "checksum,filename,filetype");
   $m->{'analysis_attr'} = getAttrs($doc);
-  $m->{'experiment'} = getBlock($xml_path, "EXPERIMENT ", "EXPERIMENT");
-  $m->{'run_block'} = getBlock($xml_path, "RUN center_name", "RUN");
+  $m->{'experiment'} = getBlock($xml_path, "/ResultSet/Result/experiment_xml/EXPERIMENT_SET/EXPERIMENT");
+  $m->{'run_block'} = getBlock($xml_path, "/ResultSet/Result/run_xml/RUN_SET/RUN");
   return($m);
 }
 
 sub getBlock {
-  my ($xml_file, $key, $end) = @_;
+  my ($xml_file, $xpath) = @_;
+
   my $block = "";
-  open IN, "<$xml_file" or die "Can't open file $xml_file\n";
-  my $reading = 0;
-  while (<IN>) {
-    chomp;
-    if (/<$key/) { $reading = 1; }
-    if ($reading) {
-      $block .= "$_\n";
-    }
-    if (/<\/$end>/) { $reading = 0; }
+  ## use XPath parser instead of using REGEX to extract desired XML fragment, to fix issue: https://jira.oicr.on.ca/browse/PANCANCER-42
+  my $xp = XML::XPath->new(filename => $xml_file) or die "Can't open file $xml_file\n";
+
+  my $nodeset = $xp->find($xpath);
+  foreach my $node ($nodeset->get_nodelist) {
+    $block .= XML::XPath::XMLParser::as_string($node) . "\n";
   }
-  close IN;
+
   return $block;
 }
 
 sub download_url {
   my ($url, $path) = @_;
-  my $r = system("wget -q -O $path $url");
+  my $r = run("wget -q -O $path $url");
   if ($r) {
           $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME}=0;
-    $r = system("lwp-download $url $path");
+    $r = run("lwp-download $url $path");
     if ($r) {
             print "ERROR DOWNLOADING: $url\n";
             exit(1);
@@ -663,6 +763,65 @@ sub getVals {
   return(@r);
 }
 
+sub getRuntimeInfo {
+  # detect all the timing files by checking file name pattern, read QC data
+  # to pull back the read group and associate with timing
+
+  opendir(DIR, ".");
+
+  my @qc_result_files = grep { /^out_\d+\.bam\.stats\.txt/ } readdir(DIR);
+
+  close(DIR);
+
+  my $ret = { "timing_metrics" => [] };
+
+  foreach (@qc_result_files) {
+
+    # find the index number so we can match with timing info
+    $_ =~ /out_(\d+)\.bam\.stats\.txt/;
+    my $i = $1;
+
+    open (QC, "< $_");
+
+    my @header = split /\t/, <QC>;
+    my @data = split /\t/, <QC>;
+    chomp ((@header, @data));
+
+    close (QC);
+
+    my $qc_metrics = {};
+    $qc_metrics->{$_} = shift @data for (@header);
+
+    my $read_group = $qc_metrics->{readgroup};
+
+    # now go ahead and read that index file for timing
+    my $download_timing = read_timing("download_timing_$i.txt");
+    my $bwa_timing = read_timing("bwa_timing_$i.txt");
+    my $qc_timing = read_timing("qc_timing_$i.txt");
+    my $merge_timing = read_timing("merge_timing.txt");
+
+    # fill in the data structure
+    push @{ $ret->{timing_metrics} }, { "read_group_id" => $read_group, "metrics" => { "download_timing_seconds" => $download_timing, "bwa_timing_seconds" => $bwa_timing, "qc_timing_seconds" => $qc_timing, "merge_timing_seconds" => $merge_timing } };
+
+  }
+
+  # and return hash
+  return to_json $ret;
+
+}
+
+sub read_timing {
+  my ($file) = @_;
+  open IN, "<$file" or return "not_collected"; # very quick workaround to deal with no download_timing file generated due to skip gtdownload option. Brian, please handle it as you see it appropriate
+  my $start = <IN>;
+  my $stop = <IN>;
+  chomp $start;
+  chomp $stop;
+  my $delta = $stop - $start;
+  close IN;
+  return($delta);
+}
+
 sub getQcResult {
   # detect all the QC report files by checking file name pattern
 
@@ -691,6 +850,45 @@ sub getQcResult {
   }
 
   return to_json $ret;
+}
+
+sub getMarkduplicatesMetrics {
+  my $dup_metrics = `cat $bam.metrics`;
+  my @rows = split /\n/, $dup_metrics;
+
+  my @header = ();
+  my @data = ();
+  my $data_row = 0;
+  foreach (@rows) {
+    last if (/^## HISTOGRAM/); # ignore everything with this and after
+    next if (/^#/ || /^\s*$/);
+
+    $data_row++;
+    do {@header = split /\t/; next} if ($data_row == 1); # header line
+
+    push @data, $_;
+  }
+
+  my $ret = {"markduplicates_metrics" => [], "note" => "The metrics are produced by bammarkduplicates tool of the Biobambam package"};
+  foreach (@data) {
+    my $metrics = {};
+    my @fields = split /\t/;
+
+    $metrics->{lc($_)} = shift @fields for (@header);
+    delete $metrics->{'estimated_library_size'}; # this is irrelevant
+
+    push @{ $ret->{"markduplicates_metrics"} }, {"library" => $metrics->{'library'}, "metrics" => $metrics};
+  }
+
+  return to_json $ret;
+}
+
+sub run {
+  my ($cmd, $do_die) = @_;
+  print "CMD: $cmd\n";
+  my $result = system($cmd);
+  if ($do_die && $result) { die "ERROR: CMD '$cmd' returned non-zero status"; }
+  return($result);
 }
 
 0;
