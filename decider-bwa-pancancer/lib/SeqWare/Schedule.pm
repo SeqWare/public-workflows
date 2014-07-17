@@ -9,6 +9,7 @@ use Term::ProgressBar;
 use Config::Simple;
 use Capture::Tiny ':all';
 use Cwd;
+use Carp::Always;
 
 use Data::Dumper;
 

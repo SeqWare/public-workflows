@@ -4,6 +4,7 @@ use common::sense;
 
 use IPC::System::Simple;
 use autodie qw(:all);
+use Carp::Always;
 
 use File::Slurp;
 
