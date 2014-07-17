@@ -96,7 +96,7 @@ A flag indicating that previously failed runs for this specimen should be ignore
 
 For only running one particular sample based on its uuid
 
-=item --schedule-center[=][]<center_name>
+=item --schedule-center[=][ ]<center_name>
 
 For only running samples from one institute
 
