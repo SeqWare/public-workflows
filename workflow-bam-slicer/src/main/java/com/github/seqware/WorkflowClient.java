@@ -54,7 +54,7 @@ public class WorkflowClient extends OicrWorkflow {
   String gtdownloadMd5Time = "120";
   String gtdownloadMemG = "8";
   String gtuploadMemG = "8";
-  String smallJobMemM = "2000";
+  String smallJobMemM = "4000";
 
   @Override
   public Map<String, SqwFile> setupFiles() {
@@ -96,7 +96,7 @@ public class WorkflowClient extends OicrWorkflow {
       
       gtdownloadMemG = getProperty("gtdownloadMemG") == null ? "8" : getProperty("gtdownloadMemG");
       gtuploadMemG = getProperty("gtuploadMemG") == null ? "8" : getProperty("gtuploadMemG");
-      smallJobMemM = getProperty("smallJobMemM") == null ? "2000" : getProperty("smallJobMemM");
+      smallJobMemM = getProperty("smallJobMemM") == null ? "4000" : getProperty("smallJobMemM");
       mergeJobMemG = getProperty("mergeJobMemG") == null ? "4" : getProperty("mergeJobMemG");
       
       if (getProperty("use_gtdownload") != null && "false".equals(getProperty("use_gtdownload"))) { useGtDownload = false; }
@@ -146,7 +146,7 @@ public class WorkflowClient extends OicrWorkflow {
       headerJob = this.getWorkflow().createBashJob("headerJob" + i);
       //headerJob.getCommand().addArgument(this.getWorkflowBaseDir() + pcapPath + "/bin/samtools view -H " + file + " | sed 's/\\t/\\\\t/g' > bam_header." + i + ".txt");
       headerJob.getCommand().addArgument("samtools view -H " + file + " | sed 's/\\t/\\\\t/g' > bam_header." + i + ".txt");
-      headerJob.setMaxMemory("2000");
+      headerJob.setMaxMemory("6000");
 
       if (useGtDownload) {
     	  headerJob.addParent(downloadJob);
@@ -157,6 +157,7 @@ public class WorkflowClient extends OicrWorkflow {
       buildBamIndex.getCommand().addArgument(
     		  "test -s " + file + ".bai || "
     		  + "cat " + file + " | "
+    		  + "LD_LIBRARY_PATH=" + this.getWorkflowBaseDir() + pcapPath + "/lib "
     		  + this.getWorkflowBaseDir() + pcapPath + "/bin/bamindex "
     		  + "> " + file + ".bai");
 
@@ -171,9 +172,12 @@ public class WorkflowClient extends OicrWorkflow {
     		  + file
     		  + " | perl " + this.getWorkflowBaseDir() + "/scripts/remove_both_ends_unmapped_reads.pl "  // this is necessary because samtools -L outputs both-ends-unmapped reads
     		  + " | "
-    		  + this.getWorkflowBaseDir() + pcapPath + "/bin/samtools view -S -b - "
-    		  + " > firstSlice." + i + ".bam");
-      
+    		  + "LD_LIBRARY_PATH=" + this.getWorkflowBaseDir() + pcapPath + "/lib "
+              + this.getWorkflowBaseDir() + pcapPath + "/bin/bamsort "
+              + "inputformat=sam level=1 outputthreads=2 "
+              + "tmpfile=firstSlice." + i + ".sorttmp "
+              + "O=firstSlice." + i + ".bam");
+
       firstSliceJob.setMaxMemory("4000");
       firstSliceJob.addParent(buildBamIndex);
       
@@ -253,8 +257,11 @@ public class WorkflowClient extends OicrWorkflow {
     		  + "bam_header." + i + ".txt "
     		  + "missing_mates." + i + ".bed "
     		  + " | "
-    		  + this.getWorkflowBaseDir() + pcapPath + "/bin/samtools view -S -b - "
-    		  + "> secondSlice." + i + ".bam");
+    		  + "LD_LIBRARY_PATH=" + this.getWorkflowBaseDir() + pcapPath + "/lib "
+              + this.getWorkflowBaseDir() + pcapPath + "/bin/bamsort "
+              + "inputformat=sam level=1 outputthreads=2 "
+              + "tmpfile=secondSlice." + i + ".sorttmp "
+              + "O=secondSlice." + i + ".bam");    		  
       
       secondSliceJob.setMaxMemory("4000");
       secondSliceJob.addParent(getMissingMateRegions);
@@ -408,7 +415,9 @@ public class WorkflowClient extends OicrWorkflow {
 
     if (this.isTesting){ 
         job.getCommand().addArgument(
-    		    "mkdir " + analysisId + " && " + "ln -s " + getProperty("testBamPath") + " " + file  // using symlink to avoid copying huge test bam
+    		    "mkdir " + analysisId
+    		    + " && " + "ln -s " + getProperty("testBamPath") + " " + file  // using symlink to avoid copying huge test bam
+    		    + " && " + "ln -s " + getProperty("testBamPath") + ".bai " + file + ".bai" // using symlink to avoid copying huge test bam
     		);
 
     } else {
