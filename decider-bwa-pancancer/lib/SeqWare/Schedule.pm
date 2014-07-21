@@ -43,6 +43,7 @@ sub schedule_samples {
     my $i = 0;
     foreach my $center_name (keys %{$sample_information}) {
         next if (defined $specific_center && $specific_center ne $center_name);
+say $center_name;
         say $report_file "SCHEDULING: $center_name";
         foreach my $participant_id (keys %{$sample_information->{$center_name}}) {
             my $participant_information = $sample_information->{$center_name}{$participant_id};
@@ -96,7 +97,7 @@ sub schedule_workflow {
     system("mkdir -p $working_dir/samples/$center_name/$sample_id");
 
     my $cluster = (keys %{$cluster_information})[0];
-    my $cluster_found = (defined $cluster)? 1: 0;
+    my $cluster_found = (defined($cluster) and $cluster ne '' )? 1: 0;
 
     my $url = $cluster_information->{$cluster}{webservice};
     my $username = $cluster_information->{$cluster}{username};
@@ -111,9 +112,10 @@ sub schedule_workflow {
 
         create_workflow_ini($workflow_version, $sample, $gnos_url, $threads, $skip_gtdownload, $skip_gtupload, $upload_results, $output_prefix, $output_dir, $working_dir, $center_name, $sample_id);
     }
+
     submit_workflow($working_dir, $workflow_accession, $host, $test, $cluster_found, $report_file, $url, $center_name, $sample_id);
 
-    delete $cluster_information->{$cluster};
+    delete $cluster_information->{$cluster} if ($cluster_found);
 }
 
 sub create_settings_file {
@@ -360,6 +362,7 @@ sub schedule_sample {
 sub should_be_scheduled {
     my ($aligns, $force_run, $report_file, $sample, $running_samples, $ignore_failed, $ignore_lane_count) = @_;
 
+say "not scheduled" if (not scheduled($report_file, $sample, $running_samples, $sample, $force_run, $ignore_failed, $ignore_lane_count)); 
     if ((unaligned($aligns, $report_file) and not scheduled($report_file, $sample, $running_samples, $sample, $force_run, $ignore_failed, $ignore_lane_count))) { 
          say $report_file "\t\tCONCLUSION: SCHEDULING WORKFLOW FOR THIS SAMPLE!\n";
          return 1;
@@ -384,18 +387,22 @@ sub unaligned {
 sub scheduled {
     my ($report_file, $sample, $running_samples, $force_run, $ignore_failed, $ignore_lane_count ) = @_; 
 
+#print Dumper $running_samples;
+#die;
+
     my $analysis_url_str = join ',', sort keys %{$sample->{analysis_url}};
     $sample->{analysis_url} = $analysis_url_str;
+    my $running_analysis_url_str = $running_samples->{$analysis_url_str};
 
-    if ( not defined($running_samples->{$analysis_url_str}) || $force_run) {
+    if ( not defined($running_analysis_url_str) or $running_analysis_url_str eq '' or $force_run) {
         say $report_file "\t\tNOT PREVIOUSLY SCHEDULED OR RUN FORCED!";
     } 
-    elsif ($running_samples->{$analysis_url_str} eq "failed" && $ignore_failed) {
+    elsif ($running_samples->{$analysis_url_str} eq "failed" and $ignore_failed) {
         say $report_file "\t\tPREVIOUSLY FAILED BUT RUN FORCED VIA IGNORE FAILED OPTION!";
     } 
     else {
         say $report_file "\t\tIS PREVIOUSLY SCHEDULED, RUNNING, OR FAILED!";
-        say $report_file "\t\t\tSTATUS: ".$running_samples->{$analysis_url_str};
+        say $report_file "\t\t\tSTATUS: $running_analysis_url_str";
         return 1;
     }
 

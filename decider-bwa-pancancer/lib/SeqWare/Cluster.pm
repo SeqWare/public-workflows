@@ -89,7 +89,7 @@ sub seqware_information {
     else {
         say $report_file "\tCLUSTER HAS RUNNING WORKFLOWS, NOT ADDING TO AVAILABLE CLUSTERS";
     }
-  
+ 
     return ($cluster_information, $running_samples);
 }
 

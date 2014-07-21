@@ -92,7 +92,7 @@ A flag indicating that previously download xml files for each analysis file shou
 
 A flag indicating that previously failed runs for this specimen should be ignored and the specimen scheduled again
 
-=item --schedule-sample[=][ ]<sample_uuid>
+=item --schedule-sample[=][ ]<aliquot_id>
 
 For only running one particular sample based on its uuid
 
