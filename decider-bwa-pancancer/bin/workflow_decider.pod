@@ -92,6 +92,14 @@ A flag indicating that previously download xml files for each analysis file shou
 
 A flag indicating that previously failed runs for this specimen should be ignored and the specimen scheduled again
 
+=item --schedule-whitelist[=][ ]<filename>
+
+This flag indicates the file to be used, that contains a list of sample_ids to be analyzed. This file should be placed in the whitelist folder and should have one sample id per line. 
+
+=item --schedule-blacklist[=][ ]<filename>
+
+This flag indicates the samples to not run. The file should be placed in the blacklist folder and should have on sample id per line. 
+
 =item --schedule-sample[=][ ]<aliquot_id>
 
 For only running one particular sample based on its uuid

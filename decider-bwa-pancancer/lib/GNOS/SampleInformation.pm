@@ -36,8 +36,6 @@ sub get {
 
     say $parse_log '';
     
-    say 'Downloading Sample Information from GNOS';
-
     my $progress_bar = Term::ProgressBar->new(scalar @$results);
  
     my $i = 0;
@@ -128,16 +126,17 @@ sub get {
                          workflow_version         => $workflow_version };
 
             foreach my $attribute (keys %{$library}) {
-                $participants->{$center_name}{$participant_id}{$sample_uuid}{$alignment}{$aliquot_id}{$library_name}{$attribute}{$library->{$attribute}} = 1;
+                my $library_value = $library->{$attribute};
+                $participants->{$center_name}{$participant_id}{$sample_uuid}{$alignment}{$aliquot_id}{$library_name}{$attribute}{$library_value} = 1;
             }
 
             my $files = files($analysis_data_result, $parse_log, $analysis_id);
             foreach my $file_name (keys %$files) {
-                $participants->{$center_name}{$participant_id}{$sample_uuid}{$alignment}{$aliquot_id}{$library_name}{files}{$file_name} = $files->{$file_name}
+                my $file_info = $files->{$file_name};
+                $participants->{$center_name}{$participant_id}{$sample_uuid}{$alignment}{$aliquot_id}{$library_name}{files}{$file_name} = $file_info;
             }
         }      
     }
-
     close $parse_log;
 
     return $participants;

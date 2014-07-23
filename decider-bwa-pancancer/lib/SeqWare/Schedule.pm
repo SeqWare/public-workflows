@@ -18,7 +18,7 @@ sub schedule_samples {
                 $sample_information, 
                 $cluster_information, 
                 $running_samples, 
-                $test,
+                $skip_scheduling,
                 $specific_sample,
                 $specific_center,
                 $ignore_lane_count,
@@ -34,8 +34,10 @@ sub schedule_samples {
                 $gnos_url,
                 $ignore_failed, 
                 $working_dir,
-                $run_workflow_version) = @_;
-  
+                $run_workflow_version,
+                $whitelist,
+                $blacklist) = @_;
+
     say $report_file "SAMPLE SCHEDULING INFORMATION\n";
 
     my $progress_bar = Term::ProgressBar->new(scalar keys %{$sample_information});
@@ -43,7 +45,6 @@ sub schedule_samples {
     my $i = 0;
     foreach my $center_name (keys %{$sample_information}) {
         next if (defined $specific_center && $specific_center ne $center_name);
-say $center_name;
         say $report_file "SCHEDULING: $center_name";
         foreach my $participant_id (keys %{$sample_information->{$center_name}}) {
             my $participant_information = $sample_information->{$center_name}{$participant_id};
@@ -52,7 +53,7 @@ say $center_name;
                              $participant_information,
                              $cluster_information, 
                              $running_samples, 
-                             $test,
+                             $skip_scheduling,
                              $specific_sample,
                              $ignore_lane_count,
                              $seqware_settings_file,
@@ -68,7 +69,9 @@ say $center_name;
                              $ignore_failed, 
                              $working_dir, 
                              $center_name, 
-                             $run_workflow_version);
+                             $run_workflow_version,
+                             $whitelist,
+                             $blacklist);
             $progress_bar->update($i++);
         }
     }
@@ -84,18 +87,18 @@ sub schedule_workflow {
          $gnos_url,
          $skip_gtdownload,
          $skip_gtupload,
-         $test,
+         $skip_scheduling,
          $upload_results,
          $output_prefix,
          $output_dir,
          $force_run,
-         $running_samples,
+         $running_sample_id,
          $sample_id,
-         $center_name ) = @_;
+         $center_name,
+         $run_workflow_version ) = @_;
 
 
-    system("mkdir -p $working_dir/samples/$center_name/$sample_id");
-
+   
     my $cluster = (keys %{$cluster_information})[0];
     my $cluster_found = (defined($cluster) and $cluster ne '' )? 1: 0;
 
@@ -107,13 +110,15 @@ sub schedule_workflow {
     my $workflow_version = $cluster_information->{$cluster}{workflow_version};
     my $host = $cluster_information->{$cluster}{host};
 
-    if ($cluster_found) {
+    if ($cluster_found or $skip_scheduling) {
+        system("mkdir -p $working_dir/samples/$center_name/$sample_id");
+
         create_settings_file($seqware_settings_file, $url, $username, $password, $working_dir, $center_name, $sample_id);
 
-        create_workflow_ini($workflow_version, $sample, $gnos_url, $threads, $skip_gtdownload, $skip_gtupload, $upload_results, $output_prefix, $output_dir, $working_dir, $center_name, $sample_id);
+        create_workflow_ini($run_workflow_version, $sample, $gnos_url, $threads, $skip_gtdownload, $skip_gtupload, $upload_results, $output_prefix, $output_dir, $working_dir, $center_name, $sample_id);
     }
 
-    submit_workflow($working_dir, $workflow_accession, $host, $test, $cluster_found, $report_file, $url, $center_name, $sample_id);
+    submit_workflow($working_dir, $workflow_accession, $host, $skip_scheduling, $cluster_found, $report_file, $url, $center_name, $sample_id);
 
     delete $cluster_information->{$cluster} if ($cluster_found);
 }
@@ -122,6 +127,10 @@ sub create_settings_file {
     my ($seqware_settings_file, $url, $username, $password, $working_dir, $center_name, $sample_id) = @_;
 
     my $settings = new Config::Simple("conf/ini/$seqware_settings_file");
+
+    $url //= '<SEQWARE URL>';
+    $username //= '<SEQWARE USER NAME>';
+    $password //= '<SEQWARE PASSWORD>';
 
     $settings->param('SW_REST_URL', $url);
     $settings->param('SW_REST_USER', $username);
@@ -133,11 +142,20 @@ sub create_settings_file {
 sub create_workflow_ini {
     my ($workflow_version, $sample, $gnos_url, $threads, $skip_gtdownload, $skip_gtupload, $upload_results, $output_prefix, $output_dir, $working_dir, $center_name, $sample_id) = @_;
 
-    my $workflow_ini = new Config::Simple("conf/ini/workflow-$workflow_version.ini" ); 
+    my $ini_path = "conf/ini/workflow-$workflow_version.ini";
+    die "ini template does not exist: $ini_path" unless (-e $ini_path);
+    my $workflow_ini = new Config::Simple($ini_path); 
 
-    $workflow_ini->param('input_bam_paths', $sample->{local_bams_string});
-    $workflow_ini->param('gnos_input_file_urls', $sample->{gnos_input_file_urls});
-    $workflow_ini->param('gnos_input_metadata_urls', $sample->{analysis_url_string});
+    my $local_bams_string = $sample->{local_bams_string};
+    my $gnos_input_file_urls = $sample->{gnos_input_file_urls};
+    my $analysis_url_string = $sample->{analysis_url_string};
+
+    $workflow_ini->param('input_bam_paths', $local_bams_string) if ($local_bams_string);
+    $workflow_ini->param('gnos_input_file_urls', $gnos_input_file_urls) 
+                                                             if ($gnos_input_file_urls);
+    $workflow_ini->param('gnos_input_metadata_urls', $analysis_url_string)
+
+                                                             if ($analysis_url_string);
     $workflow_ini->param('gnos_output_file_url', $gnos_url);
     $workflow_ini->param('numOfThreads', $threads);
     $workflow_ini->param('use_gtdownload', (defined $skip_gtdownload)? 'false': 'true');
@@ -145,26 +163,25 @@ sub create_workflow_ini {
     $workflow_ini->param('skip_upload', (defined $upload_results)? 'false': 'true');
     $workflow_ini->param('output_prefix', $output_prefix);
     $workflow_ini->param('output_dir', $output_dir);
+    $workflow_ini->param('sample_id', $sample_id);    
   
     $workflow_ini->write("$working_dir/samples/$center_name/$sample_id/workflow.ini");
 }
 
 
 sub submit_workflow {
-    my ($working_dir, $workflow_accession, $host, $test, $cluster_found, $report_file, $url, $center_name, $sample_id) = @_;
+    my ($working_dir, $workflow_accession, $host, $skip_scheduling, $cluster_found, $report_file, $url, $center_name, $sample_id) = @_;
 
     my $dir = getcwd();
 
     my $launch_command = "SEQWARE_SETTINGS=$working_dir/samples/$center_name/$sample_id/settings /usr/local/bin/seqware workflow schedule --accession $workflow_accession --host $host --ini $working_dir/samples/$center_name/$sample_id/workflow.ini";
 
-    if ($test) {
+    if ($skip_scheduling) {
         say $report_file "\tNOT LAUNCHING WORKFLOW BECAUSE --test SPECIFIED: $working_dir/samples/$center_name/$sample_id/workflow.ini";
         say $report_file "\t\tLAUNCH CMD WOULD HAVE BEEN: $launch_command\n";
         return;
-    }
- 
- 
-    if ($cluster_found) {
+    } 
+    elsif ($cluster_found) {
         say $report_file "\tLAUNCHING WORKFLOW: $working_dir/samples/$center_name/$sample_id/workflow.ini";
         say $report_file "\t\tCLUSTER HOST: $host ACCESSION: $workflow_accession URL: $url";
         say $report_file "\t\tLAUNCH CMD: $launch_command";
@@ -200,7 +217,7 @@ sub schedule_participant {
          $participant_information,
          $cluster_information, 
          $running_samples, 
-         $test,
+         $skip_scheduling,
          $specific_sample,
          $ignore_lane_count,
          $seqware_settings_file,
@@ -216,14 +233,17 @@ sub schedule_participant {
          $ignore_failed,
          $working_dir,
          $center_name,
-         $run_workflow_version ) = @_;
+         $run_workflow_version,
+         $whitelist,
+         $blacklist ) = @_;
 
     say $report_file "DONOR/PARTICIPANT: $participant_id\n";
 
     foreach my $sample_id (keys %{$participant_information}) {        
-        next if (defined $specific_sample && $specific_sample ne $sample_id);
-
-        schedule_sample( $sample_id,
+        next if (defined $specific_sample and $specific_sample ne $sample_id);
+        next if (defined $blacklist and grep( /^$sample_id$/, @{$blacklist}));
+        if (not defined $whitelist or grep( /^$sample_id$/, @{$whitelist})) {
+            schedule_sample( $sample_id,
                          $participant_information,
                          $report_file,
                          $gnos_url,
@@ -238,12 +258,13 @@ sub schedule_participant {
                          $threads,
                          $skip_gtdownload,
                          $skip_gtupload,
-                         $test,
+                         $skip_scheduling,
                          $upload_results,
                          $output_prefix,
                          $output_dir,
                          $center_name,
                          $run_workflow_version);
+        }
     }
 }
 
@@ -263,7 +284,7 @@ sub schedule_sample {
          $threads,
          $skip_gtdownload,
          $skip_gtupload,
-         $test,
+         $skip_scheduling,
          $upload_results,
          $output_prefix,
          $output_dir,
@@ -321,8 +342,10 @@ sub schedule_sample {
                 my @analysis_urls = keys %{$sample->{analysis_url}};
                 $sample->{analysis_url_string} = join ',', @analysis_urls;   
 
+                my $analysis_ids = join ',', @analysis_ids;
+
                 say $report_file "\t\t\t\t\tBAMS: ".join ',', keys $files;
-                say $report_file "\t\t\t\t\tANALYSIS_IDS (unaligned): ". $sample->{analysis_url_string}. "\n";
+                say $report_file "\t\t\t\t\tANALYSIS IDS: $analysis_ids\n";
             }
         }
     }
@@ -330,7 +353,7 @@ sub schedule_sample {
     say $report_file "\tSAMPLE WORKLFOW ACTION OVERVIEW";
     say $report_file "\t\tLANES SPECIFIED FOR SAMPLE: $sample->{total_lanes}";
     say $report_file "\t\tUNALIGNED BAMS FOUND: $sample->{bam_count}";
-   
+    $sample->{sample_id} = $sample_id;
 
     schedule_workflow( $sample, 
                        $seqware_settings_file, 
@@ -341,7 +364,7 @@ sub schedule_sample {
                        $gnos_url,
                        $skip_gtdownload,
                        $skip_gtupload,
-                       $test,
+                       $skip_scheduling,
                        $upload_results,
                        $output_prefix,
                        $output_dir,
@@ -356,16 +379,21 @@ sub schedule_sample {
                                $sample, 
                                $running_samples, 
                                $ignore_failed, 
-                               $ignore_lane_count);
+                               $ignore_lane_count,
+                               $skip_scheduling);
 }
 
 sub should_be_scheduled {
-    my ($aligns, $force_run, $report_file, $sample, $running_samples, $ignore_failed, $ignore_lane_count) = @_;
+    my ($aligns, $force_run, $report_file, $sample, $running_samples, $ignore_failed, $ignore_lane_count, $skip_scheduling) = @_;
 
-say "not scheduled" if (not scheduled($report_file, $sample, $running_samples, $sample, $force_run, $ignore_failed, $ignore_lane_count)); 
-    if ((unaligned($aligns, $report_file) and not scheduled($report_file, $sample, $running_samples, $sample, $force_run, $ignore_failed, $ignore_lane_count))) { 
-         say $report_file "\t\tCONCLUSION: SCHEDULING WORKFLOW FOR THIS SAMPLE!\n";
-         return 1;
+    if ($skip_scheduling) {
+        say $report_file "\t\tCONCLUSION: SKIPPING SCHEDULING";
+        return 1;
+    }
+
+    if (unaligned($aligns, $report_file) and not scheduled($report_file, $sample, $running_samples, $sample, $force_run, $ignore_failed, $ignore_lane_count) ) { 
+        say $report_file "\t\tCONCLUSION: SCHEDULING WORKFLOW FOR THIS SAMPLE!\n";
+        return 1;
     }
 
     say $report_file "\t\tCONCLUSION: WILL NOT SCHEDULE THIS SAMPLE FOR ALIGNMENT!"; 
@@ -387,22 +415,20 @@ sub unaligned {
 sub scheduled {
     my ($report_file, $sample, $running_samples, $force_run, $ignore_failed, $ignore_lane_count ) = @_; 
 
-#print Dumper $running_samples;
-#die;
-
     my $analysis_url_str = join ',', sort keys %{$sample->{analysis_url}};
     $sample->{analysis_url} = $analysis_url_str;
-    my $running_analysis_url_str = $running_samples->{$analysis_url_str};
+    
+    my $sample_id = $sample->{sample_id};
 
-    if ( not defined($running_analysis_url_str) or $running_analysis_url_str eq '' or $force_run) {
+    if ( not exists($running_samples->{$sample_id}) or $force_run) {
         say $report_file "\t\tNOT PREVIOUSLY SCHEDULED OR RUN FORCED!";
     } 
-    elsif ($running_samples->{$analysis_url_str} eq "failed" and $ignore_failed) {
+    elsif ( exists($running_samples->{$sample_id}{failed}) and (scalar keys %{$running_samples->{$sample_id}} == 1) and $ignore_failed) {
         say $report_file "\t\tPREVIOUSLY FAILED BUT RUN FORCED VIA IGNORE FAILED OPTION!";
     } 
     else {
         say $report_file "\t\tIS PREVIOUSLY SCHEDULED, RUNNING, OR FAILED!";
-        say $report_file "\t\t\tSTATUS: $running_analysis_url_str";
+        say $report_file "\t\t\tSTATUS:".join ',',keys %{$running_samples->{sample_id}};
         return 1;
     }
 

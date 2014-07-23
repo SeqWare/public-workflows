@@ -14,19 +14,27 @@ use SeqWare::Cluster;
 use SeqWare::Schedule;
 use GNOS::SampleInformation;
 
+use Data::Dumper;
+
 open my $report_file, '>', $ARGV{'--report'};
 
 say 'Removing cached ini and settings samples';
 `rm $ARGV{'--working-dir'}/samples/ -rf`;
 
+my ($whitelist, $blacklist);
+$whitelist = get_whitelist($ARGV{'--schedule-whitelist'})
+                                       if ($ARGV{'--schedule-whitelist'});
+$blacklist = get_blacklist($ARGV{'--schedule-blacklist'})
+                                       if ($ARGV{'--schedule-blacklist'});
+
 say 'Getting SeqWare Cluster Information';
-my ($cluster_information, $running_samples) 
+my ($cluster_information, $running_sample_ids)
           = SeqWare::Cluster->cluster_seqware_information( $report_file,
                                                   $ARGV{'--seqware-clusters'}, 
                                                   $ARGV{'--schedule-ignore-failed'},
                                                   $ARGV{'--workflow-version'});
 
-say 'Getting Sample Information from GNOS';
+say 'Reading in GNOS Sample Information';
 my $sample_information = GNOS::SampleInformation->get( $ARGV{'--working-dir'},
                                               $ARGV{'--gnos-url'},
                                               $ARGV{'--use-live-cached'},
@@ -36,8 +44,8 @@ say 'Scheduling Samples';
 SeqWare::Schedule->schedule_samples( $report_file,
                                      $sample_information,
                                      $cluster_information,
-                                     $running_samples,
-                                     $ARGV{'--workflow-skip-schedule'},
+                                     $running_sample_ids,
+                                     $ARGV{'--workflow-skip-scheduling'},
                                      $ARGV{'--schedule-sample'}, 
                                      $ARGV{'--schedule-center'},
                                      $ARGV{'--schdeule-ignore-lane-count'},
@@ -52,8 +60,45 @@ SeqWare::Schedule->schedule_samples( $report_file,
                                      $ARGV{'--workflow-input-prefix'},
                                      $ARGV{'--gnos-url'},
                                      $ARGV{'--schedule-ignore-failed'},
-                                     $ARGV{'--working-dir'});
+                                     $ARGV{'--working-dir'},
+                                     $ARGV{'--workflow-version'},
+                                     $whitelist,
+                                     $blacklist
+                                      );
 
 close $report_file;
 
-say 'Finished!!'
+say 'Finished!!';
+
+
+sub get_whitelist {
+   my ($whitelist_path) = @_;
+
+   my $file = "whitelist/$whitelist_path";
+   die "Whitelist does not exist" if (not -e $file);
+
+   open my $whitelist, '<', $file;
+
+   my @whitelist_raw = <$whitelist>;
+   my @whitelist = grep(s/\s*$//g, @whitelist_raw);
+
+   close $whitelist;
+
+   return \@whitelist;
+}
+
+sub get_blacklist {
+   my ($blacklist_path) = @_;
+
+   my $file = "blacklist/$blacklist_path";
+   die "Blacklist does not exist" if (not -e $file);
+
+   open my $blacklist, '<', $file;
+
+   my @blacklist_raw = <$blacklist>;
+   my @blacklist = grep(s/\s*$//g, @blacklist_raw);
+   
+   close $blacklist;    
+
+   return \@blacklist;
+}

@@ -68,16 +68,16 @@ sub seqware_information {
     my $xs = XML::Simple->new(ForceArray => 1, KeyAttr => 1);
     my $workflow_information = $xs->XMLin($workflow_information_xml);
 
-    my $running = 0;
+    my $running_samples;
     if ($workflow_information->{name}) {
         my $workflow_runs_xml = `wget -O - --http-user='$user' --http-password=$password -q $web/workflows/$workflow_accession/runs`;
         my $seqware_runs_list = $xs->XMLin($workflow_runs_xml);
         my $seqware_runs = $seqware_runs_list->{list};
 
-        $running = find_available_clusters($report_file, $seqware_runs,
-                          $workflow_accession, $running_samples, $run_workflow_version);
+        $running_samples = find_available_clusters($report_file, $seqware_runs,
+                   $workflow_accession, $running_samples, $run_workflow_version);
     }
-
+    my $running = scalar(keys %{$running_samples});
     if ($running < $max_running ) {
         say $report_file  "\tTHERE ARE $running RUNNING WORKFLOWS WHICH IS LESS THAN MAX OF $max_running, ADDING TO LIST OF AVAILABLE CLUSTERS";
         for (my $i=0; $i<$max_scheduled_workflows; $i++) {
@@ -89,7 +89,7 @@ sub seqware_information {
     else {
         say $report_file "\tCLUSTER HAS RUNNING WORKFLOWS, NOT ADDING TO AVAILABLE CLUSTERS";
     }
- 
+
     return ($cluster_information, $running_samples);
 }
 
@@ -98,7 +98,6 @@ sub find_available_clusters {
 
     say $report_file "\tWORKFLOWS ON THIS CLUSTER";
 
-    my $running = 0;
     foreach my $seqware_run (@{$seqware_runs}) {
         my $run_status = $seqware_run->{status}->[0];
 
@@ -108,30 +107,36 @@ sub find_available_clusters {
                                'scheduled' => 1, 'submitted' => 1 };
 
         if ($running_status->{$run_status}) {
-            find_running_samples($report_file, $seqware_run, $running_samples);
-            $running++;
+            my $sample_id;
+            $running_samples->{$sample_id}{$run_status} = 1
+               if ( $sample_id = running_sample_id($report_file, $seqware_run));
         }
      }
 
-     return $running;
+     return $running_samples;
 }
 
-sub find_running_samples {
+sub running_sample_id {
     my ($report_file, $seqware_run) = @_;
 
     my @ini_file =  split "\n", $seqware_run->{iniFile}[0];
-
+ 
     my %parameters;
     foreach my $line (@ini_file) {
-         my ($parameter, $value) = split '=', $line;
+         my ($parameter, $value) = split '=', $line, 2;
          $parameters{$parameter} = $value;
     }
 
+    my $sample_id = $parameters{sample_id};
+
     my @urls = split /,/, $parameters{gnos_input_metadata_urls};
+    say $report_file "\t\t\tSAMPLE: $sample_id";
     say $report_file "\t\t\tINPUTS:".join(",", sort @urls);
 
     say $report_file "\t\t\tCWD: ".$parameters{currentWorkingDir};
     say $report_file "\t\t\tWORKFLOW ACCESSION: ".$parameters{swAccession}."\n";
+
+    return $sample_id;
 } 
 
 
