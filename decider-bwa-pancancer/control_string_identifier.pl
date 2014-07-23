@@ -1,18 +1,20 @@
 #!/usr/bin/perl
 #
-# File: gnos_report_generator.pl
+# File: control_string_identifier.pl by Marc Perry
+# based on a fork of my gnos_report_generator.pl script
 # 
 # DESCRIPTION
-# A tool for reporting on the total number of aligned and unaligned
-# bam files in a GNOS repository
+# A tool for trying to determine which field a data submitting group is using
+# in their PCAP XML files in the 'use_cntl' field
 #
-# This script is designed to take the data.xml file
+# This script is designed to take a list of xml files, specified on the command line
+# extracting the use_cntl field from the Tumour
 # returned by cgquery, and use it to either download, and 
 # then parse, all of the GNOS xml files listed in the data.xml file
 # OR, if you have already downloaded the xmls, then the script
 # Will parse them.
 #
-# Last Modified: 2014-07-16, Status: works as advertised
+# Last Modified: 2014-05-18, Status: works as advertised
 
 use strict;
 use XML::DOM;
@@ -31,9 +33,10 @@ my $skip_down = 0;
 my $gnos_url = q{};
 my $specific_sample;
 my $ignore_lane_cnt = 0;
+my $report_name = "workflow_decider_report_gn";
+my $skip_upload = "true";
 my $upload_results = 0;
 my $xml_file = undef;
-my $uri_list = undef;
 
 my @repos = qw( bsc dkfz ebi etri osdc );
 
@@ -54,7 +57,6 @@ my %norm_use_cntls = ();
 my %use_cntls = ();
 my %aligned_bams_seen = ();
 my %unaligned_bams_seen = ();
-my %multiple_aligned_bams = ();
 my %problems = ();
 my $single_specimens = {};
 my $two_specimens = {};
@@ -68,56 +70,52 @@ my $many_specimens = {};
 #   print "\t--gnos-url           a URL for a GNOS server, e.g. https://gtrepo-ebi.annailabs.com\n";
 #   print "\t--skip-meta-download use the previously downloaded XML from GNOS, only useful for testing\n";
 
-GetOptions("gnos-url=s" => \$gnos_url, "xml-file=s" => \$xml_file, "sample=s" => \$specific_sample, "ignore-lane-count" => \$ignore_lane_cnt, "skip-meta-download" => \$skip_down, "uri-list=s" => \$uri_list, );
+GetOptions("gnos-url=s" => \$gnos_url, "xml-file=s" => \$xml_file, "sample=s" => \$specific_sample, "ignore-lane-count" => \$ignore_lane_cnt, "skip-meta-download" => \$skip_down, "report=s" => \$report_name, "upload-results" => \$upload_results);
 
-# In the data_live XML file downloaded by cgquery one such XML element looks like this:
-# <analysis_full_uri>https://gtrepo-ebi.annailabs.com/cghub/metadata/analysisFull/c74231a4-f0b3-11e3-bddc-c84f2e14b9ce</analysis_full_uri>
-# https://gtrepo-ebi.annailabs.com/cghub/metadata/analysisFull/c74231a4-f0b3-11e3-bddc-c84f2e14b9ce
-# https://gtrepo-ebi.annailabs.com/cghub/metadata/analysisFull/
+my $usage = "USAGE: $0 --skip-meta-download --xml-file <data.xml>";
 
-my $usage = "USAGE: There are two ways to runs this script:\Either provide the name of an XML file on the command line:\n$0 --xml-file <data.xml>\n OR provide the name of a file that contains a list of GNOS repository analysis_full_uri links:\n$0 --uri-list <list.txt.\n\nThe script will also generate this message if you provide both an XML file AND a list of URIs\n";
+die $usage unless $xml_file;
 
-die $usage unless $xml_file or $uri_list;
-die $usage if $xml_file and $uri_list;
-
+# capture the name of the centre from the command line using GetOpt::Long
+# and use that string as a hash key to get the URL that you want
 # $gnos_url = $urls{$gnos_url};
+
 
 ##############
 # MAIN STEPS #
 ##############
-print STDERR scalar localtime, "\n";
+print STDERR scalar localtime, "\n\n";
 
 my @now = localtime();
 my $timestamp = sprintf( "%04d_%02d_%02d_%02d%02d", $now[5]+1900, $now[4]+1, $now[3], $now[2], $now[1], );
 
-# STEP 1. READ INFO FROM GNOS
-# This subroutine call returns a hashref
+$report_name .= '_' . $timestamp . '.txt';
+
+# output data table
+open my $FH, '>', 'table_report__' . $timestamp . '.tsv' or die "Could not open table for writing: $!";
+
+# output report file
+
+# READ INFO FROM GNOS
 my $sample_info = read_sample_info();
 
-# STEP 2. MAP SAMPLES
-# Process the data structure that has been passed in and print out
-# a table showing the donors, specimens, samples, number of bam files, alignment
-# status, etc.
-map_samples($sample_info);
+# SCHEDULE SAMPLES
+# now look at each sample, see if it's already schedule, launch if not and a cluster is available, and then exit
+schedule_samples($sample_info);
 
-# STEP 3. QC
-# now review to see if any aligned bam files were listed
-# in the metadata for more than one single donorp
 foreach my $bam ( sort keys %aligned_bams_seen ) {
     if ( $aligned_bams_seen{$bam} > 1 ) {
         log_error( "Found multiple donors using this aligned bam: $bam" ); 
     }
 } # close foreach loop
 
-# now review to see if any unaligned bam files were listed
-# in the metadata for more than one single donorp
 foreach my $bam ( sort keys %unaligned_bams_seen ) {
     if ( $unaligned_bams_seen{$bam} > 1 ) {
         log_error( "Found multiple donors using this unaligned bam: $bam" ); 
     }
 } # close foreach loop
 
-# if any errors were detected during the run, notify the user
+
 print STDERR "WARNING: Logged $error_log errors in error_log_gnos_report.txt stamped with $timestamp\n" if $error_log;
 
 END {
@@ -129,7 +127,7 @@ END {
 # SUBROUTINES #
 ###############
 
-sub map_samples {
+sub schedule_samples {
     my $rec_no = 0;
     die "\$sample_info hashref is empty!" unless ($sample_info);
     #################################################
@@ -142,62 +140,27 @@ sub map_samples {
         # Iteratively parse the data structure built from all of the XML files, and parse them out
         # into three categories--and three new data structures
         foreach my $donor ( keys %{$sample_info->{$project}} ) {
-            my %types = ();
-            my @specimens = keys %{$sample_info->{$project}{$donor}};
-            my $specimen_count = scalar( @specimens );
-            foreach my $specimen ( @specimens ) {
-                foreach my $sample ( keys %{$sample_info->{$project}{$donor}{$specimen}} ) {
-                    foreach my $alignment ( keys %{$sample_info->{$project}{$donor}{$specimen}{$sample}} ) {
-                        my $type = $sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{type};
-                        push @{$types{$type}}, $specimen unless ( grep {/$specimen/} @{$types{$type}} );
-		    } # close alignment foreach loop
-		} # close sample foreach loop
-	    } # close specimen foreach loop
-            my $unpaired = 0;
-            my $paired = 0;
-            my $many_normals = 0;
-            my $many_tumours = 0;
-            if ( scalar keys %types == 1 ) {
-                $unpaired = 1;
+            # skip processing this row if no donor name was extracted from the XML file
+            next unless $donor;
+            my $num_of_specimens = scalar( keys %{$sample_info->{$project}{$donor}} );
+            if ( $num_of_specimens == 1 ) {
+                # This cannot be paired if there is only a single specimen
+                $single_specimens->{$project}{$donor} = $sample_info->{$project}{$donor};
 	    }
-            else {
-                $paired = 1;
-	    }
-            foreach my $type ( keys %types ) {
-                if ( $type eq 'Normal' ) {
-                    if ( scalar( @{$types{$type}} > 1 ) ) {
-                        $many_normals = 1;
-                    } 
-		}
-                elsif ( $type eq 'Tumour' ) {
-                    if ( scalar( @{$types{$type}} > 1 ) ) {
-                        $many_tumours = 1;
-		    }
-		}
-	    } # close outer foreach loop
-
-            # print "\n", Data::Dumper->new([\%types],[qw(types)])->Indent(1)->Quotekeys(0)->Dump, "\n";
-            # These are exclusive tests, so test the worse case first
-	    if ( $many_normals ) {
-                log_error( "Found more than two Normal specimens for this donor: $donor" );
+            elsif ( $num_of_specimens == 2 ) {
+                # This might be paired because there are exactly 2 specimens for this donor
+                $two_specimens->{$project}{$donor} = $sample_info->{$project}{$donor};      
+            } 
+	    elsif ( $num_of_specimens > 2 ) {
+                # This has more than 2 specimens, probably some duplicated samples
+                log_error( "Found more than two specimens for this donor: $donor" );
                 $many_specimens->{$project}{$donor} = $sample_info->{$project}{$donor};
 	    }
-            elsif ( $paired ) {
-                $two_specimens->{$project}{$donor} = $sample_info->{$project}{$donor};      
-	    }
-            elsif ( $unpaired ) {
-                $single_specimens->{$project}{$donor} = $sample_info->{$project}{$donor};
-            } 
             else {
                 # No specimens, skip it
-                log_error( "No specimens found for Project: $project Donor: $donor SKIPPING" );
+                log_error( "No specimens found for Project: $project Donor: $donor" );
                 next;
 	    }
-           
-	    if ( $many_tumours ) {
-                log_error( "Found more than two Tumour specimens for this donor: $donor" );
-	    }
-
 	} # close foreach $donor
     } # close foreach project
 
@@ -225,27 +188,33 @@ sub map_samples {
     }
 } # close sub
 
+
+# N.B. I cut and pasted this subroutine from my pcap_data_freeze_report_generator.pl script
+# And in that script I was only interested in the aligned bam files/samples, so I think I am 
+# going to have to modify the logic here to get it to work as desired for non-aligned as well
+# Lets stop and work it out now instead of on the fly 
+# 
 # I can imagine 4 types of submissions: Tumour unaligned, Tumour aligned, Normal unaligned, Normal aligned
 # Data structure for 1 donor could have 1 or 2 specimens, but I have sorted that out above (in theory)
 # So if there is only a single specimen, that could be Normal OR Tumour but it could have both an aligned
 # and an unaligned, so that is two rows in the output table--it could have two rows, but it may not
+# Okay thus far I don't see anything I need to change (yet), because I parsed them above into
+# three different classes: 1 donor, 1 specimen, 1 donor, 2 specimens, 1 donor, 3 specimens (this last is
+# likely an error, but may have to tweak this later
+#
 
 sub process_specimens {
     my $sample_info = shift @_;
     my $FH = shift @_;
-    print $FH "Project\tDonor ID\tSpecimen ID\tSample ID\tNormal/Tumour\tAlignment\tDate\taliquot_id\tNumber of bams\taligned bam file\tpair uploaded\n";
+    print $FH "Project\tDonor ID\tSpecimen ID\tSample ID\tNormal/Tumour\tAlignment\tDate\tAnalysis ID\tNumber of bams\taligned bam file\tpair aligned\n";
     foreach my $project (sort keys %{$sample_info}) {
         foreach my $donor ( keys %{$sample_info->{$project}} ) {
-            my %types = ();
-            my @specimens = keys %{$sample_info->{$project}{$donor}};
-            my $specimen_count = scalar( @specimens );
-            foreach my $specimen ( @specimens ) {
+            foreach my $specimen (keys %{$sample_info->{$project}{$donor}}) {
                 my $d = {};
                 my $aligns = {};
                 foreach my $sample ( keys %{$sample_info->{$project}{$donor}{$specimen}} ) {
                     foreach my $alignment ( keys %{$sample_info->{$project}{$donor}{$specimen}{$sample}} ) {
                         my $type = $sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{type};
-                        $types{$type}++;
                         my $aliquot_id = $sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{aliquot_id};
 
                         my $analysis_id = $sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{analysis_id};
@@ -268,6 +237,9 @@ sub process_specimens {
                                 $d->{bams_count}++;
                             }
 
+                            # I need to change the logic here, because before I was looking for donor specimen sample
+                            # trios that had more than 1 aligned bams, but now I want to change it and ask
+                            # if a single bam file appears in more than one submission (as well)
                             my $aligned_bam = q{};
                             my $num_bam_files = $sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{bams_count};
                             # Test and see if there is only a single bam file
@@ -278,8 +250,7 @@ sub process_specimens {
     			    elsif ( $num_bam_files > 1 and $alignment ne 'unaligned' ) {
                                 foreach (sort keys %{$sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{files}} ) {
                                     $aligned_bams_seen{$_}++;
-                                    # $aligned_bam .= $_;
-                                    $aligned_bam = $_;
+                                    $aligned_bam .= $_;
                                 }     
                                 log_error( "Found $num_bam_files aligned bam files for $donor $specimen $sample" );
                             }
@@ -301,8 +272,7 @@ sub process_specimens {
                             # This is the header that this script originally used
                             # print $FH "$project\t$donor\t$specimen\t$sample\t$alignment\t$date\t$num_bam_files\t$aligned_bam\t$aliquot_id";
                             # print the first 10 columns
-                            # print $FH "$project\t$donor\t$specimen\t$sample\t$type\t$alignment\t$date\t$analysis_id\t$num_bam_files\t$aligned_bam";
-                            print $FH "$project\t$donor\t$specimen\t$sample\t$type\t$alignment\t$date\t$aliquot_id\t$num_bam_files\t$aligned_bam";
+                            print $FH "$project\t$donor\t$specimen\t$sample\t$type\t$alignment\t$date\t$analysis_id\t$num_bam_files\t$aligned_bam";
                             # see if the use_cntl field is filled in in a helpful way
                             # we would only expect this field to be filled in only for the 'Tumour' samles
 			    if ( $type eq 'Tumour' ) {
@@ -312,12 +282,6 @@ sub process_specimens {
                                     # have been uploaded and processed in this batch of XML files
                                     if ( $norm_aliquot_ids{$use_cntls{$aliquot_id}} ) {
                                         # YES, we found a corresponding normal ID
-                                        print $FH "\tYES\n";
-                                    }
-                                    elsif ( scalar( keys %{$sample_info->{$project}{$donor}} ) == 2 ) {
-                                        # It looks like there will be lots of examples where the whole
-                                        # use_cntl is mucked up, but we will still clearly have 2 specimens
-                                        # for the same donor, so they are still paired
                                         print $FH "\tYES\n";
                                     }
                                     else {
@@ -338,13 +302,6 @@ sub process_specimens {
                                 if ( defined ( $norm_use_cntls{$aliquot_id} ) ) {
                                     print $FH "\tYES\n";
 			        }
-                                elsif ( scalar( keys %{$sample_info->{$project}{$donor}} ) == 2 ) {
-                                    # Similar to above for the Tumour samples
-                                    # it looks like there will be lots of examples where the whole
-                                    # use_cntl is mucked up, but we will still clearly have 2 specimens
-                                    # for the same donor, so they are still paired
-                                    print $FH "\tYES\n";
-			        }
                                 else {
                                     print $FH "\tNO\n";
 			        }
@@ -357,98 +314,61 @@ sub process_specimens {
 } # close sub
 
 sub read_sample_info {
-    my $d = {};
-    my $type = q{};
-    my @uris = ();
-    my $doc;
+  my $d = {};
+  my $type = q{};
 
-    # PARSE XML
-    my $parser = new XML::DOM::Parser;
-    if ( $xml_file ) {
-        # read in the xml file returned by the cgquery command
-        $doc = $parser->parsefile("$xml_file");
-        my $nodes = $doc->getElementsByTagName ("Result");
-        my $n = $nodes->getLength;
+  # PARSE XML
+  my $parser = new XML::DOM::Parser;
 
-        # extract the URIs from the data.xml file
-        for ( my $i = 0; $i < $n; $i++ ) {
-            my $node = $nodes->item ($i);
-            my $aurl = getVal($node, "analysis_full_uri"); 
-            if ( $aurl =~ /^(.*)\/([^\/]+)$/ ) {
-                $aurl = $1."/".lc($2);
-            } 
-            push @uris, $aurl;
-        }
-    }
-    elsif ( $uri_list ) {
-        open my $URIS, '<', $uri_list or die "Could not open $uri_list for reading!";
-        @uris = <$URIS>;
-        chomp( @uris );
-        close $URIS;
-    }
-    foreach my $uri ( @uris ) {
-        my ( $id ) = $uri =~ m/analysisFull\/([\w-]+)$/;
-        # select the skip download option and the script will just use 
-        # the Result XML files that were previously downloaded
-        if ($skip_down) { 
-            print STDERR "Skipping download, using previously downloaded xml/$id.xml\n";
-        }
-        elsif ( -e "xml/$id.xml" ) {
-            print STDERR "Detected a previous copy of xml/$id.xml and will use that\n";
-	}
-        else {
-            print STDERR "Now downloading file $id.xml from $uri\n";
-            download($uri, "xml/$id.xml"); 
-        } 
-        my $adoc = undef;
-        my $adoc2 = undef;
+  # read in the xml file returned by the cgquery command
+  my $doc = $parser->parsefile("$xml_file");
+  my $nodes = $doc->getElementsByTagName ("Result");
+  my $n = $nodes->getLength;
 
-        # test to see if the download and everything worked
-        if ( -e "xml/$id.xml" ) {
-            # test for file contents to avoid XML parsing errors that kill script
-            if ( -z "xml/$id.xml" ) {
-                print STDERR "This XML file has zero size (i.e., is empty): $id.xml\n    SKIPPING\n\n";
-                log_error( "SKIPPING xml file is empty and has zero size: $id.xml" );
-                next;
-	    }
-        
-            # create an XML::DOM object:
-            $adoc = $parser->parsefile ("xml/$id.xml");
-            # create ANOTHER XML::DOM object, using a differen Perl library
-            $adoc2 = XML::LibXML->new->parse_file("xml/$id.xml");
-	}
-        else {
-            print STDERR "Could not find this xml file: $id.xml\n    SKIPPING\n\n";
-            log_error( "SKIPPING Could not find xml file: $id.xml" );
-            next;
-	}
+  # iterate over the Result XML files that were downloaded into the 
+  # xml/ directory  
+  for (my $i = 0; $i < $n; $i++)
+  {
+      my $node = $nodes->item ($i);
+      my $aurl = getVal($node, "analysis_full_uri"); 
+      if($aurl =~ /^(.*)\/([^\/]+)$/) {
+          $aurl = $1."/".lc($2);
+      } 
+      else { 
+        next;
+      }
+      # set the skip download variable to '1' and the script will just use 
+      # the Result XML files that were previousluy downloaded
+      if (!$skip_down) { 
+          print STDERR "Now downloading file data_$i.xml from $aurl\n";
+          download($aurl, "xml/data_$i.xml"); 
+      }
+      else {
+          print STDERR "Parsing previously downloaded data_$i.xml\n";
+      } 
 
-        my $project = getCustomVal($adoc2, 'dcc_project_code');
-        next unless checkvar( $project, 'project', $id, );
-        my $donor_id = getCustomVal($adoc2, 'submitter_donor_id');
-        next unless checkvar( $donor_id, 'donor_id', $id, );
-        my $specimen_id = getCustomVal($adoc2, 'submitter_specimen_id');
-        next unless checkvar( $specimen_id, 'specimen_id', $id, );
-        my $sample_id = getCustomVal($adoc2, 'submitter_sample_id');
-        next unless checkvar( $sample_id, 'sample_id', $id, );
-        my $analysis_id = getVal($adoc, 'analysis_id');
-        my $mod_time = getVal($adoc, 'last_modified');
-        my $analysisDataURI = getVal($adoc, 'analysis_data_uri');
-        my $submitterAliquotId = getCustomVal($adoc2, 'submitter_aliquot_id');
-        my $aliquot_id = getVal($adoc, 'aliquot_id');
-        next unless checkvar( $aliquot_id, 'aliquot_id', $id, );
-        my $use_control = getCustomVal($adoc2, "use_cntl");
-        next unless checkvar( $use_control, 'use_control', $id, );
-        # make sure that you are comparing lc vs lc (but not for the Normal samples)
-        $use_control = lc($use_control) unless $use_control =~ m/N\/A/;
-        my $dcc_specimen_type = getCustomVal($adoc2, 'dcc_specimen_type');
-        next unless checkvar( $dcc_specimen_type, 'dcc_specimen_type', $id, );
-        my $alignment = getVal($adoc, "refassem_short_name");
-        my $total_lanes = getCustomVal($adoc2, "total_lanes");
-        my $sample_uuid = getXPathAttr($adoc2, "refname", "//ANALYSIS_SET/ANALYSIS/TARGETS/TARGET/\@refname");
-        my $libName = getVal($adoc, 'LIBRARY_NAME');
-        my $libStrategy = getVal($adoc, 'LIBRARY_STRATEGY');
-        my $libSource = getVal($adoc, 'LIBRARY_SOURCE');
+      # create an XML::DOM object:
+      my $adoc = $parser->parsefile ("xml/data_$i.xml");
+      # create ANOTHER XML::DOM object, using a differen Perl library
+      my $adoc2 = XML::LibXML->new->parse_file("xml/data_$i.xml");
+      my $project = getCustomVal($adoc2, 'dcc_project_code');
+      my $donor_id = getCustomVal($adoc2, 'submitter_donor_id');
+      my $specimen_id = getCustomVal($adoc2, 'submitter_specimen_id');
+      my $sample_id = getCustomVal($adoc2, 'submitter_sample_id');
+      # Require a project, donor, specimen, and sample to proceed
+      next unless ( $project && $donor_id && $specimen_id && $sample_id );
+      my $analysis_id = getVal($adoc, 'analysis_id');
+      my $mod_time = getVal($adoc, 'last_modified');
+      my $analysisDataURI = getVal($adoc, 'analysis_data_uri');
+      my $submitterAliquotId = getCustomVal($adoc2, 'submitter_aliquot_id,submitter_sample_id');
+      my $aliquot_id = getVal($adoc, 'aliquot_id');
+      my $use_control = getCustomVal($adoc2, "use_cntl");
+      my $alignment = getVal($adoc, "refassem_short_name");
+      my $total_lanes = getCustomVal($adoc2, "total_lanes");
+      my $sample_uuid = getXPathAttr($adoc2, "refname", "//ANALYSIS_SET/ANALYSIS/TARGETS/TARGET/\@refname");
+      my $libName = getVal($adoc, 'LIBRARY_NAME');
+      my $libStrategy = getVal($adoc, 'LIBRARY_STRATEGY');
+      my $libSource = getVal($adoc, 'LIBRARY_SOURCE');
 
       # get files
       # now if these are defined then move onto the next step
@@ -466,19 +386,12 @@ sub read_sample_info {
         $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{$alignment}{sample_uuid} = $sample_uuid;
         $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{$alignment}{analysis_id} = $analysis_id;
         $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{$alignment}{aliquot_id} = $aliquot_id;
-        # We already checked to see if use_cntl had a valid value
-        # (First check to see if there is a value in use_cntl)
+        # First check to see if there is a value in use_cntl
         # then check to see if it is N/A.  If it is N/A then this is a Normal sample
         if ( $use_control && $use_control ne 'N/A' ) {
             # if it passes the test then it must be a 'Tumour', so we give it a 'type'
             # 'type' = 'Tumour'
             $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{$alignment}{type} = 'Tumour';
-            # Now lets check to see if this type matches the contents of the dcc_specimen_type
-            if ( $dcc_specimen_type =~ m/Normal/ ) {
-                log_error( "MISMATCH dcc_specimen type in $id.xml OVERRIDING from Tumour to Normal" );            
-                $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{$alignment}{type} = 'Normal';
-            }            
-
             # keep track of the correct use_cntl for this Tumor Sample by storing
             # this information in the %use_cntls hash, where the hash key is the 
             # aliquot_id for this sample, and the hash value is the use_cntl for
@@ -494,27 +407,22 @@ sub read_sample_info {
             # otherwise, this is not a Tumour, so we give it a 'type'
             # 'type' = Normal
             $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{$alignment}{type} = 'Normal';
-            # Now lets check to see if this type matches the contents of the dcc_specimen_type
-            if ( $dcc_specimen_type =~ m/tumour/ ) {
-                log_error( "MISMATCH dcc_specimen type in $id.xml OVERRIDING from Normal to Tumour" );            
-                $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{$alignment}{type} = 'Tumour';
-            }            
-
             # Add this aliquot ID to this list of all the 'Normal' 
             # aliquot ids encountered in this XML
             $norm_aliquot_ids{$aliquot_id}++;
         }
 
-        my $files = readFiles($adoc);
-        foreach my $file(keys %{$files}) {
-            next if $file =~ m/\.bai/;
-            $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{$alignment}{files}{$file}{size} = $files->{$file}{size}; 
-            $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{$alignment}{files}{$file}{checksum} = $files->{$file}{checksum}; 
-            $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{$alignment}{files}{$file}{localpath} = "$file"; 
-        }
-    }
-    # print "\n", Data::Dumper->new([\$d],[qw(d)])->Indent(1)->Quotekeys(0)->Dump, "\n";
-    # exit;
+      my $files = readFiles($adoc);
+      foreach my $file(keys %{$files}) {
+        next if $file =~ m/\.bai/;
+        $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{$alignment}{files}{$file}{size} = $files->{$file}{size}; 
+        $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{$alignment}{files}{$file}{checksum} = $files->{$file}{checksum}; 
+        $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{$alignment}{files}{$file}{localpath} = "$file"; 
+      }
+  }
+
+  # Avoid memory leaks - cleanup circular references for garbage collection
+  $doc->dispose;
   return($d);
 } # close sub
 
@@ -536,63 +444,27 @@ sub readFiles {
 } # close sub
 
 sub getCustomVal {
-    my ($dom2, $keys) = @_;
-    my @keys_arr = split /,/, $keys;
-    # print "\n", Data::Dumper->new([\@keys_arr],[qw(keys_arr)])->Indent(1)->Quotekeys(0)->Dump, "\n";
-    # this returns an array
-    my @nodes = ($dom2->findnodes('//ANALYSIS_ATTRIBUTES/ANALYSIS_ATTRIBUTE'));
-    # print Data::Dumper->new([\@nodes],[qw(nodes)])->Indent(1)->Quotekeys(0)->Dump, "\n";
-    # print join "\n", @nodes, "\n";
-    for my $node ($dom2->findnodes('//ANALYSIS_ATTRIBUTES/ANALYSIS_ATTRIBUTE')) {
-        my $i=0;
-        # print "\nThis current \$node node $i, contains $node\n";
-        # print "\t", Data::Dumper->new([\$node],[qw(node)])->Indent(1)->Quotekeys(0)->Dump, "\n";
-
-        # this also returns an array
-        my @currKeys =  ($node->findnodes('//TAG/text()')); 
-        # print Data::Dumper->new([\@currKeys],[qw(currKeys)])->Indent(1)->Quotekeys(0)->Dump, "\n";
-        # print join "\n", @currKeys, "\n";
-        my @count = $node->findnodes('//TAG/text()');
-        my $count = scalar( @count );
-        for my $currKey ($node->findnodes('//TAG/text()')) {
-            $i++;
-            # print "\t\$currKey currKey ", $i - 1, " contains $currKey\n";
-            # print "\t\t", Data::Dumper->new([\$currKey],[qw(currKey)])->Indent(1)->Quotekeys(0)->Dump, "\n";
-            # print "\t\$i contains $i\n";
-            my $keyStr = $currKey->toString();
-            # print "\t\$keyStr which I extracted from \$currKey (which was $currKey) contains $keyStr\n";
-            foreach my $key (@keys_arr) {
-                # print "\t\tPassed in \$key still contains $key\n";
-                if ($keyStr eq $key) {
-                    # print "\t\tFound a MATCH where \$keyStr (\$currKey) matches \$key!\n";
-                    my $j=0;
-                    # whoa, this also returns an array of nodes
-                    # my @currVals = ($node->findnodes('//VALUE/text()'));
-                    # print Data::Dumper->new([\@currVals],[qw(currVals)])->Indent(1)->Quotekeys(0)->Dump, "\n";
-                    # print join "\n", @currVals, "\n";
-                    my @count_2 = $node->findnodes('//VALUE/text()');
-                    my $count_2 = scalar(@count_2);
-                    unless ( $count == $count_2 ) {
-                        log_error( "Number of Keys does not match number of values in an XML file" );
-		    }
-                    for my $currVal ($node->findnodes('//VALUE/text()')) {
-                        $j++;   
-                        # print "\t\t\$currVal, currVal ", $j - 1, " contains $currVal\n";
-                        # print "\t\t\t", Data::Dumper->new([\$currVal],[qw(currVal)])->Indent(1)->Quotekeys(0)->Dump, "\n";
-                        # print "\t\t\$j contains $j\n";
-                        if ($j==$i) { 
-                            # print "\t\t\tFound another MATCH where \$j and \$i contain the same value!\n";
-                            # print "\t\t\tNow returning $currVal\n";
-                            return($currVal->toString());
-                        }
-                    } 
-                }
+  my ($dom2, $keys) = @_;
+  my @keys_arr = split /,/, $keys;
+  for my $node ($dom2->findnodes('//ANALYSIS_ATTRIBUTES/ANALYSIS_ATTRIBUTE')) {
+    my $i=0;
+    for my $currKey ($node->findnodes('//TAG/text()')) {
+      $i++;
+      my $keyStr = $currKey->toString();
+      foreach my $key (@keys_arr) {
+        if ($keyStr eq $key) {
+          my $j=0;
+          for my $currVal ($node->findnodes('//VALUE/text()')) {
+            $j++;   
+            if ($j==$i) { 
+              return($currVal->toString());
             }
+          } 
         }
+      }
     }
-    # print "\tNow returning q{} because . . . no match found?!?\n";
-    # return("");
-    return 0;
+  }
+  return("");
 } # close sub
 
 sub getXPathAttr {
@@ -620,27 +492,17 @@ sub getVal {
 } # close sub
 
 sub download {
-    my ($url, $out) = @_;
-    # recall that $out contains both the path and the 
-    # filename
-    # if ( -e "$out" ) {
-    #     print STDERR "Detected a previous copy of xml/$out Skipping\n";
-    #     return;
-    # }
-    # -O specifies the name of the desired output file
-    # -q equals quiet, it suppresses all of the wget STDERR
-    # -nc means no-clobber, it will not overwrite a file that is already
-    # in that directory
-    # Nope, this -nc is not working as I anticipated
-    my $r = system("wget -nc -q -O $out $url");
+  my ($url, $out) = @_;
+
+  my $r = system("wget -q -O $out $url");
+  if ($r) {
+	  $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME}=0;
+    $r = system("lwp-download $url $out");
     if ($r) {
-        $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME}=0;
-        $r = system("lwp-download $url $out");
-        if ($r) {
 	    print "ERROR DOWNLOADING: $url\n";
 	    exit(1);
-        }
     }
+  }
 } # close sub
 
 sub log_error {
@@ -650,17 +512,6 @@ sub log_error {
     close $ERR;
     $error_log++;
 } # close sub
-
-sub checkvar {
-    my ( $var, $name, $id, ) = @_;
-    unless ( $var ) {
-        print STDERR "The value in \$" . "$name is False; skipping $id\n";
-        log_error( "SKIPPED $id.xml because \$" . "$name was False");
-        return 0;
-    } # close unless test
-    return 1;
-} # close sub
-
 
 __END__
 

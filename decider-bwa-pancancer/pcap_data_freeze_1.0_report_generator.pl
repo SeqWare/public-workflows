@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 #
-# File: pcap_data_freeze_report_generator.pl
+# File: pcap_data_freeze_1.0_report_generator.pl
 # 
 # based on, and forked from my previous script named: gnos_report_generator__2014_05_01.pl
 #

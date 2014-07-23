@@ -4,7 +4,7 @@
 # Concept: I would like to create a command line tool
 # that will let me quickly download a GDocs spreadsheet
 #
-# Last Updated: 2014-05-14, Status: basic functionality working
+# Last Updated: 2014-06-27, Status: basic functionality working
 
 use strict;
 use warnings;
@@ -27,54 +27,63 @@ my @real_header = ( 'Study', 'dcc_project_code', 'Accession Identifier', 'submit
 # The mangled column header fields created when Net::Google::Spreadsheets parses the GoogleDocs:
 my @header = ( 'study', 'dccprojectcode', 'accessionidentifier', 'submitterdonorid', 'submitterspecimenid', 'submittersampleid', 'readgroupsmuuid', 'dccspecimentype', 'normaltumordesignation', 'matchingnormalortumouricgcsampleidentifier', 'sequencingstrategy', 'numberofbamfilessample', 'targetuploaddateddmmyyyy', 'actualuploaddateddmmyyyy', );
 
-my %projects = ( 'BRCA-EU' => { key => '0AoQ6zq-rG38-dDhvU0VZNk4wMGpDUk1NaWZHMG5LLWc',
-                             title => 'Sheet1',
-                           },
-              'BRCA-UK' => { key => '0ApWzavEDzSJddDAzdjVPbVVubHV6UDgxSEcxa0F3bEE',
-                             title => 'BRCA-UK PanCancer Data',
-                           },
-              'BTCA-SG' => { key => '0ApWzavEDzSJddGhFak1rZEJmUHFjOWR3MTRPVndrVlE',
-                             title => 'BTCA-SG PanCancer Data',
-                           },
-              'CLLE-ES' => { key => '0ApWzavEDzSJddFlnVTNmVXA5dWFNWlBhbVlpTFdWTlE',
-                             title => 'CLLE-ES PanCancer Data',
-                           },
-              'EOPC-DE' => { key => '0ApWzavEDzSJddEUtMUdHTFlrajA5Y0poQmFqTVdpY3c',
-                             title => 'EOPC-DE PanCancer Data',
-                           },
-              'ESAD-UK' => { key => '0ApWzavEDzSJddENiS3F2V1BIU3diVGpRd3hPeHkyWXc',
-                             title => 'ESAD-UK PanCancer Data',
-                           },
-              'LAML-KR' => { key => '0ApWzavEDzSJddEJfUVJ2TEd0aGJJazM3RktXVmtGX1E',
-                             title => 'LAML-KR PanCancer Data',
-                           },
-              'LIRI-JP' => { key => '0ApWzavEDzSJddExGbTZfSG1HZmZJTEUxVjN0NzZNNlE',
-                             title => 'LIRI-JP PanCancer Data',
-                            },
-              'MALY-DE' => { key => '0ApWzavEDzSJddFdLWlJ3YkxoMzA4TnB4QXhkQ0VuWVE',
-                             title => 'MALY-DE PanCancer Data',
-                           },
-              'PACA-CA' => { key => '0ApWzavEDzSJddF9BUXpLa0Qzd0JJRXJZWllmV2V6Wnc',
-                             title => 'OICR PanCancer Data - new sheet for SOP 1.0',
-                           },
-              'PBCA-DE' => { key => '0ApWzavEDzSJddDAyT2x1WmQ5dkl0NENnVTdPSXBLRXc',
-                             title => 'PBCA-DE PanCancer Data',
-                           },
-              'PRAD-UK' => { key => '0ApWzavEDzSJddEZ6aUdVMnVoX1FEdVZ2REswY3pVMGc',
-                             title => 'PRAD-UK PanCancer Data',
-                           },
-              'LICA-FR' => { key => '0ApWzavEDzSJddFctcDhqajNtWVM5aWxzQzByTzl2MEE',
-                             title => 'LICA-FR PanCancer Data',
-                           },
-              'ORCA-IN' => { key => '0ApWzavEDzSJddEdwaHBVdlJqMlVfYjd5SFRqek9PbHc',
-                             title => 'ORCA-IN PanCancer Data',
-                           },
-              'OV-AU'   => { key => '0ApWzavEDzSJddFBieGxUQ204dGdzLVg0T3Zfb1NXNnc',
-                             title => 'OV-AU PanCancer Data',
-                           },
-              'GACA-CN' => { key => '0ApWzavEDzSJddFBNZmJtREV2eG1ybkZCZ2FoV1g2T3c',
-                             title => 'GACA-CN PanCancer Data',
-                           },
+my %projects = ('OV-AU'   => { key => '0ApWzavEDzSJddFBieGxUQ204dGdzLVg0T3Zfb1NXNnc',
+                               title => 'OV-AU PanCancer Data',
+                             },
+                'PACA-CA' => { key => '0ApWzavEDzSJddF9BUXpLa0Qzd0JJRXJZWllmV2V6Wnc',
+                               title => 'OICR PanCancer Data - new sheet for SOP 1.0',
+                             },
+                'GACA-CN' => { key => '0ApWzavEDzSJddFBNZmJtREV2eG1ybkZCZ2FoV1g2T3c',
+                               title => 'GACA-CN PanCancer Data',
+                             },
+                'LICA-FR' => { key => '0ApWzavEDzSJddFctcDhqajNtWVM5aWxzQzByTzl2MEE',
+                               title => 'LICA-FR PanCancer Data',
+                             },
+                'EOPC-DE' => { key => '0ApWzavEDzSJddEUtMUdHTFlrajA5Y0poQmFqTVdpY3c',
+                               title => 'EOPC-DE PanCancer Data',
+                             },
+                'MALY-DE' => { key => '0ApWzavEDzSJddFdLWlJ3YkxoMzA4TnB4QXhkQ0VuWVE',
+                               title => 'MALY-DE PanCancer Data',
+                             },
+                'PBCA-DE' => { key => '0ApWzavEDzSJddDAyT2x1WmQ5dkl0NENnVTdPSXBLRXc',
+                               title => 'PBCA-DE PanCancer Data',
+                             },
+                'ORCA-IN' => { key => '0ApWzavEDzSJddEdwaHBVdlJqMlVfYjd5SFRqek9PbHc',
+                               title => 'ORCA-IN PanCancer Data',
+                             },
+                'LIRI-JP' => { key => '0ApWzavEDzSJddExGbTZfSG1HZmZJTEUxVjN0NzZNNlE',
+                               title => 'LIRI-JP PanCancer Data',
+                             },
+                'BTCA-SG' => { key => '0ApWzavEDzSJddGhFak1rZEJmUHFjOWR3MTRPVndrVlE',
+                               title => 'BTCA-SG PanCancer Data',
+                             },
+                'BRCA-KR' => { key => '0ApWzavEDzSJddEJfUVJ2TEd0aGJJazM3RktXVmtGX1E',
+                               title => 'BRCA-KR PanCancer Data',
+                             },
+                'LAML-KR' => { key => '0ApWzavEDzSJddEJfUVJ2TEd0aGJJazM3RktXVmtGX1E',
+                               title => 'LAML-KR PanCancer Data',
+                             },
+                'CLLE-ES' => { key => '0ApWzavEDzSJddFlnVTNmVXA5dWFNWlBhbVlpTFdWTlE',
+                               title => 'CLLE-ES PanCancer Data',
+                             },
+                'BOCA-UK' => { key => '0AoQ6zq-rG38-dE5ZZVEyaUNadU9mZlpVN1hDU0lDOWc',
+                               title => 'Sheet1',
+                             },
+                'BRCA-EU' => { key => '0AoQ6zq-rG38-dDhvU0VZNk4wMGpDUk1NaWZHMG5LLWc',
+                               title => 'Sheet1',
+                             },
+                'BRCA-UK' => { key => '0ApWzavEDzSJddDAzdjVPbVVubHV6UDgxSEcxa0F3bEE',
+                               title => 'BRCA-UK PanCancer Data',
+                             },
+                'CMDI-UK' => { key => '0AoQ6zq-rG38-dDMzQmZvNGVLUU9LRnpiV0RSenNCbHc',
+                               title => 'Sheet1',
+                             },
+                'ESAD-UK' => { key => '0ApWzavEDzSJddENiS3F2V1BIU3diVGpRd3hPeHkyWXc',
+                               title => 'ESAD-UK PanCancer Data',
+                             },
+                'PRAD-UK' => { key => '0ApWzavEDzSJddEZ6aUdVMnVoX1FEdVZ2REswY3pVMGc',
+                               title => 'PRAD-UK PanCancer Data',
+                             },
 );
 
 my $usage = "USAGE: '$0 --user <your.address\@gmail.com> --pass <your GMail password>'\n\n";
@@ -93,7 +102,7 @@ my $service = Net::Google::Spreadsheets->new(
 );
 
 # iterate over the project codes in the %projects hash
-foreach my $proj ( keys %projects ) {
+foreach my $proj ( sort keys %projects ) {
     # request the GoogleDocs spreadsheet corresponding
     # to the current key => value pair
     my $spreadsheet = $service->spreadsheet( {
@@ -130,7 +139,8 @@ foreach my $proj ( keys %projects ) {
                 my @values = @{$content}{@header};
                 # there may be lots of blank rows at the bottom that
                 # we don't want to print
-                next if $values[0] =~ m/^(''|\#N\/A)/;
+                my $qc = join "\t", @values;
+                next if $qc =~ m/(^ +?\t|\#N\/A)/;
                 print $FH join("\t", @values), "\n";
             } # close inner foreach loop
             close $FH;
@@ -140,8 +150,12 @@ foreach my $proj ( keys %projects ) {
         } # close if/else test
     } # close foreach loop
 } # close outer foreach loop
-
 # print "\n", Data::Dumper->new([\$spreadsheet],[qw(spreadsheet)])->Indent(1)->Quotekeys(0)->Dump, "\n";
+
+END {
+    no integer;
+    printf( STDERR "Running time: %5.2f minutes\n",((time - $^T) / 60));
+} # close END block
 
 exit;
 
