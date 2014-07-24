@@ -46,11 +46,11 @@ sub schedule_samples {
     foreach my $center_name (keys %{$sample_information}) {
         next if (defined $specific_center && $specific_center ne $center_name);
         say $report_file "SCHEDULING: $center_name";
-        foreach my $participant_id (keys %{$sample_information->{$center_name}}) {
-            my $participant_information = $sample_information->{$center_name}{$participant_id};
-            schedule_participant($report_file,
-                             $participant_id, 
-                             $participant_information,
+        foreach my $donor_id (keys %{$sample_information->{$center_name}}) {
+            my $donor_information = $sample_information->{$center_name}{$donor_id};
+            schedule_donor($report_file,
+                             $donor_id, 
+                             $donor_information,
                              $cluster_information, 
                              $running_samples, 
                              $skip_scheduling,
@@ -72,8 +72,8 @@ sub schedule_samples {
                              $run_workflow_version,
                              $whitelist,
                              $blacklist);
-            $progress_bar->update($i++);
         }
+        $progress_bar->update($i++);
     }
 }
 
@@ -211,10 +211,10 @@ sub submit_workflow {
     say $report_file '';
 }
 
-sub schedule_participant {
+sub schedule_donor {
     my ( $report_file,
-         $participant_id,
-         $participant_information,
+         $donor_id,
+         $donor_information,
          $cluster_information, 
          $running_samples, 
          $skip_scheduling,
@@ -237,14 +237,14 @@ sub schedule_participant {
          $whitelist,
          $blacklist ) = @_;
 
-    say $report_file "DONOR/PARTICIPANT: $participant_id\n";
+    say $report_file "DONOR/PARTICIPANT: $donor_id\n";
 
-    foreach my $sample_id (keys %{$participant_information}) {        
+    foreach my $sample_id (keys %{$donor_information}) {        
         next if (defined $specific_sample and $specific_sample ne $sample_id);
         next if (defined $blacklist and grep( /^$sample_id$/, @{$blacklist}));
         if (not defined $whitelist or grep( /^$sample_id$/, @{$whitelist})) {
             schedule_sample( $sample_id,
-                         $participant_information,
+                         $donor_information,
                          $report_file,
                          $gnos_url,
                          $input_prefix,
@@ -270,7 +270,7 @@ sub schedule_participant {
 
 sub schedule_sample {
     my ( $sample_id,
-         $participant_information, 
+         $donor_information, 
          $report_file,
          $gnos_url,
          $input_prefix,
@@ -293,7 +293,7 @@ sub schedule_sample {
 
     say $report_file "\tSAMPLE OVERVIEW\n\tSPECIMEN/SAMPLE: $sample_id";
 
-    my $alignments = $participant_information->{$sample_id};
+    my $alignments = $donor_information->{$sample_id};
     my $sample = { gnos_url => $gnos_url};
     my $aligns = {};
     foreach my $alignment_id (keys %{$alignments}) {

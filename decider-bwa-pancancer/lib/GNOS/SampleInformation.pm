@@ -86,6 +86,10 @@ sub get {
 
             my $sample_uuid = $analysis_data_result->{analysis_xml}{ANALYSIS_SET}{ANALYSIS}{TARGETS}{TARGET}{refname};
 
+
+            my $donor_id = $submitter_participant_id || $participant_id;
+            
+            say $parse_log "\tDONOR:\t$donor_id";
             say $parse_log "\tANALYSIS:\t$analysis_data_uri";
             say $parse_log "\tANALYSIS ID:\t$analysis_id";
             say $parse_log "\tPARTICIPANT ID:\t$participant_id";
@@ -127,13 +131,13 @@ sub get {
 
             foreach my $attribute (keys %{$library}) {
                 my $library_value = $library->{$attribute};
-                $participants->{$center_name}{$participant_id}{$sample_uuid}{$alignment}{$aliquot_id}{$library_name}{$attribute}{$library_value} = 1;
+                $participants->{$center_name}{$donor_id}{$sample_uuid}{$alignment}{$aliquot_id}{$library_name}{$attribute}{$library_value} = 1;
             }
 
             my $files = files($analysis_data_result, $parse_log, $analysis_id);
             foreach my $file_name (keys %$files) {
                 my $file_info = $files->{$file_name};
-                $participants->{$center_name}{$participant_id}{$sample_uuid}{$alignment}{$aliquot_id}{$library_name}{files}{$file_name} = $file_info;
+                $participants->{$center_name}{$donor_id}{$sample_uuid}{$alignment}{$aliquot_id}{$library_name}{files}{$file_name} = $file_info;
             }
         }      
     }
