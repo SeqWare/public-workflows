@@ -13,14 +13,14 @@ use XML::Simple qw(:strict);
 use Data::Dumper;
 
 sub get {
-    my ($class, $working_dir, $gnos_url, $skip_down, $skip_cached) = @_;
+    my ($class, $working_dir, $gnos_url, $use_live_cached, $use_cached_analysis) = @_;
 
     system("mkdir -p $working_dir");
     open my $parse_log, '>', "$working_dir/xml_parse.log";
 
     my $participants = {};
 
-    if ( (not $skip_down) || (not -e "$working_dir/xml/data.xml") ) {
+    if ( (not $use_live_cached) || (not -e "$working_dir/xml/data.xml") ) {
         my $cmd = "mkdir -p $working_dir/xml; cgquery -s $gnos_url -o $working_dir/xml/data.xml";
         $cmd .= ($gnos_url =~ /cghub.ucsc.edu/)? " 'study=PAWG&state=live'":" 'study=*&state=live'";
 
@@ -55,7 +55,7 @@ sub get {
         say $parse_log "\tANALYSIS FULL URL: $analysis_full_url $analysis_id";
 
         my $analysis_xml_path =  "$working_dir/xml/data_$analysis_id.xml";
-        download($analysis_full_url, $analysis_xml_path, $skip_cached) unless ($skip_down);
+        download_analysis($analysis_full_url, $analysis_xml_path, $use_cached_analysis);
          
         if (-e $analysis_xml_path and eval { $xs->XMLin($analysis_xml_path) } ) {
 
@@ -168,10 +168,10 @@ sub files {
     return \%files;
 }
 
-sub download {
-    my ($url, $out, $skip_cached) = @_;
+sub download_analysis {
+    my ($url, $out, $use_cached_analysis) = @_;
 
-    if (not -e $out or not $skip_cached) {
+    if (not -e $out or not $use_cached_analysis) {
         no autodie;
         my $browser = LWP::UserAgent->new();
         my $response = $browser->get($url);
