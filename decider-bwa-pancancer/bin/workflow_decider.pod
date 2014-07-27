@@ -48,7 +48,7 @@ Specify the BWA workflow version you would like to run (eg. 2.6.0)
 
 =item --gnos-url[=][ ]<gnos_url>
 
-URL for a GNOS server, e.g. https://gtrepo-ebi.annailas.com
+URL for a GNOS server, e.g. https://gtrepo-ebi.annailabs.com
 
 =for Euclid 
    gnos_url.default: 'https://gtrepo-ebi.annailabs.com'
