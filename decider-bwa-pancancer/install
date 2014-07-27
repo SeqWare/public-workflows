@@ -23,4 +23,4 @@ sudo cp /tmp/seqware /usr/local/bin/
 sudo chmod a+x /usr/local/bin/seqware
 
 # Install Java
-sudo apt-get install openjdk-7-jdk
+sudo apt-get -y -q --force-yes install openjdk-7-jdk
