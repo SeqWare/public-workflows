@@ -177,7 +177,7 @@ sub submit_workflow {
     my $launch_command = "SEQWARE_SETTINGS=$working_dir/samples/$center_name/$sample_id/settings /usr/local/bin/seqware workflow schedule --accession $workflow_accession --host $host --ini $working_dir/samples/$center_name/$sample_id/workflow.ini";
 
     if ($skip_scheduling) {
-        say $report_file "\tNOT LAUNCHING WORKFLOW BECAUSE --test SPECIFIED: $working_dir/samples/$center_name/$sample_id/workflow.ini";
+        say $report_file "\tNOT LAUNCHING WORKFLOW BECAUSE --schedule_skip_workflow SPECIFIED: $working_dir/samples/$center_name/$sample_id/workflow.ini";
         say $report_file "\t\tLAUNCH CMD WOULD HAVE BEEN: $launch_command\n";
         return;
     } 
@@ -201,7 +201,7 @@ sub submit_workflow {
                       seqware workflow schedule --accession $workflow_accession --host $host --ini $working_dir/samples/$center_name/$sample_id/workflow.ini") } stdout => $out_fh, sterr => $err_fh;
 
 
-        say $report_file "\t\tSOMETHING WENT WRONG WITH SCHEDULING THE WORKFLOW"
+        say $report_file "\t\tSOMETHING WENT WRONG WITH SCHEDULING THE WORKFLOW: Check log $submission_path/$sample_id.e"
                                                                        if( $std_err);
     }
     else {
@@ -298,54 +298,71 @@ sub schedule_sample {
     my $aligns = {};
     foreach my $alignment_id (keys %{$alignments}) {
         say $report_file "\t\tALIGNMENT: $alignment_id";
-
-        $aligns->{$alignment_id} = 1;
+ 
         my $aliquotes = $alignments->{$alignment_id};
         foreach my $aliquot_id (keys %{$aliquotes}) {
             say $report_file "\t\t\tANALYZED SAMPLE/ALIQUOT: $aliquot_id";
+
             my $libraries = $aliquotes->{$aliquot_id};
             foreach my $library_id (keys %{$libraries}) {
                 say $report_file "\t\t\t\tLIBRARY: $library_id";
                 my $library = $libraries->{$library_id};
                 my $current_workflow_version = $library->{workflow_version};
-                my $lanes = $library->{total_lanes};
-                my $total_lanes = 0;
-                foreach my $lane (keys %{$lanes}) {
-                    $total_lanes = $lane if ($lane > $total_lanes);
+
+                if (($alignment_id eq 'unaligned')
+                    or (!$current_workflow_version and $run_workflow_version le '2.5.0')                    or ($current_workflow_version eq $run_workflow_version))  {
+                    $aligns->{$alignment_id} = 1;
                 }
-                $sample->{total_lanes} = $total_lanes;
+
                 my $files = $library->{files};
+                my @local_bams;
                 foreach my $file (keys %{$files}) {
                     my $local_path = $files->{$file}{local_path};
-                    $sample->{file}{$file} = $local_path;
-                    my $local_file_path = $input_prefix.$local_path;
-                    $sample->{local_bams}{$local_file_path} = 1;
-                    $sample->{bam_count} ++ if (($alignment_id eq "unaligned") 
-                       || ($current_workflow_version ge $run_workflow_version));
+                       push @local_bams, $local_path if ($local_path =~ /bam$/);
                 }
-
-                my @local_bams = keys %{$sample->{local_bams}};
- 
-                $sample->{local_bams_string} = join ',', sort @local_bams;
-
                 my @analysis_ids = keys %{$library->{analysis_ids}};
-                if (( $alignment_id eq 'unaligned' ) 
-                        || ($current_workflow_version ge $run_workflow_version)) {
+                my $analysis_ids = join ',', @analysis_ids;
+
+                say $report_file "\t\t\t\t\tBAMS: ".join ',', @local_bams;
+                say $report_file "\t\t\t\t\tANALYSIS IDS: $analysis_ids\n";
+
+                if ( $alignment_id eq 'unaligned' ) {
+
+                    my $lanes = $library->{total_lanes};
+                    my $total_lanes = 0;
+                    foreach my $lane (keys %{$lanes}) {
+                        $total_lanes = $lane if ($lane > $total_lanes);
+                    }
+                    $sample->{total_lanes} = $total_lanes;
+    
+                    foreach my $file (keys %{$files}) {
+                        my $local_path = $files->{$file}{local_path};
+                        if ($local_path =~ /bam$/) {
+                            $sample->{file}{$file} = $local_path;
+                            my $local_file_path = $input_prefix.$local_path;
+                            $sample->{local_bams}{$local_file_path} = 1;
+                            $sample->{bam_count} ++;
+                        }
+                    }
+    
+                    my @local_bams = keys %{$sample->{local_bams}};
+     
+                    $sample->{local_bams_string} = join ',', sort @local_bams;
+    
+
                     foreach my $analysis_id (sort @analysis_ids) {
                         $sample->{analysis_url}{"$gnos_url/cghub/metadata/analysisFull/$analysis_id"} = 1;
                         $sample->{download_url}{"$gnos_url/cghub/data/analysis/download/$analysis_id"} = 1;
                     }
+
+                    my @download_urls = keys %{$sample->{download_url}};
+                    $sample->{gnos_input_file_urls} = join ',', sort @download_urls;
+       
+                    my @analysis_urls = keys %{$sample->{analysis_url}};
+                    $sample->{analysis_url_string} = join ',', @analysis_urls;   
+    
                 }
-                my @download_urls = keys %{$sample->{download_url}};
-                $sample->{gnos_input_file_urls} = join ',', sort @download_urls;
-   
-                my @analysis_urls = keys %{$sample->{analysis_url}};
-                $sample->{analysis_url_string} = join ',', @analysis_urls;   
 
-                my $analysis_ids = join ',', @analysis_ids;
-
-                say $report_file "\t\t\t\t\tBAMS: ".join ',', keys $files;
-                say $report_file "\t\t\t\t\tANALYSIS IDS: $analysis_ids\n";
             }
         }
     }

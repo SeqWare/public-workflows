@@ -53,7 +53,7 @@ sub get {
             say $parse_log "SKIPPING: no analysis url";
             next;
         }
-        
+        next unless($analysis_id eq '627e2a3b-10df-4038-9214-b73550a05afb');       
         say $parse_log "\n\nANALYSIS\n";
         say $parse_log "\tANALYSIS FULL URL: $analysis_full_url $analysis_id";
         my $analysis_xml_path =  "$working_dir/xml/data_$analysis_id.xml";
@@ -203,7 +203,7 @@ sub get {
 
         foreach my $attribute (keys %{$library}) {
             my $library_value = $library->{$attribute};
-            $participants->{$center_name}{$donor_id}{$sample_uuid}{$alignment}{$aliquot_id}{$library_name}{$attribute}{$library_value} = 1;
+            $participants->{$center_name}{$donor_id}{$aliquot_id}{$alignment}{$aliquot_id}{$library_name}{$attribute}{$library_value} = 1;
         }
 
         my $files = files($analysis_result, $parse_log, $analysis_id);
@@ -211,6 +211,8 @@ sub get {
             my $file_info = $files->{$file_name};
             $participants->{$center_name}{$donor_id}{$sample_uuid}{$alignment}{$aliquot_id}{$library_name}{files}{$file_name} = $file_info;
         }
+print Dumper $participants;
+die;
     }
     close $parse_log;
 
