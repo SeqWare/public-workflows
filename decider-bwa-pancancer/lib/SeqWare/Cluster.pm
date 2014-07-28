@@ -19,6 +19,7 @@ use Data::Dumper;
 sub cluster_seqware_information {
     my ($class, $report_file, $clusters_json, $ignore_failed, $run_workflow_version) = @_;
 
+    die "Cluster configuration file($clusters_json) does not exist in the conf folder" if (not -e "conf/$clusters_json");
     my $clusters = decode_json( read_file( "conf/$clusters_json" ));
 
     my $cluster_information = {};
