@@ -201,7 +201,7 @@ sub submit_workflow {
                       seqware workflow schedule --accession $workflow_accession --host $host --ini $working_dir/samples/$center_name/$sample_id/workflow.ini") } stdout => $out_fh, sterr => $err_fh;
 
 
-        say $report_file "\t\tSOMETHING WENT WRONG WITH SCHEDULING THE WORKFLOW: Check log $submission_path/$sample_id.e"
+        say $report_file "\t\tSOMETHING WENT WRONG WITH SCHEDULING THE WORKFLOW: Check error log =>  $submission_path/$sample_id.e and output log => $submission_path/$sample_id.o"
                                                                        if( $std_err);
     }
     else {
