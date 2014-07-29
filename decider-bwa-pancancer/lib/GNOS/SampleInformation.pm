@@ -128,10 +128,8 @@ sub get {
             $total_lanes = $attributes{total_lanes};
             $aliquot_uuid = $attributes{aliquot_id};
             $submitter_participant_id = $attributes{submitter_participant_id};
-           if (ref($submitter_participant_id) eq 'HASH') {
-               print Dumper $analysis_attributes;
-               die;
-           }
+            $submitter_participant_id = undef if (ref($submitter_participant_id) eq 'HASH');
+
             $submitter_donor_id = $attributes{submitter_donor_id};
             $submitter_sample_id = $attributes{submitter_sample_id};
             $submitter_specimen_id = $attributes{submitter_specimen_id};
@@ -211,8 +209,6 @@ sub get {
             my $file_info = $files->{$file_name};
             $participants->{$center_name}{$donor_id}{$sample_uuid}{$alignment}{$aliquot_id}{$library_name}{files}{$file_name} = $file_info;
         }
-print Dumper $participants;
-die;
     }
     close $parse_log;
 
