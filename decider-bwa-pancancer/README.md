@@ -1,5 +1,7 @@
 # BWA Decider
 
+Working on a historic branch here to compare old reports to the develop branch where Adam is working on a revised decider
+
 ## About
 
 This is the decider for the TCGA/ICGC PanCancer BWA workfow.
