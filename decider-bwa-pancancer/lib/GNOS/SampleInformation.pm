@@ -10,7 +10,7 @@ use File::Slurp;
 use Term::ProgressBar;
 
 use XML::LibXML;
-use XML::LibXML::Simple   qw(XMLin);
+use XML::LibXML::Simple qw(XMLin);
 use Data::Dumper;
 
 sub get {
@@ -44,16 +44,17 @@ sub get {
         my $result = $results->{$result_id};
         $progress_bar->update($i++);
         my $analysis_full_url = $result->{analysis_full_uri};
+
         my $analysis_id = $i;
         if ( $analysis_full_url =~ /^(.*)\/([^\/]+)$/ ) {
             $analysis_full_url = $1."/".lc $2;
             $analysis_id = lc $2;
-        } 
+        }
         else {
             say $parse_log "SKIPPING: no analysis url";
             next;
         }
-        next unless($analysis_id eq '627e2a3b-10df-4038-9214-b73550a05afb');       
+
         say $parse_log "\n\nANALYSIS\n";
         say $parse_log "\tANALYSIS FULL URL: $analysis_full_url $analysis_id";
         my $analysis_xml_path =  "$working_dir/xml/data_$analysis_id.xml";
@@ -66,6 +67,7 @@ sub get {
             $attempts++;
         }         
 
+       # say $status;
         if (not -e $analysis_xml_path and eval {$xs->XMLin($analysis_xml_path); }) {
            say $parse_log "skipping $analysis_id: no xml file available";
            next;
@@ -247,7 +249,7 @@ sub download_analysis {
     my $parser   = XML::LibXML->new();
 
     return 1   if (-e $out and eval{$parser->parse_string(read_file($out))} 
-                                                      and not $use_cached_analysis);
+                                                      and $use_cached_analysis);
     no autodie;
     my $browser = LWP::UserAgent->new();
     $browser->timeout(300);#seconds: 5 minutes
