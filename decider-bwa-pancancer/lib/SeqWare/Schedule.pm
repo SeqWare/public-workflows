@@ -238,8 +238,8 @@ sub schedule_donor {
          $blacklist ) = @_;
 
     say $report_file "DONOR/PARTICIPANT: $donor_id\n";
-
-    foreach my $sample_id (keys %{$donor_information}) {        
+    my @sample_ids = keys %{$donor_information};
+    foreach my $sample_id (@sample_ids) {        
         next if (defined $specific_sample and $specific_sample ne $sample_id);
         next if (defined $blacklist and grep( /^$sample_id$/, @{$blacklist}));
         if (not defined $whitelist or grep( /^$sample_id$/, @{$whitelist})) {

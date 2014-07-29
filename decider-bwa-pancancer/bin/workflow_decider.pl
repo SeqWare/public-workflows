@@ -40,6 +40,7 @@ my $sample_information = GNOS::SampleInformation->get( $ARGV{'--working-dir'},
                                               $ARGV{'--use-live-cached'},
                                               $ARGV{'--use-cached-analysis'});
 
+
 say 'Scheduling Samples';
 SeqWare::Schedule->schedule_samples( $report_file,
                                      $sample_information,
