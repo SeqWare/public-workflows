@@ -367,7 +367,13 @@ sub read_sample_info {
       }
       my $sampleId = getCustomVal($adoc2, 'sample_id,submitter_specimen_id');
       my $use_control = getCustomVal($adoc2, "use_cntl");
+      my $workflow_name = getCustomVal($adoc2, 'workflow_name');
+      my $workflow_version = getCustomVal($adoc2, 'workflow_version');
       my $alignment = getVal($adoc, "refassem_short_name");
+      # trying to deal with multiple alignments here, will need to think about how I'm dealing with libraries
+      if ($alignment ne "unaligned") {
+        $alignment = "$alignment - $analysisId - $workflow_name - $workflow_version";
+      }
       my $total_lanes = getCustomVal($adoc2, "total_lanes");
       my $sample_uuid = getXPathAttr($adoc2, "refname", "//ANALYSIS_SET/ANALYSIS/TARGETS/TARGET/\@refname");
       print OUT "ANALYSIS:  $analysisDataURI \n";
@@ -378,6 +384,8 @@ sub read_sample_info {
       print OUT "SUBMITTER PARTICIPANT ID: $submitterParticipantId\n";
       print OUT "SUBMITTER SAMPLE ID: $submitterSampleId\n";
       print OUT "SUBMITTER ALIQUOTID: $submitterAliquotId\n";
+      print OUT "WORKFLOW NAME: $workflow_name\n";
+      print OUT "WORKFLOW VERSION: $workflow_version\n";
       my $libName = getVal($adoc, 'LIBRARY_NAME');
       my $libStrategy = getVal($adoc, 'LIBRARY_STRATEGY');
       my $libSource = getVal($adoc, 'LIBRARY_SOURCE');
@@ -388,6 +396,7 @@ sub read_sample_info {
         print OUT "  gtdownload -c gnostest.pem -v -d $analysisDataURI\n";
         #system "gtdownload -c gnostest.pem -vv -d $analysisId\n";
         print OUT "\n";
+ # HERE: will need to nest this a bit differently since we want to aggregate for unlaigned but aggregate by analysis_id for multiple alignments
         $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{analysis_id}{$analysisId} = 1;
         $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{analysis_url}{$analysisDataURI} = 1;
         $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{library_name}{$libName} = 1;
@@ -400,6 +409,8 @@ sub read_sample_info {
         $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{submitter_sample_id}{$submitterSampleId} = 1;
         $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{submitter_aliquot_id}{$submitterAliquotId} = 1;
         $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{sample_uuid}{$sample_uuid} = 1;
+        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{workflow_name}{$workflow_name} = 1;
+        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{workflow_version}{$workflow_version} = 1;
         # need to add
         # input_bam_paths=9c414428-9446-11e3-86c1-ab5c73f0e08b/hg19.chr22.5x.normal.bam
         # gnos_input_file_urls=https://gtrepo-ebi.annailabs.com/cghub/data/analysis/download/9c414428-9446-11e3-86c1-ab5c73f0e08b
