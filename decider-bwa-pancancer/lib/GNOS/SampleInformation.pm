@@ -9,7 +9,7 @@ use FindBin qw($Bin);
 
 use Carp::Always;
 use File::Slurp;
-use Term::ProgressBar;
+use Term::ProgressBar::Quiet;
 
 use XML::LibXML;
 use XML::LibXML::Simple qw(XMLin);
@@ -39,7 +39,7 @@ sub get {
    
     say $parse_log '';
     
-    my $progress_bar = Term::ProgressBar->new(scalar keys %$results);
+    my $progress_bar = Term::ProgressBar::Quiet->new({count => scalar( keys %$results) });
  
     my $i = 0;
     foreach my $result_id (keys %{$results}) {
@@ -69,7 +69,6 @@ sub get {
             $attempts++;
         }         
 
-       # say $status;
         if (not -e $analysis_xml_path and eval {$xs->XMLin($analysis_xml_path); }) {
            say $parse_log "skipping $analysis_id: no xml file available";
            next;
@@ -91,6 +90,7 @@ sub get {
         }
 
         my %analysis_result = %{$analysis_result};      
+        my $last_modified = $analysis_result{last_modified};
         my $analysis_xml_path =  "$working_dir/xml/data_$analysis_id.xml";
         my $center_name = $analysis_result{center_name};
         my $analysis_data_uri = $analysis_result{analysis_data_uri};
@@ -111,9 +111,8 @@ sub get {
         my ($analysis_attributes,$sample_uuid);
         if (ref($analysis_result{analysis_xml}{ANALYSIS_SET}) eq 'HASH'
            and ref($analysis_result{analysis_xml}{ANALYSIS_SET}{ANALYSIS}) eq 'HASH') {
-            if(  ref($analysis_result{analysis_xml}{ANALYSIS_SET}{ANALYSIS}{ANALYSIS_ATTRIBUTES}{ANALYSIS_ATTRIBUTE}) eq 'HASH' 
-                 and  ref($analysis_result{analysis_xml}{ANALYSIS_SET}{ANALYSIS}{ANALYSIS_ATTRIBUTES}{ANALYSIS_ATTRIBUTE}) eq 'HASH' ) {
-                      $analysis_attributes = $analysis_result{analysis_xml}{ANALYSIS_SET}{ANALYSIS}{ANALYSIS_ATTRIBUTES}{ANALYSIS_ATTRIBUTE};                
+            if (ref($analysis_result{analysis_xml}{ANALYSIS_SET}{ANALYSIS}{ANALYSIS_ATTRIBUTES}) eq 'HASH') {
+                $analysis_attributes = $analysis_result{analysis_xml}{ANALYSIS_SET}{ANALYSIS}{ANALYSIS_ATTRIBUTES}{ANALYSIS_ATTRIBUTE};                
             }
             elsif ( ref($analysis_result{analysis_xml}{ANALYSIS_SET}{ANALYSIS}{TARGETS}{TARGETS_ATTRIBUTES}) eq 'HASH'
                  and ref($analysis_result{analysis_xml}{ANALYSIS_SET}{ANALYSIS}{TARGETS}{TARGET}) eq 'HASH') {
@@ -121,9 +120,9 @@ sub get {
             }
         }
 
-        my (%attributes, $total_lanes, $aliquot_uuid, $submitter_participant_id, $submitter_donor_id, $submitter_sample_id, $workflow_version, $submitter_specimen_id);
+        my (%attributes, $total_lanes, $aliquot_uuid, $submitter_participant_id, $submitter_donor_id, 
+            $submitter_sample_id, $workflow_version, $submitter_specimen_id, $workflow_name);
         if (ref($analysis_attributes) eq 'ARRAY') {
-            print Dumper $analysis_attributes;
             foreach my $attribute (@$analysis_attributes) {
                 $attributes{$attribute->{TAG}} = $attribute->{VALUE};
             }
@@ -134,9 +133,15 @@ sub get {
             $submitter_participant_id = undef if (ref($submitter_participant_id) eq 'HASH');
 
             $submitter_donor_id = $attributes{submitter_donor_id};
+            $submitter_donor_id = undef if (ref($submitter_donor_id) eq 'HASH');
+
             $submitter_sample_id = $attributes{submitter_sample_id};
+            $submitter_sample_id = undef if (ref($submitter_sample_id) eq 'HASH');
+
             $submitter_specimen_id = $attributes{submitter_specimen_id};
+            $submitter_specimen_id = undef if (ref($submitter_specimen_id) eq 'HASH');
             $workflow_version = $attributes{workflow_version};
+            $workflow_name = $attributes{workflow_name};
         }
 
         my $donor_id = $submitter_participant_id || $participant_id;
@@ -203,6 +208,10 @@ sub get {
                      workflow_version         => $workflow_version };
 
         $center_name = 'seqware';
+        if ($alignment ne 'unaligned') { 
+            $alignment = "$alignment-$analysis_id-$workflow_name-$workflow_version-$last_modified";
+        }
+
         foreach my $attribute (keys %{$library}) {
             my $library_value = $library->{$attribute};
             $participants->{$center_name}{$donor_id}{$sample_uuid}{$alignment}{$aliquot_id}{$library_name}{$attribute}{$library_value} = 1;

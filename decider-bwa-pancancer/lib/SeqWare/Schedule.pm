@@ -7,7 +7,7 @@ use autodie qw(:all);
 
 use FindBin qw($Bin);
 
-use Term::ProgressBar;
+use Term::ProgressBar::Quiet;
 use Config::Simple;
 use Capture::Tiny ':all';
 use Cwd;
@@ -42,7 +42,7 @@ sub schedule_samples {
 
     say $report_file "SAMPLE SCHEDULING INFORMATION\n";
 
-    my $progress_bar = Term::ProgressBar->new(scalar keys %{$sample_information});
+    my $progress_bar = Term::ProgressBar::Quiet->new({count => scalar( keys %{$sample_information}) });
 
     my $i = 0;
     foreach my $center_name (keys %{$sample_information}) {
@@ -298,7 +298,8 @@ sub schedule_sample {
     say $report_file "\tSAMPLE OVERVIEW\n\tSPECIMEN/SAMPLE: $sample_id";
 
     my $alignments = $donor_information->{$sample_id};
-    my $sample = { gnos_url => $gnos_url};
+    my $sample = { gnos_url => $gnos_url,
+                   bam_count => 0};
     my $aligns = {};
     foreach my $alignment_id (keys %{$alignments}) {
         say $report_file "\t\tALIGNMENT: $alignment_id";

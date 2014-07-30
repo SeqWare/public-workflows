@@ -32,7 +32,8 @@ Workflow Decider - SeqWare
 
 =item --seqware-clusters[=][ ]<file>
 
-JSON file that describes the clusters available to schedule workflows to. Should be located in the config folder.
+JSON file that describes the clusters available to schedule workflows to. As a reference there is a cluster.json
+file in the conf folder.
 
 =for Euclid:
         file.type: readable
