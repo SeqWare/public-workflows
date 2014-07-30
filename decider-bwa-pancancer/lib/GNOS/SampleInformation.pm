@@ -202,9 +202,10 @@ sub get {
                      sample_uuid              => $sample_uuid,
                      workflow_version         => $workflow_version };
 
+        $center_name = 'seqware';
         foreach my $attribute (keys %{$library}) {
             my $library_value = $library->{$attribute};
-            $participants->{$center_name}{$donor_id}{$aliquot_id}{$alignment}{$aliquot_id}{$library_name}{$attribute}{$library_value} = 1;
+            $participants->{$center_name}{$donor_id}{$sample_uuid}{$alignment}{$aliquot_id}{$library_name}{$attribute}{$library_value} = 1;
         }
 
         my $files = files($analysis_result, $parse_log, $analysis_id);
