@@ -19,8 +19,7 @@ use Data::Dumper;
 sub cluster_seqware_information {
     my ($class, $report_file, $clusters_json, $ignore_failed, $run_workflow_version) = @_;
 
-    die "Cluster configuration file($clusters_json) does not exist in the conf folder" if (not -e "conf/$clusters_json");
-    my $clusters = decode_json( read_file( "conf/$clusters_json" ));
+    my $clusters = decode_json( read_file( $clusters_json));
 
     my $cluster_information = {};
     my $running_samples = {};
@@ -132,7 +131,7 @@ sub running_sample_id {
 
     my @urls = split /,/, $parameters{gnos_input_metadata_urls};
     say $report_file "\t\t\tSAMPLE: $sample_id";
-    say $report_file "\t\t\tINPUTS:".join(",", sort @urls);
+    say $report_file "\t\t\tINPUTS:".join(',', sort @urls);
 
     say $report_file "\t\t\tCWD: ".$parameters{currentWorkingDir};
     say $report_file "\t\t\tWORKFLOW ACCESSION: ".$parameters{swAccession}."\n";

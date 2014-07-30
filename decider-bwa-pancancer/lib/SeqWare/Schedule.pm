@@ -5,6 +5,8 @@ use common::sense;
 use IPC::System::Simple;
 use autodie qw(:all);
 
+use FindBin qw($Bin);
+
 use Term::ProgressBar;
 use Config::Simple;
 use Capture::Tiny ':all';
@@ -108,10 +110,12 @@ sub schedule_workflow {
 
     my $workflow_accession = $cluster_information->{$cluster}{workflow_accession};
     my $workflow_version = $cluster_information->{$cluster}{workflow_version};
+    my $workflow_accession = $cluster_information->{$cluster}{workflow_accession};
+    my $workflow_version = $cluster_information->{$cluster}{workflow_version};
     my $host = $cluster_information->{$cluster}{host};
 
     if ($cluster_found or $skip_scheduling) {
-        system("mkdir -p $working_dir/samples/$center_name/$sample_id");
+        system("mkdir -p $Bin/../$working_dir/samples/$center_name/$sample_id");
 
         create_settings_file($seqware_settings_file, $url, $username, $password, $working_dir, $center_name, $sample_id);
 
@@ -126,7 +130,7 @@ sub schedule_workflow {
 sub create_settings_file {
     my ($seqware_settings_file, $url, $username, $password, $working_dir, $center_name, $sample_id) = @_;
 
-    my $settings = new Config::Simple("conf/ini/$seqware_settings_file");
+    my $settings = new Config::Simple("$Bin/../conf/ini/$seqware_settings_file");
 
     $url //= '<SEQWARE URL>';
     $username //= '<SEQWARE USER NAME>';
@@ -136,13 +140,13 @@ sub create_settings_file {
     $settings->param('SW_REST_USER', $username);
     $settings->param('SW_REST_PASS',$password);
 
-    $settings->write("$working_dir/samples/$center_name/$sample_id/settings");
+    $settings->write("$Bin/../$working_dir/samples/$center_name/$sample_id/settings");
 }
 
 sub create_workflow_ini {
     my ($workflow_version, $sample, $gnos_url, $threads, $skip_gtdownload, $skip_gtupload, $upload_results, $output_prefix, $output_dir, $working_dir, $center_name, $sample_id) = @_;
 
-    my $ini_path = "conf/ini/workflow-$workflow_version.ini";
+    my $ini_path = "$Bin/../conf/ini/workflow-$workflow_version.ini";
     die "ini template does not exist: $ini_path" unless (-e $ini_path);
     my $workflow_ini = new Config::Simple($ini_path); 
 
@@ -165,7 +169,7 @@ sub create_workflow_ini {
     $workflow_ini->param('output_dir', $output_dir);
     $workflow_ini->param('sample_id', $sample_id);    
   
-    $workflow_ini->write("$working_dir/samples/$center_name/$sample_id/workflow.ini");
+    $workflow_ini->write("$Bin/../$working_dir/samples/$center_name/$sample_id/workflow.ini");
 }
 
 
@@ -174,38 +178,38 @@ sub submit_workflow {
 
     my $dir = getcwd();
 
-    my $launch_command = "SEQWARE_SETTINGS=$working_dir/samples/$center_name/$sample_id/settings /usr/local/bin/seqware workflow schedule --accession $workflow_accession --host $host --ini $working_dir/samples/$center_name/$sample_id/workflow.ini";
+    my $launch_command = "SEQWARE_SETTINGS=$Bin/../$working_dir/samples/$center_name/$sample_id/settings /usr/local/bin/seqware workflow schedule --accession $workflow_accession --host $host --ini $Bin/../$working_dir/samples/$center_name/$sample_id/workflow.ini";
 
     if ($skip_scheduling) {
-        say $report_file "\tNOT LAUNCHING WORKFLOW BECAUSE --schedule_skip_workflow SPECIFIED: $working_dir/samples/$center_name/$sample_id/workflow.ini";
+        say $report_file "\tNOT LAUNCHING WORKFLOW BECAUSE --schedule_skip_workflow SPECIFIED: $Bin/../$working_dir/samples/$center_name/$sample_id/workflow.ini";
         say $report_file "\t\tLAUNCH CMD WOULD HAVE BEEN: $launch_command\n";
         return;
     } 
     elsif ($cluster_found) {
-        say $report_file "\tLAUNCHING WORKFLOW: $working_dir/samples/$center_name/$sample_id/workflow.ini";
+        say $report_file "\tLAUNCHING WORKFLOW: $Bin/../$working_dir/samples/$center_name/$sample_id/workflow.ini";
         say $report_file "\t\tCLUSTER HOST: $host ACCESSION: $workflow_accession URL: $url";
         say $report_file "\t\tLAUNCH CMD: $launch_command";
 
         my $submission_path = 'log/submission';
         `mkdir -p $submission_path`;
-        my $out_fh = IO::File->new("$submission_path/$sample_id.o", "w+");
-        my $err_fh = IO::File->new("$submission_path/$sample_id.e", "w+");
+        my $out_fh = IO::File->new("$Bin/../$submission_path/$sample_id.o", "w+");
+        my $err_fh = IO::File->new("$Bin/../$submission_path/$sample_id.e", "w+");
  
         my ($std_out, $std_err) = capture {
              no autodie qw(system);
              system( "source ~/.bashrc;
                       cd $dir;
-                      export SEQWARE_SETTINGS=$working_dir/samples/$center_name/$sample_id/settings;
+                      export SEQWARE_SETTINGS=$Bin/../$working_dir/samples/$center_name/$sample_id/settings;
                       export PATH=\$PATH:/usr/local/bin;
                       env;
-                      seqware workflow schedule --accession $workflow_accession --host $host --ini $working_dir/samples/$center_name/$sample_id/workflow.ini") } stdout => $out_fh, sterr => $err_fh;
+                      seqware workflow schedule --accession $workflow_accession --host $host --ini $Bin/../$working_dir/samples/$center_name/$sample_id/workflow.ini") } stdout => $out_fh, sterr => $err_fh;
 
 
-        say $report_file "\t\tSOMETHING WENT WRONG WITH SCHEDULING THE WORKFLOW: Check error log =>  $submission_path/$sample_id.e and output log => $submission_path/$sample_id.o"
+        say $report_file "\t\tSOMETHING WENT WRONG WITH SCHEDULING THE WORKFLOW: Check error log =>  $Bin/../$submission_path/$sample_id.e and output log => $Bin/../$submission_path/$sample_id.o"
                                                                        if( $std_err);
     }
     else {
-        say $report_file "\tNOT LAUNCHING WORKFLOW, NO CLUSTER AVAILABLE: $working_dir/samples/$center_name/$sample_id/workflow.ini";
+        say $report_file "\tNOT LAUNCHING WORKFLOW, NO CLUSTER AVAILABLE: $Bin/../$working_dir/samples/$center_name/$sample_id/workflow.ini";
         say $report_file "\t\tLAUNCH CMD WOULD HAVE BEEN: $launch_command";
     } 
     say $report_file '';
@@ -310,7 +314,8 @@ sub schedule_sample {
                 my $current_workflow_version = $library->{workflow_version};
 
                 if (($alignment_id eq 'unaligned')
-                    or (!$current_workflow_version and $run_workflow_version le '2.5.0')                    or ($current_workflow_version eq $run_workflow_version))  {
+                    or (!$current_workflow_version and $run_workflow_version le '2.5.0')
+                    or ($current_workflow_version eq $run_workflow_version))  {
                     $aligns->{$alignment_id} = 1;
                 }
 
@@ -349,7 +354,6 @@ sub schedule_sample {
      
                     $sample->{local_bams_string} = join ',', sort @local_bams;
     
-
                     foreach my $analysis_id (sort @analysis_ids) {
                         $sample->{analysis_url}{"$gnos_url/cghub/metadata/analysisFull/$analysis_id"} = 1;
                         $sample->{download_url}{"$gnos_url/cghub/data/analysis/download/$analysis_id"} = 1;

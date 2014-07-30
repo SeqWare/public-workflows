@@ -16,7 +16,7 @@ use GNOS::SampleInformation;
 
 use Data::Dumper;
 
-open my $report_file, '>', $ARGV{'--report'};
+open my $report_file, '>', "$Bin/../".$ARGV{'--report'};
 
 say 'Removing cached ini and settings samples';
 `rm $ARGV{'--working-dir'}/samples/ -rf`;

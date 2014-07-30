@@ -5,6 +5,8 @@ use common::sense;
 use IPC::System::Simple;
 use autodie qw(:all);
 
+use FindBin qw($Bin);
+
 use Carp::Always;
 use File::Slurp;
 use Term::ProgressBar;
@@ -17,12 +19,12 @@ sub get {
     my ($class, $working_dir, $gnos_url, $use_live_cached, $use_cached_analysis) = @_;
 
     system("mkdir -p $working_dir");
-    open my $parse_log, '>', "$working_dir/xml_parse.log";
+    open my $parse_log, '>', "$Bin/../$working_dir/xml_parse.log";
 
     my $participants = {};
 
-    if ( (not $use_live_cached) || (not -e "$working_dir/xml/data.xml") ) {
-        my $cmd = "mkdir -p $working_dir/xml; cgquery -s $gnos_url -o $working_dir/xml/data.xml";
+    if ( (not $use_live_cached) || (not -e "$Bin/../$working_dir/xml/data.xml") ) {
+        my $cmd = "mkdir -p $working_dir/xml; cgquery -s $gnos_url -o $Bin/../$working_dir/xml/data.xml";
         $cmd .= ($gnos_url =~ /cghub.ucsc.edu/)? " 'study=PAWG&state=live'":" 'study=*&state=live'";
 
         say $parse_log "cgquery command: $cmd";
@@ -31,7 +33,7 @@ sub get {
     }
 
     my $xs = XML::LibXML::Simple->new(forcearray => 0, keyattr => 0 );
-    my $data = $xs->XMLin("$working_dir/xml/data.xml");
+    my $data = $xs->XMLin("$Bin/../$working_dir/xml/data.xml");
 
     my $results = $data->{Result};
    
@@ -57,7 +59,7 @@ sub get {
 
         say $parse_log "\n\nANALYSIS\n";
         say $parse_log "\tANALYSIS FULL URL: $analysis_full_url $analysis_id";
-        my $analysis_xml_path =  "$working_dir/xml/data_$analysis_id.xml";
+        my $analysis_xml_path =  "$Bin/../$working_dir/xml/data_$analysis_id.xml";
         
         my $status = 0;
         my $attempts = 0;
@@ -80,7 +82,6 @@ sub get {
             next;
         }
 
-        my $analysis_xml_path =  "$working_dir/xml/data_$analysis_id.xml";
         my %analysis = %{$analysis_data};
         
         my $analysis_result = $analysis{Result};
