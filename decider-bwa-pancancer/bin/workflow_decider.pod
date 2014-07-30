@@ -107,10 +107,6 @@ This flag indicates the samples to not run. The file should be placed in the bla
 
 For only running one particular sample based on its uuid
 
-=item --schedule-center[=][ ]<center_name>
-
-For only running samples from one institute
-
 =item --schedule-ignore-lane-count
 
 Skip the check that the GNOS XML contains a count of lanes for this sample and the bams count matches

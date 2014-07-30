@@ -19,7 +19,7 @@ use Data::Dumper;
 open my $report_file, '>', "$Bin/../".$ARGV{'--report'};
 
 say 'Removing cached ini and settings samples';
-`rm $ARGV{'--working-dir'}/samples/ -rf`;
+`rm $Bin/../$ARGV{'--working-dir'}/samples/ -rf`;
 
 my ($whitelist, $blacklist);
 $whitelist = get_whitelist($ARGV{'--schedule-whitelist'})
