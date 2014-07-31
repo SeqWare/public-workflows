@@ -42,8 +42,10 @@ my $skip_gtvalidate = 0;
 my $output_prefix = "./";
 my $output_dir = "seqware-results/";
 my $input_prefix = "";
+my $match_workflow_name = "";
+my $match_workflow_version = "";
 
-if (scalar(@ARGV) < 4 || scalar(@ARGV) > 30) {
+if (scalar(@ARGV) < 4 || scalar(@ARGV) > 34) {
   print "USAGE: 'perl $0 --gnos-url <URL> --cluster-json <cluster.json> [--working-dir <working_dir>] [--sample <sample_id>] [--threads <num_threads_bwa_default_8>] [--test] [--ignore-lane-count] [--force-run] [--skip-meta-download] [--report <workflow_decider_report.txt>] [--settings <seqware_settings_file>] [--upload-results] [--skip-cached]'\n";
   print "\t--gnos-url           a URL for a GNOS server, e.g. https://gtrepo-ebi.annailabs.com\n";
   print "\t--cluster-json       a json file that describes the clusters available to schedule workflows to\n";
@@ -64,11 +66,12 @@ if (scalar(@ARGV) < 4 || scalar(@ARGV) > 30) {
   print "\t--skip-gtvalidate    a flag indicating that no metadata upload and validation should take place against GNOS.\n";
   print "\t--output-prefix      if --skip-gtupload is set, use this to specify the prefix of where output files are written\n";
   print "\t--output-dir         if --skip-gtupload is set, use this to specify the dir of where output files are written\n";
-  print "\t--input-prefix       if --skip-gtdownload is set, this is the input bam file prefix\n";
+  print "\t--workflow-name      will match this workflow_name from the XML, won't run if this workflow has already been run and uploaded\n";
+  print "\t--workflow-version   will match this workflow_version from the XML, won't run if this workflow version has already been run and uploaded (make most sense to combine with --workflow-name)\n";
   exit(1);
 }
 
-GetOptions("gnos-url=s" => \$gnos_url, "cluster-json=s" => \$cluster_json, "working-dir=s" => \$working_dir, "sample=s" => \$specific_sample, "test" => \$test, "ignore-lane-count" => \$ignore_lane_cnt, "force-run" => \$force_run, "threads=i" => \$threads, "skip-meta-download" => \$skip_down, "report=s" => \$report_name, "settings=s" => \$seqware_setting, "upload-results" => \$upload_results, "ignore-failed" => \$ignore_failed, "skip-cached" => \$skip_cached, "skip-gtdownload" => \$skip_gtdownload, "skip-gtupload" => \$skip_gtupload, "skip-gtvalidate" => \$skip_gtvalidate, "output-prefix=s" => \$output_prefix, "output-dir=s" => \$output_dir, "input-prefix=s" => \$input_prefix);
+GetOptions("gnos-url=s" => \$gnos_url, "cluster-json=s" => \$cluster_json, "working-dir=s" => \$working_dir, "sample=s" => \$specific_sample, "test" => \$test, "ignore-lane-count" => \$ignore_lane_cnt, "force-run" => \$force_run, "threads=i" => \$threads, "skip-meta-download" => \$skip_down, "report=s" => \$report_name, "settings=s" => \$seqware_setting, "upload-results" => \$upload_results, "ignore-failed" => \$ignore_failed, "skip-cached" => \$skip_cached, "skip-gtdownload" => \$skip_gtdownload, "skip-gtupload" => \$skip_gtupload, "skip-gtvalidate" => \$skip_gtvalidate, "output-prefix=s" => \$output_prefix, "output-dir=s" => \$output_dir, "input-prefix=s" => \$input_prefix, "workflow-name=s" => \$match_workflow_name, "workflow-version=s" => \$match_workflow_version);
 
 if ($upload_results) { $skip_upload = "false"; }
 if ($skip_gtdownload) { $use_gtdownload = "false"; }
@@ -270,7 +273,18 @@ sub schedule_samples {
       my $veto = 0;
       # so, do I run this?
       if ((scalar(keys %{$aligns}) == 1 && defined($aligns->{unaligned})) || $force_run) { print R "\t\tONLY UNALIGNED OR RUN FORCED!\n"; }
-      else { print R "\t\tCONTAINS ALIGNMENT!\n"; $veto = 1; }
+      else { 
+        foreach my $align_key (keys %{$aligns}) {
+          next if ($align_key =~ /unaligned/);
+          if (($match_workflow_name eq "" || $align_key =~ /$match_workflow_name/) && ($match_workflow_version eq "" || $align_key =~ /$match_workflow_version/)) {
+            $veto = 1; print R "\t\tWORKFLOW NAME & VERSION PREVIOUSLY RUN SO SKIP! $match_workflow_name - $match_workflow_version matches $align_key\n";
+           }
+          }
+        }
+        # else { 
+        #  print R "\t\tCONTAINS ALIGNMENT!\n"; $veto = 1; 
+        #}
+      #}
       # now check if this is alreay scheduled
       my $analysis_url_str = join(",", sort(keys(%{$d->{analysisURL}})));
       $d->{analysis_url} = $analysis_url_str;
@@ -286,7 +300,7 @@ sub schedule_samples {
       }
       # now check the number of bams == lane count (or this check is suppressed)
       if ($d->{total_lanes} == $d->{bams_count} || $ignore_lane_cnt) {
-        print R "\t\tLANE COUNT MATCHES OR IGNORED MISMATCH: $ignore_lane_cnt $d->{total_lanes} $d->{bams_count}\n";
+        print R "\t\tLANE COUNT MATCHES OR IGNORED MISMATCH: IGNORE - $ignore_lane_cnt TOTAL LANES - $d->{total_lanes} UNALIGNED BAM COUNT - $d->{bams_count}\n";
       } else {
         print R "\t\tLANE COUNT MISMATCH!\n";
         $veto=1;
@@ -370,9 +384,10 @@ sub read_sample_info {
       my $workflow_name = getCustomVal($adoc2, 'workflow_name');
       my $workflow_version = getCustomVal($adoc2, 'workflow_version');
       my $alignment = getVal($adoc, "refassem_short_name");
+      my $upload_date = getVal($adoc, "upload_date");
       # trying to deal with multiple alignments here, will need to think about how I'm dealing with libraries
       if ($alignment ne "unaligned") {
-        $alignment = "$alignment - $analysisId - $workflow_name - $workflow_version";
+        $alignment = "$alignment - $analysisId - $workflow_name - $workflow_version - $upload_date";
       }
       my $total_lanes = getCustomVal($adoc2, "total_lanes");
       my $sample_uuid = getXPathAttr($adoc2, "refname", "//ANALYSIS_SET/ANALYSIS/TARGETS/TARGET/\@refname");
@@ -386,6 +401,7 @@ sub read_sample_info {
       print OUT "SUBMITTER ALIQUOTID: $submitterAliquotId\n";
       print OUT "WORKFLOW NAME: $workflow_name\n";
       print OUT "WORKFLOW VERSION: $workflow_version\n";
+      print OUT "UPLOAD DATE: $upload_date\n";
       my $libName = getVal($adoc, 'LIBRARY_NAME');
       my $libStrategy = getVal($adoc, 'LIBRARY_STRATEGY');
       my $libSource = getVal($adoc, 'LIBRARY_SOURCE');
@@ -396,7 +412,6 @@ sub read_sample_info {
         print OUT "  gtdownload -c gnostest.pem -v -d $analysisDataURI\n";
         #system "gtdownload -c gnostest.pem -vv -d $analysisId\n";
         print OUT "\n";
- # HERE: will need to nest this a bit differently since we want to aggregate for unlaigned but aggregate by analysis_id for multiple alignments
         $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{analysis_id}{$analysisId} = 1;
         $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{analysis_url}{$analysisDataURI} = 1;
         $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{library_name}{$libName} = 1;
@@ -411,6 +426,7 @@ sub read_sample_info {
         $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{sample_uuid}{$sample_uuid} = 1;
         $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{workflow_name}{$workflow_name} = 1;
         $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{workflow_version}{$workflow_version} = 1;
+        $d->{$participantId}{$sampleId}{$alignment}{$aliquotId}{$libName}{upload_date}{$upload_date} = 1;
         # need to add
         # input_bam_paths=9c414428-9446-11e3-86c1-ab5c73f0e08b/hg19.chr22.5x.normal.bam
         # gnos_input_file_urls=https://gtrepo-ebi.annailabs.com/cghub/data/analysis/download/9c414428-9446-11e3-86c1-ab5c73f0e08b
@@ -465,8 +481,14 @@ sub read_cluster_info {
       my $acc = $json->{$c}{workflow_accession};
       my $max_running = $json->{$c}{max_workflows};
       my $max_scheduled_workflows = $json->{$c}{max_scheduled_workflows};
+      my $curr_workflow = $json->{$c}{workflow_name};
+      my $curr_workflow_version = $json->{$c}{workflow_version};
       if ($max_running <= 0 || $max_running eq "") { $max_running = 1; }
       if ($max_scheduled_workflows <= 0 || $max_scheduled_workflows eq "" || $max_scheduled_workflows > $max_running) { $max_scheduled_workflows = $max_running; }
+      # skip a cluster that doesn't match workflow name and version if supplied
+      next if ($match_workflow_name ne "" && $match_workflow_name ne $curr_workflow);
+      next if ($match_workflow_version ne "" && $match_workflow_version ne $curr_workflow_version);
+
       print R "EXAMINING CLUSER: $c\n";
       print "wget --timeout=60 -t 2 -O - --http-user=$user --http-password=$pass -q $web/workflows/$acc\n";
       my $info = `wget --timeout=60 -t 2 -O - --http-user='$user' --http-password=$pass -q $web/workflows/$acc`;
