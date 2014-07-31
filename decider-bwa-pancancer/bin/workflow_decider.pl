@@ -75,7 +75,7 @@ say 'Finished!!';
 sub get_whitelist {
    my ($whitelist_path) = @_;
 
-   my $file = "whitelist/$whitelist_path";
+   my $file = "$Bin/../whitelist/$whitelist_path";
    die "Whitelist does not exist" if (not -e $file);
 
    open my $whitelist, '<', $file;
@@ -91,7 +91,7 @@ sub get_whitelist {
 sub get_blacklist {
    my ($blacklist_path) = @_;
 
-   my $file = "blacklist/$blacklist_path";
+   my $file = "$Bin/../blacklist/$blacklist_path";
    die "Blacklist does not exist" if (not -e $file);
 
    open my $blacklist, '<', $file;
