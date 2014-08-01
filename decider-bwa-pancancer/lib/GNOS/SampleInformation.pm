@@ -9,7 +9,6 @@ use FindBin qw($Bin);
 
 use Carp::Always;
 use File::Slurp;
-#use Term::ProgressBar::Quiet;
 
 use XML::LibXML;
 use XML::LibXML::Simple qw(XMLin);
@@ -38,13 +37,10 @@ sub get {
     my $results = $data->{Result};
    
     say $parse_log '';
-    
-    #my $progress_bar = Term::ProgressBar::Quiet->new({count => scalar( keys %$results) });
  
     my $i = 0;
     foreach my $result_id (keys %{$results}) {
         my $result = $results->{$result_id};
-        #$progress_bar->update($i++);
         my $analysis_full_url = $result->{analysis_full_uri};
 
         my $analysis_id = $i;
