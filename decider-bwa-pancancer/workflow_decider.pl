@@ -178,7 +178,8 @@ uploadScriptJobMem=3
 gtdownloadRetries=30
 gtdownloadMd5time=120
 gtdownloadMemG=8
-smallJobMemM=3000
+gtdownloadWrapperType=file_based
+smallJobMemM=4000
 END
   close OUT;
   # now submit the workflow!
