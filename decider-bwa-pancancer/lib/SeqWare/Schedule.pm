@@ -7,7 +7,6 @@ use autodie qw(:all);
 
 use FindBin qw($Bin);
 
-#use Term::ProgressBar::Quiet;
 use Config::Simple;
 use Capture::Tiny ':all';
 use Cwd;
@@ -42,8 +41,6 @@ sub schedule_samples {
 
     say $report_file "SAMPLE SCHEDULING INFORMATION\n";
 
-    #my $progress_bar = Term::ProgressBar::Quiet->new({count => scalar( keys %{$sample_information}) });
-
     my $i = 0;
     foreach my $center_name (keys %{$sample_information}) {
         next if (defined $specific_center && $specific_center ne $center_name);
@@ -75,7 +72,6 @@ sub schedule_samples {
                              $whitelist,
                              $blacklist);
         }
-        #$progress_bar->update($i++);
     }
 }
 
