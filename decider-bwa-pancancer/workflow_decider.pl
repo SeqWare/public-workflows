@@ -120,7 +120,8 @@ sub schedule_workflow {
   my $rand = substr(rand(), 2);
   my $host = "unknown";
   my $workflow_accession = 0;
-  my $workflow_version = "2.4.0";
+  my $workflow_version = "2.6.0";
+  if ($match_workflow_version ne "") { $workflow_version = $match_workflow_version; }
   # parse cluster info
   my $settings = `cat $seqware_setting`;
   my $cluster_found = 0;
