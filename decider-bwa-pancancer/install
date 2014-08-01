@@ -24,5 +24,3 @@ sudo chmod a+x /usr/local/bin/seqware
 
 # Install Java
 sudo apt-get -y -q --force-yes install openjdk-7-jdk
-
-echo "Next step install Term::ProgressBar::Quiet through CPAN"
