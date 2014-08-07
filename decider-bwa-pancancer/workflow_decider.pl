@@ -306,8 +306,12 @@ sub schedule_samples {
         $veto = 1;
       }
       # now check the number of bams == lane count (or this check is suppressed)
-      if ($d->{total_lanes} == $d->{bams_count} || $ignore_lane_cnt) {
+      if (($d->{total_lanes} == $d->{bams_count} || $ignore_lane_cnt) && $d->{bams_count} > 0) {
         print R "\t\tLANE COUNT MATCHES OR IGNORED MISMATCH: IGNORE - $ignore_lane_cnt TOTAL LANES - $d->{total_lanes} UNALIGNED BAM COUNT - $d->{bams_count}\n";
+      } elsif ($d->{bams_count} == 0) {
+        # then skip because there are no bams to align
+        print R "\t\tBAM INPUT COUNT IS 0!\n";
+        $veto=1;
       } else {
         print R "\t\tLANE COUNT MISMATCH!\n";
         $veto=1;
