@@ -161,8 +161,8 @@ use_gtvalidation=$use_gtvalidate
 skip_upload=$skip_upload
 output_prefix=$output_prefix
 output_dir=$output_dir
-picardSortJobMem=8
-picardSortMem=6
+picardSortJobMem=12
+picardSortMem=12
 additionalPicardParams=
 input_reference=\${workflow_bundle_dir}/Workflow_Bundle_BWA/$workflow_version/data/reference/bwa-0.6.2/genome.fa.gz
 maxInsertSize=
@@ -173,14 +173,19 @@ bwa_choice=mem
 bwa_aln_params=
 bwa_mem_params=
 bwa_sampe_params=
+cleanup=false
 readGroup=
 gnos_key=\${workflow_bundle_dir}/Workflow_Bundle_BWA/$workflow_version/scripts/gnostest.pem
-uploadScriptJobMem=3
+gnos_max_children=4
+gnos_rate_limit=200
+gnos_timeout=40
+uploadScriptJobMem=8
+study-refname-override=icgc_pancancer
 gtdownloadRetries=30
 gtdownloadMd5time=120
 gtdownloadMemG=8
 gtdownloadWrapperType=file_based
-smallJobMemM=4000
+smallJobMemM=8000
 END
   close OUT;
   # now submit the workflow!
