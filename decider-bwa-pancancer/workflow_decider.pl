@@ -44,8 +44,9 @@ my $output_dir = "seqware-results/";
 my $input_prefix = "";
 my $match_workflow_name = "";
 my $match_workflow_version = "";
+my $study_name = "icgc_pancancer";
 
-if (scalar(@ARGV) < 4 || scalar(@ARGV) > 34) {
+if (scalar(@ARGV) < 4 || scalar(@ARGV) > 36) {
   print "USAGE: 'perl $0 --gnos-url <URL> --cluster-json <cluster.json> [--working-dir <working_dir>] [--sample <sample_id>] [--threads <num_threads_bwa_default_8>] [--test] [--ignore-lane-count] [--force-run] [--skip-meta-download] [--report <workflow_decider_report.txt>] [--settings <seqware_settings_file>] [--upload-results] [--skip-cached]'\n";
   print "\t--gnos-url           a URL for a GNOS server, e.g. https://gtrepo-ebi.annailabs.com\n";
   print "\t--cluster-json       a json file that describes the clusters available to schedule workflows to\n";
@@ -68,10 +69,11 @@ if (scalar(@ARGV) < 4 || scalar(@ARGV) > 34) {
   print "\t--output-dir         if --skip-gtupload is set, use this to specify the dir of where output files are written\n";
   print "\t--workflow-name      will match this workflow_name from the XML, won't run if this workflow has already been run and uploaded\n";
   print "\t--workflow-version   will match this workflow_version from the XML, won't run if this workflow version has already been run and uploaded (make most sense to combine with --workflow-name)\n";
+  print "\t--study-name         an override for the study name, by default it is icgc_pancancer\n";
   exit(1);
 }
 
-GetOptions("gnos-url=s" => \$gnos_url, "cluster-json=s" => \$cluster_json, "working-dir=s" => \$working_dir, "sample=s" => \$specific_sample, "test" => \$test, "ignore-lane-count" => \$ignore_lane_cnt, "force-run" => \$force_run, "threads=i" => \$threads, "skip-meta-download" => \$skip_down, "report=s" => \$report_name, "settings=s" => \$seqware_setting, "upload-results" => \$upload_results, "ignore-failed" => \$ignore_failed, "skip-cached" => \$skip_cached, "skip-gtdownload" => \$skip_gtdownload, "skip-gtupload" => \$skip_gtupload, "skip-gtvalidate" => \$skip_gtvalidate, "output-prefix=s" => \$output_prefix, "output-dir=s" => \$output_dir, "input-prefix=s" => \$input_prefix, "workflow-name=s" => \$match_workflow_name, "workflow-version=s" => \$match_workflow_version);
+GetOptions("gnos-url=s" => \$gnos_url, "cluster-json=s" => \$cluster_json, "working-dir=s" => \$working_dir, "sample=s" => \$specific_sample, "test" => \$test, "ignore-lane-count" => \$ignore_lane_cnt, "force-run" => \$force_run, "threads=i" => \$threads, "skip-meta-download" => \$skip_down, "report=s" => \$report_name, "settings=s" => \$seqware_setting, "upload-results" => \$upload_results, "ignore-failed" => \$ignore_failed, "skip-cached" => \$skip_cached, "skip-gtdownload" => \$skip_gtdownload, "skip-gtupload" => \$skip_gtupload, "skip-gtvalidate" => \$skip_gtvalidate, "output-prefix=s" => \$output_prefix, "output-dir=s" => \$output_dir, "input-prefix=s" => \$input_prefix, "workflow-name=s" => \$match_workflow_name, "workflow-version=s" => \$match_workflow_version, "study-name=s" => \$study_name);
 
 if ($upload_results) { $skip_upload = "false"; }
 if ($skip_gtdownload) { $use_gtdownload = "false"; }
@@ -179,11 +181,11 @@ gnos_key=\${workflow_bundle_dir}/Workflow_Bundle_BWA/$workflow_version/scripts/g
 gnos_max_children=4
 gnos_rate_limit=200
 gnos_timeout=40
-uploadScriptJobMem=8
-study-refname-override=icgc_pancancer
+uploadScriptJobMem=12
+study-refname-override=$study_name
 gtdownloadRetries=30
 gtdownloadMd5time=120
-gtdownloadMemG=8
+gtdownloadMemG=12
 gtdownloadWrapperType=file_based
 smallJobMemM=8000
 END
