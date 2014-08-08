@@ -263,7 +263,9 @@ sub download_analysis {
     my $response = $browser->get($url);
     if ($response->is_success) {
        if (eval { $parser->parse_string($response->decoded_content); }) {
-           write_file($out, $response->decoded_content);
+           open(my $FH, ">:encoding(UTF-8)", $out);
+           write_file($FH, $response->decoded_content);
+           close $FH;
            return 1;
        }
        else {
