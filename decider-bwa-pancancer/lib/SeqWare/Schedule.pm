@@ -193,13 +193,16 @@ sub submit_workflow {
  
         my ($std_out, $std_err) = capture {
              no autodie qw(system);
-             system( "source ~/.bashrc;
-                      cd $dir;
+             system( "cd $dir;
                       export SEQWARE_SETTINGS=$Bin/../$working_dir/samples/$center_name/$sample_id/settings;
                       export PATH=\$PATH:/usr/local/bin;
                       env;
                       seqware workflow schedule --accession $workflow_accession --host $host --ini $Bin/../$working_dir/samples/$center_name/$sample_id/workflow.ini") 
-        } stdout => $out_fh, sterr => $err_fh;
+        };
+
+        print $out_fh $std_out if($std_out);
+        print $err_fh $std_err if($std_err);
+say $report_file $std_err;
 
 
         say $report_file "\t\tSOMETHING WENT WRONG WITH SCHEDULING THE WORKFLOW: Check error log =>  $Bin/../$submission_path/$sample_id.e and output log => $Bin/../$submission_path/$sample_id.o" if( $std_err ne '');
@@ -297,6 +300,7 @@ sub schedule_sample {
     my $sample = { gnos_url => $gnos_url,
                    bam_count => 0};
     my $aligns = {};
+
     foreach my $alignment_id (keys %{$alignments}) {
         say $report_file "\t\tALIGNMENT: $alignment_id";
  
@@ -309,6 +313,8 @@ sub schedule_sample {
                 say $report_file "\t\t\t\tLIBRARY: $library_id";
                 my $library = $libraries->{$library_id};
                 my $current_workflow_version = $library->{workflow_version};
+                my @current_workflow_versions = keys $current_workflow_version;
+                $current_workflow_version = $current_workflow_versions[0];
 
                 if (($alignment_id eq 'unaligned')
                     or (!$current_workflow_version and $run_workflow_version le '2.5.0')
