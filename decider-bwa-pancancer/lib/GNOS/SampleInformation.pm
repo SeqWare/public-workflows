@@ -65,7 +65,7 @@ sub get {
             $attempts++;
         }         
 
-        if (not -e $analysis_xml_path and eval {$xs->XMLin($analysis_xml_path); }) {
+        if (not -e $analysis_xml_path or eval {$xs->XMLin($analysis_xml_path); }) {
            say $parse_log "skipping $analysis_id: no xml file available";
            next;
         } 
