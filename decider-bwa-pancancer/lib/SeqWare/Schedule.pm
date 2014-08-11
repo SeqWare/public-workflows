@@ -193,16 +193,17 @@ sub submit_workflow {
  
         my ($std_out, $std_err) = capture {
              no autodie qw(system);
-             system( "source ~/.bashrc;
-                      cd $dir;
+             system( "cd $dir;
                       export SEQWARE_SETTINGS=$Bin/../$working_dir/samples/$center_name/$sample_id/settings;
                       export PATH=\$PATH:/usr/local/bin;
                       env;
                       seqware workflow schedule --accession $workflow_accession --host $host --ini $Bin/../$working_dir/samples/$center_name/$sample_id/workflow.ini") 
-        } stdout => $out_fh, sterr => $err_fh;
+        };
 
+        print $out_fh $std_out if($std_out);
+        print $err_fh $std_err if($std_err);
 
-        say $report_file "\t\tSOMETHING WENT WRONG WITH SCHEDULING THE WORKFLOW: Check error log =>  $Bin/../$submission_path/$sample_id.e and output log => $Bin/../$submission_path/$sample_id.o" if( $std_err ne '');
+        say $report_file "\t\tSOMETHING WENT WRONG WITH SCHEDULING THE WORKFLOW: Check error log =>  $Bin/../$submission_path/$sample_id.e and output log => $Bin/../$submission_path/$sample_id.o" if($std_err);
     }
     else {
         say $report_file "\tNOT LAUNCHING WORKFLOW, NO CLUSTER AVAILABLE: $Bin/../$working_dir/samples/$center_name/$sample_id/workflow.ini";
