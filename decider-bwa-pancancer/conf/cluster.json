@@ -6,7 +6,27 @@
      "workflow_version": "2.6.0",
      "webservice": "http://10.0.2.20:8080/SeqWareWebService",
      "host": "master",
-     "max_workflows": "2",
+     "max_workflows": "10",
+     "max_scheduled_workflows": "1"
+   },
+  "target-vcloud-5-1": {
+     "workflow_accession": "2",
+     "username": "admin@admin.com",
+     "password": "admin",
+     "workflow_version": "2.6.0",
+     "webservice": "http://10.0.2.41:8080/SeqWareWebService",
+     "host": "master",
+     "max_workflows": "3",
+     "max_scheduled_workflows": "1"
+   },
+  "target-vcloud-5-2": {
+     "workflow_accession": "2",
+     "username": "admin@admin.com",
+     "password": "admin",
+     "workflow_version": "2.6.0",
+     "webservice": "http://10.0.2.49:8080/SeqWareWebService",
+     "host": "master",
+     "max_workflows": "3",
      "max_scheduled_workflows": "1"
    }
 }

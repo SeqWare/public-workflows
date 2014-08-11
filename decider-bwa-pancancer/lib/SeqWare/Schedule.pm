@@ -181,7 +181,7 @@ sub submit_workflow {
     my $launch_command = "SEQWARE_SETTINGS=$Bin/../$working_dir/samples/$center_name/$sample_id/settings /usr/local/bin/seqware workflow schedule --accession $workflow_accession --host $host --ini $Bin/../$working_dir/samples/$center_name/$sample_id/workflow.ini";
 
     if ($skip_scheduling) {
-        say $report_file "\tNOT LAUNCHING WORKFLOW BECAUSE --schedule_skip_workflow SPECIFIED: $Bin/../$working_dir/samples/$center_name/$sample_id/workflow.ini";
+        say $report_file "\tNOT LAUNCHING WORKFLOW BECAUSE --schedule-skip-workflow SPECIFIED: $Bin/../$working_dir/samples/$center_name/$sample_id/workflow.ini";
         say $report_file "\t\tLAUNCH CMD WOULD HAVE BEEN: $launch_command\n";
         return;
     } 
@@ -202,11 +202,11 @@ sub submit_workflow {
                       export SEQWARE_SETTINGS=$Bin/../$working_dir/samples/$center_name/$sample_id/settings;
                       export PATH=\$PATH:/usr/local/bin;
                       env;
-                      seqware workflow schedule --accession $workflow_accession --host $host --ini $Bin/../$working_dir/samples/$center_name/$sample_id/workflow.ini") } stdout => $out_fh, sterr => $err_fh;
+                      seqware workflow schedule --accession $workflow_accession --host $host --ini $Bin/../$working_dir/samples/$center_name/$sample_id/workflow.ini") 
+        } stdout => $out_fh, sterr => $err_fh;
 
 
-        say $report_file "\t\tSOMETHING WENT WRONG WITH SCHEDULING THE WORKFLOW: Check error log =>  $Bin/../$submission_path/$sample_id.e and output log => $Bin/../$submission_path/$sample_id.o"
-                                                                       if( $std_err);
+        say $report_file "\t\tSOMETHING WENT WRONG WITH SCHEDULING THE WORKFLOW: Check error log =>  $Bin/../$submission_path/$sample_id.e and output log => $Bin/../$submission_path/$sample_id.o" if( $std_err ne '');
     }
     else {
         say $report_file "\tNOT LAUNCHING WORKFLOW, NO CLUSTER AVAILABLE: $Bin/../$working_dir/samples/$center_name/$sample_id/workflow.ini";
