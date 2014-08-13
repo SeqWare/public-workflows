@@ -298,6 +298,7 @@ sub schedule_sample {
     my $sample = { gnos_url => $gnos_url,
                    bam_count => 0};
     my $aligns = {};
+
     foreach my $alignment_id (keys %{$alignments}) {
         say $report_file "\t\tALIGNMENT: $alignment_id";
  
@@ -310,6 +311,8 @@ sub schedule_sample {
                 say $report_file "\t\t\t\tLIBRARY: $library_id";
                 my $library = $libraries->{$library_id};
                 my $current_workflow_version = $library->{workflow_version};
+                my @current_workflow_versions = keys $current_workflow_version;
+                $current_workflow_version = $current_workflow_versions[0];
 
                 if (($alignment_id eq 'unaligned')
                     or (!$current_workflow_version and $run_workflow_version le '2.5.0')
