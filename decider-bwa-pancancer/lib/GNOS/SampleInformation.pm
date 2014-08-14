@@ -65,7 +65,7 @@ sub get {
             $attempts++;
         }         
 
-        if (not -e $analysis_xml_path and eval {$xs->XMLin($analysis_xml_path); }) {
+        if (not -e $analysis_xml_path or not eval {$xs->XMLin($analysis_xml_path); }) {
            say $parse_log "skipping $analysis_id: no xml file available";
            next;
         } 
@@ -140,7 +140,7 @@ sub get {
             $workflow_name = $attributes{workflow_name};
         }
 
-        my $donor_id = $submitter_participant_id || $participant_id;
+        my $donor_id =  $submitter_donor_id || $submitter_participant_id || $participant_id;
         
         say $parse_log "\tDONOR:\t$donor_id";
         say $parse_log "\tANALYSIS:\t$analysis_data_uri";
