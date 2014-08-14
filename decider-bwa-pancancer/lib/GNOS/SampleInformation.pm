@@ -12,6 +12,7 @@ use File::Slurp;
 
 use XML::LibXML;
 use XML::LibXML::Simple qw(XMLin);
+
 use Data::Dumper;
 
 sub get {
@@ -253,19 +254,20 @@ sub files {
 sub download_analysis {
     my ($url, $out, $use_cached_analysis) = @_;
 
-    my $parser   = XML::LibXML->new();
+    my $xs = XML::LibXML::Simple->new(forcearray => 0, keyattr => 0 );
 
-    return 1   if (-e $out and eval{$parser->parse_string(read_file($out))} 
-                                                      and $use_cached_analysis);
+    return 1   if (-e $out and eval {$xs->XMLin($out)} and $use_cached_analysis);
+
     no autodie;
     my $browser = LWP::UserAgent->new();
     $browser->timeout(300);#seconds: 5 minutes
     my $response = $browser->get($url);
     if ($response->is_success) {
-       if (eval { $parser->parse_string($response->decoded_content); }) {
-           open(my $FH, ">:encoding(UTF-8)", $out);
-           write_file($FH, $response->decoded_content);
-           close $FH;
+       open(my $FH, ">:encoding(UTF-8)", $out);
+       write_file($FH, $response->decoded_content);
+       close $FH;
+
+       if (-e $out and eval { $xs->XMLin($out) }) {
            return 1;
        }
        else {
@@ -275,7 +277,28 @@ sub download_analysis {
  
     say $response->status_line;
     
-    return 0;
+    return download($url, $out, $use_cached_analysis);
+}
+
+sub download {
+    my ($url, $out, $skip) = @_;
+
+    if (!-e $out || !$skip) {
+        my $r = system("wget -q -O $out $url");
+        if ($r) {
+            $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME}=0;
+            $r = system("lwp-download $url $out");
+            if ($r) {
+                print "ERROR DOWNLOADING: $url\n";
+                return 0;
+            } 
+            else {
+                return 1;
+            }
+        }
+        return 0;
+    }
+    return 1;
 }
 
 1;
