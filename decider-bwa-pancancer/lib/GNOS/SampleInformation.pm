@@ -258,9 +258,13 @@ sub download_analysis {
 
     return 1   if (-e $out and eval {$xs->XMLin($out)} and $use_cached_analysis);
 
+    $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME}=0;
+
     no autodie;
     my $browser = LWP::UserAgent->new();
     $browser->timeout(300);#seconds: 5 minutes
+    $browser->ssl_opts(verify_hostname => 0);
+    # $browser->env_proxy;
     my $response = $browser->get($url);
     if ($response->is_success) {
        open(my $FH, ">:encoding(UTF-8)", $out);
