@@ -21,27 +21,28 @@ sub cluster_seqware_information {
 
     my $clusters = decode_json( read_file( $clusters_json));
 
-    my $cluster_information = {};
+    my %cluster_information;
     my $running_samples = {};
-
+    my $cluster_info;
     foreach my $cluster_name (keys %{$clusters}) {
         my $cluster_metadata = $clusters->{$cluster_name};
-        ($cluster_information, $running_samples) 
+        ($cluster_info, $running_samples) 
             = seqware_information( $report_file,
                                    $cluster_name, 
                                    $cluster_metadata,
-                                   $cluster_information,
                                    $running_samples,
                                    $run_workflow_version);
+        foreach my $cluster (keys %{$cluster_info}) {
+           $cluster_information{$cluster} = $cluster_info->{$cluster};
+        }
     }
 
-    return ($cluster_information, $running_samples);
+    return (\%cluster_information, $running_samples);
 }
 
 sub seqware_information {
     my ($report_file, $cluster_name, $cluster_metadata, 
-                   $cluster_information, $running_samples, $run_workflow_version) = @_;
-
+                   $running_samples, $run_workflow_version) = @_;
 
     my $user = $cluster_metadata->{username};
     my $password = $cluster_metadata->{password};
@@ -64,7 +65,6 @@ sub seqware_information {
        return;
     }
 
-
     my $xs = XML::Simple->new(ForceArray => 1, KeyAttr => 1);
     my $workflow_information = $xs->XMLin($workflow_information_xml);
 
@@ -78,11 +78,12 @@ sub seqware_information {
                    $workflow_accession, $running_samples, $run_workflow_version);
     }
     my $running = scalar(keys %{$running_samples});
+    my %cluster_info;
     if ($running < $max_running ) {
         say $report_file  "\tTHERE ARE $running RUNNING WORKFLOWS WHICH IS LESS THAN MAX OF $max_running, ADDING TO LIST OF AVAILABLE CLUSTERS";
         for (my $i=0; $i<$max_scheduled_workflows; $i++) {
             my %cluster_metadata = %{$cluster_metadata};
-            $cluster_information->{"$cluster_name-$i"} = \%cluster_metadata
+            $cluster_info{"$cluster_name-$i"} = \%cluster_metadata
                 if ($run_workflow_version eq $cluster_metadata{workflow_version});
         }
     } 
@@ -90,14 +91,13 @@ sub seqware_information {
         say $report_file "\tCLUSTER HAS RUNNING WORKFLOWS, NOT ADDING TO AVAILABLE CLUSTERS";
     }
 
-    return ($cluster_information, $running_samples);
+    return (\%cluster_info, $running_samples);
 }
 
 sub find_available_clusters {
     my ($report_file, $seqware_runs, $workflow_accession, $running_samples) = @_;
 
     say $report_file "\tWORKFLOWS ON THIS CLUSTER";
-
     foreach my $seqware_run (@{$seqware_runs}) {
         my $run_status = $seqware_run->{status}->[0];
 
@@ -105,13 +105,13 @@ sub find_available_clusters {
 
         my $running_status = { 'pending' => 1,   'running' => 1,
                                'scheduled' => 1, 'submitted' => 1 };
-
         if ($running_status->{$run_status}) {
             my $sample_id;
             $running_samples->{$sample_id}{$run_status} = 1
                if ( $sample_id = running_sample_id($report_file, $seqware_run));
         }
      }
+
 
      return $running_samples;
 }
