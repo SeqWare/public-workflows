@@ -181,11 +181,11 @@ sub get {
         say $parse_log "\tgtdownload -c gnostest.pem -v -d $analysis_data_uri\n";
 
         #This takes into consideration the files that were submitted with the old SOP
-        $sample_id //= $submitter_specimen_id;
+        $submitter_sample_id //= $sample_id;
         $submitter_participant_id //= $submitter_donor_id;
         $aliquot_id //= $submitter_sample_id;           
         $submitter_aliquot_id //= $submitter_sample_id;
-        $sample_uuid //= $sample_id;
+        $sample_uuid //= $submitter_sample_id;
         $center_name //= 'unknown';
 
         my $library = {
