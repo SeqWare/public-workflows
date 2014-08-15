@@ -118,7 +118,7 @@ sub get {
         }
 
         my (%attributes, $total_lanes, $aliquot_uuid, $submitter_participant_id, $submitter_donor_id, 
-            $submitter_sample_id, $workflow_version, $submitter_specimen_id, $workflow_name);
+            $submitter_sample_id, $workflow_version, $submitter_specimen_id, $workflow_name, $dcc_project_code);
         if (ref($analysis_attributes) eq 'ARRAY') {
             foreach my $attribute (@$analysis_attributes) {
                 $attributes{$attribute->{TAG}} = $attribute->{VALUE};
@@ -126,6 +126,10 @@ sub get {
 
             $total_lanes = $attributes{total_lanes};
             $aliquot_uuid = $attributes{aliquot_id};
+
+            $dcc_project_code = $attributes{dcc_project_code};
+            $dcc_project_code = undef if (ref($dcc_project_code) eq 'HASH');
+
             $submitter_participant_id = $attributes{submitter_participant_id};
             $submitter_participant_id = undef if (ref($submitter_participant_id) eq 'HASH');
 
@@ -140,6 +144,10 @@ sub get {
             $workflow_version = $attributes{workflow_version};
             $workflow_name = $attributes{workflow_name};
         }
+        next if ( ( $aliquot_id eq 'ad3d4757-f358-40a3-9d92-742463a95e88'
+                   or $aliquot_id eq 'f0eaa94b-f622-49b9-8eac-e4eac6762598'
+                   or $aliquot_id eq '6d8044f7-3f63-487c-9191-adfeed4e74d3'
+                   or $aliquot_id eq '34c9ff85-c2f8-45dc-b4aa-fba05748e355') and $dcc_project_code eq 'LIHC-US');
 
         my $donor_id =  $submitter_donor_id || $submitter_participant_id || $participant_id;
         
@@ -220,6 +228,7 @@ sub get {
             $participants->{$center_name}{$donor_id}{$sample_uuid}{$alignment}{$aliquot_id}{$library_name}{files}{$file_name} = $file_info;
         }
     }
+
     close $parse_log;
 
     return $participants;
