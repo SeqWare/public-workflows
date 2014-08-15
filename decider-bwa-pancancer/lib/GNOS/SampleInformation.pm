@@ -75,7 +75,7 @@ sub get {
 
         if (ref($analysis_data) ne 'HASH'){
             say "XML can not be converted to a hash for $analysis_id";
-            next;
+            die;
         }
 
         my %analysis = %{$analysis_data};
@@ -263,46 +263,26 @@ sub download_analysis {
     no autodie;
     my $browser = LWP::UserAgent->new();
     $browser->timeout(300);#seconds: 5 minutes
-    $browser->ssl_opts(verify_hostname => 0);
-    # $browser->env_proxy;
     my $response = $browser->get($url);
     if ($response->is_success) {
-       open(my $FH, ">:encoding(UTF-8)", $out);
-       write_file($FH, $response->decoded_content);
-       close $FH;
-
-       if (-e $out and eval { $xs->XMLin($out) }) {
-           return 1;
-       }
-       else {
-           return 0;
-       }
-    }
- 
-    say $response->status_line;
+        open(my $FH, ">:encoding(UTF-8)", $out);
+        write_file($FH, $response->decoded_content);
+        close $FH;
+    } 
+    else {
+        say $response->status_line;
     
-    return download($url, $out, $use_cached_analysis);
-}
-
-sub download {
-    my ($url, $out, $skip) = @_;
-
-    if (!-e $out || !$skip) {
-        my $r = system("wget -q -O $out $url");
-        if ($r) {
-            $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME}=0;
-            $r = system("lwp-download $url $out");
-            if ($r) {
-                print "ERROR DOWNLOADING: $url\n";
-                return 0;
-            } 
-            else {
-                return 1;
-            }
+        $response = system("wget -q -O $out $url");
+        if ($response != 0) {
+            $response = system("lwp-download $url $out");
+            return 0 if ($response != 0 );
         }
-        return 1;
     }
-    return 1;
+    if (-e $out and eval { $xs->XMLin($out) }) {
+         return 1;
+    }
+
+    return 0;
 }
 
 1;

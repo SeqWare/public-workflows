@@ -131,12 +131,13 @@ sub running_sample_id {
 
     my @urls = split /,/, $parameters{gnos_input_metadata_urls};
     say $report_file "\t\t\tSAMPLE: $sample_id";
-    say $report_file "\t\t\tINPUTS:".join(',', sort @urls);
+    my $sorted_urls = join(',', sort @urls);
+    say $report_file "\t\t\tINPUTS: $sorted_urls";
 
     say $report_file "\t\t\tCWD: ".$parameters{currentWorkingDir};
     say $report_file "\t\t\tWORKFLOW ACCESSION: ".$parameters{swAccession}."\n";
 
-    return $sample_id;
+    return (defined($sample_id) and $sample_id ne '')? $sample_id : $sorted_urls;
 } 
 
 

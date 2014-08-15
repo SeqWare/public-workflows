@@ -442,10 +442,11 @@ sub scheduled {
     
     my $sample_id = $sample->{sample_id};
 
-    if ( not exists($running_samples->{$sample_id}) or $force_run) {
+    if (( not exists($running_samples->{$sample_id}) 
+        and not exists($running_samples->{$analysis_url_str})) or $force_run) {
         say $report_file "\t\tNOT PREVIOUSLY SCHEDULED OR RUN FORCED!";
     } 
-    elsif ( exists($running_samples->{$sample_id}{failed}) and (scalar keys %{$running_samples->{$sample_id}} == 1) and $ignore_failed) {
+    elsif (( (exists($running_samples->{$sample_id}{failed}) and (scalar keys %{$running_samples->{$sample_id}} == 1)) or ( exists($running_samples->{$analysis_url_str}{failed}) and (scalar keys %{$running_samples->{$analysis_url_str}} == 1))) and $ignore_failed) {
         say $report_file "\t\tPREVIOUSLY FAILED BUT RUN FORCED VIA IGNORE FAILED OPTION!";
     } 
     else {
