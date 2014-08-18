@@ -22,27 +22,32 @@ sub cluster_seqware_information {
     my $clusters = decode_json( read_file( $clusters_json));
 
     my %cluster_information;
-    my $running_samples = {};
+    my %running_samples;
     my $cluster_info;
+    my $running_samples_urls;
     foreach my $cluster_name (keys %{$clusters}) {
         my $cluster_metadata = $clusters->{$cluster_name};
-        ($cluster_info, $running_samples) 
+        ($cluster_info, $running_samples_urls) 
             = seqware_information( $report_file,
                                    $cluster_name, 
                                    $cluster_metadata,
-                                   $running_samples,
                                    $run_workflow_version);
+
         foreach my $cluster (keys %{$cluster_info}) {
            $cluster_information{$cluster} = $cluster_info->{$cluster};
         }
+
+        foreach my $url (keys %{$running_samples_urls}) {
+           $running_samples{$url} = 1;
+        }
+
     }
 
-    return (\%cluster_information, $running_samples);
+    return (\%cluster_information, \%running_samples);
 }
 
 sub seqware_information {
-    my ($report_file, $cluster_name, $cluster_metadata, 
-                   $running_samples, $run_workflow_version) = @_;
+    my ($report_file, $cluster_name, $cluster_metadata, $run_workflow_version) = @_;
 
     my $user = $cluster_metadata->{username};
     my $password = $cluster_metadata->{password};
