@@ -137,7 +137,7 @@ sub running_sample_id {
     say $report_file "\t\t\tCWD: ".$parameters{currentWorkingDir};
     say $report_file "\t\t\tWORKFLOW ACCESSION: ".$parameters{swAccession}."\n";
 
-    return (defined($sample_id) and $sample_id ne '')? $sample_id : $sorted_urls;
+    return $sorted_urls;
 } 
 
 

@@ -413,7 +413,7 @@ sub should_be_scheduled {
         return 1;
     }
 
-    if (unaligned($aligns, $report_file) and not scheduled($report_file, $sample, $running_samples, $sample, $force_run, $ignore_failed, $ignore_lane_count) ) { 
+    if (unaligned($aligns, $report_file) and not scheduled($report_file, $sample, $running_samples, $force_run, $ignore_failed, $ignore_lane_count) ) { 
         say $report_file "\t\tCONCLUSION: SCHEDULING WORKFLOW FOR THIS SAMPLE!\n";
         return 1;
     }
