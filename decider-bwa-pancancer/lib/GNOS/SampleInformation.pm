@@ -191,9 +191,9 @@ sub get {
         #This takes into consideration the files that were submitted with the old SOP
         $submitter_sample_id //= $sample_id;
         $submitter_participant_id //= $submitter_donor_id;
-        $aliquot_id //= $submitter_sample_id;           
+        $aliquot_id = (defined $submitter_sample_id) ? $submitter_sample_id : $aliquot_id;           
         $submitter_aliquot_id //= $submitter_sample_id;
-        $sample_uuid //= $submitter_sample_id;
+        $sample_id = (defined $submitter_specimen_id) ? $submitter_specimen_id: $sample_id;
         $center_name //= 'unknown';
 
         my $library = {
@@ -214,18 +214,18 @@ sub get {
 
         $center_name = 'seqware';
         if ($alignment ne 'unaligned') { 
-            $alignment = "$alignment-$analysis_id-$workflow_name-$workflow_version-$last_modified";
+            $alignment = "$alignment - $analysis_id - $workflow_name - $workflow_version - $last_modified";
         }
 
         foreach my $attribute (keys %{$library}) {
             my $library_value = $library->{$attribute};
-            $participants->{$center_name}{$donor_id}{$sample_uuid}{$alignment}{$aliquot_id}{$library_name}{$attribute}{$library_value} = 1;
+            $participants->{$center_name}{$donor_id}{$sample_id}{$alignment}{$aliquot_id}{$library_name}{$attribute}{$library_value} = 1;
         }
 
         my $files = files($analysis_result, $parse_log, $analysis_id);
         foreach my $file_name (keys %$files) {
             my $file_info = $files->{$file_name};
-            $participants->{$center_name}{$donor_id}{$sample_uuid}{$alignment}{$aliquot_id}{$library_name}{files}{$file_name} = $file_info;
+            $participants->{$center_name}{$donor_id}{$sample_id}{$alignment}{$aliquot_id}{$library_name}{files}{$file_name} = $file_info;
         }
     }
 
