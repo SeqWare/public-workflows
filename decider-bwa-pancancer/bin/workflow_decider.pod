@@ -88,6 +88,17 @@ A flag indicating that previously download xml files for each analysis file shou
 
 =back
 
+=item --lwp-download-timeout[=][ ]<wait_time>
+
+This flag is used to specify the amount of time lwp download should wait for an xml file. If zero is spcified it will skip lwp download and attempt other methods. 
+
+=for Euclid
+   wait_time.default: 300
+   wait_time.type: integer
+
+=back
+
+
 =head2 SCHEDULE
 
 =over 

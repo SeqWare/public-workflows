@@ -39,8 +39,8 @@ say 'Reading in GNOS Sample Information';
 my $sample_information = GNOS::SampleInformation->get( $ARGV{'--working-dir'},
                                               $ARGV{'--gnos-url'},
                                               $ARGV{'--use-live-cached'},
-                                              $ARGV{'--use-cached-analysis'});
-
+                                              $ARGV{'--use-cached-analysis'},
+                                              $ARGV{'--lwp-download-timeout'});
 
 say 'Scheduling Samples';
 SeqWare::Schedule->schedule_samples( $report_file,

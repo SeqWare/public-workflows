@@ -16,7 +16,7 @@ use XML::LibXML::Simple qw(XMLin);
 use Data::Dumper;
 
 sub get {
-    my ($class, $working_dir, $gnos_url, $use_live_cached, $use_cached_analysis) = @_;
+    my ($class, $working_dir, $gnos_url, $use_live_cached, $use_cached_analysis, $lwp_download_timeout) = @_;
 
     system("mkdir -p $working_dir");
     open my $parse_log, '>', "$Bin/../$working_dir/xml_parse.log";
@@ -62,7 +62,7 @@ sub get {
         my $attempts = 0;
 
         while ($status == 0 and $attempts < 10) {
-            $status = download_analysis($analysis_full_url, $analysis_xml_path, $use_cached_analysis);
+            $status = download_analysis($analysis_full_url, $analysis_xml_path, $use_cached_analysis, $lwp_download_timeout);
             $attempts++;
         }         
 
@@ -149,7 +149,7 @@ sub get {
                    or $aliquot_id eq '6d8044f7-3f63-487c-9191-adfeed4e74d3'
                    or $aliquot_id eq '34c9ff85-c2f8-45dc-b4aa-fba05748e355') and $dcc_project_code eq 'LIHC-US');
 
-        my $donor_id =  $submitter_donor_id || $submitter_participant_id || $participant_id;
+        my $donor_id =  $submitter_donor_id || $participant_id;
         
         say $parse_log "\tDONOR:\t$donor_id";
         say $parse_log "\tANALYSIS:\t$analysis_data_uri";
@@ -189,10 +189,12 @@ sub get {
         say $parse_log "\tgtdownload -c gnostest.pem -v -d $analysis_data_uri\n";
 
         #This takes into consideration the files that were submitted with the old SOP
-        $submitter_sample_id //= $sample_id;
-        $submitter_participant_id //= $submitter_donor_id;
+        if ((defined $submitter_donor_id) and (defined $submitter_donor_id ne '')) {
+            $submitter_sample_id = $submitter_specimen_id;
+        }
+        $submitter_participant_id = (defined $submitter_donor_id) ? $submitter_donor_id : $submitter_participant_id;
         $aliquot_id = (defined $submitter_sample_id) ? $submitter_sample_id : $aliquot_id;           
-        $submitter_aliquot_id //= $submitter_sample_id;
+        $submitter_aliquot_id = (defined $submitter_sample_id)? $submitter_sample_id: $submitter_aliquot_id;
         $sample_id = (defined $submitter_specimen_id) ? $submitter_specimen_id: $sample_id;
         $center_name //= 'unknown';
 
@@ -261,7 +263,7 @@ sub files {
 }
 
 sub download_analysis {
-    my ($url, $out, $use_cached_analysis) = @_;
+    my ($url, $out, $use_cached_analysis, $lwp_download_timeout) = @_;
 
     my $xs = XML::LibXML::Simple->new(forcearray => 0, keyattr => 0 );
 
@@ -271,7 +273,7 @@ sub download_analysis {
 
     no autodie;
     my $browser = LWP::UserAgent->new();
-    $browser->timeout(300);#seconds: 5 minutes
+    $browser->timeout($lwp_download_timeout);
     my $response = $browser->get($url);
     if ($response->is_success) {
         open(my $FH, ">:encoding(UTF-8)", $out);

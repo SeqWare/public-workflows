@@ -19,7 +19,7 @@ use Data::Dumper;
 sub cluster_seqware_information {
     my ($class, $report_file, $clusters_json, $ignore_failed, $run_workflow_version) = @_;
 
-    my $clusters = decode_json( read_file( $clusters_json));
+    my $clusters = decode_json( read_file($clusters_json));
 
     my %cluster_information;
     my %running_samples;
