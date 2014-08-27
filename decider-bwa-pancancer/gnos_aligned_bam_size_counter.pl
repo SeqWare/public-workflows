@@ -1,9 +1,10 @@
 #!/usr/bin/perl
 #
-# File: gnos_report_generator.pl
+# File: gnos_aligned_bam_size_counter.pl (derived almost entirely from my previous script 
+# named gnos_report_generator.pl)
 # 
 # DESCRIPTION
-# A tool for reporting on the total number of aligned and unaligned
+# A tool for reporting on the sizes of aligned
 # bam files in a GNOS repository
 #
 # This script is designed to take the data.xml file
@@ -35,7 +36,7 @@ my $uri_list = undef;
 my @repos = qw( bsc cghub dkfz ebi etri osdc osdc_icgc osdc_tcga riken );
 
 my %urls = ( bsc   => "https://gtrepo-bsc.annailabs.com",
-             cghub => "https://cghub.annalabs.com",
+             cghub => "https://cghub.ucsc.edu",
              dkfz  => "https://gtrepo-dkfz.annailabs.com",
              ebi   => "https://gtrepo-ebi.annailabs.com",
              etri  => "https://gtrepo-etri.annailabs.com",
@@ -198,19 +199,19 @@ sub map_samples {
     # then use the process_specimens subroutine to extract that data into a table
     # and print out each table into individual files:
     if ( keys %{$single_specimens} ) {
-        open my $FH1, '>', "${gnos_url}_gnos_report_for_unpaired_specimens_" . $timestamp . '.tsv' or die;
+        open my $FH1, '>', "${gnos_url}_gnos_aligned_bamsizes_for_unpaired_specimens_" . $timestamp . '.tsv' or die;
         process_specimens( $single_specimens, $FH1, );
         close $FH1;
     }
 
     if ( keys %{$two_specimens} ) {
-        open my $FH2, '>', "${gnos_url}_gnos_report_for_paired_specimens_" . $timestamp . '.tsv' or die;
+        open my $FH2, '>', "${gnos_url}_gnos_aligned_bamsizes_for_paired_specimens_" . $timestamp . '.tsv' or die;
         process_specimens( $two_specimens, $FH2, );
         close $FH2;
     }
 
     if ( keys %{$many_specimens} ) {
-        open my $FH3, '>', "${gnos_url}_gnos_report_for_many_specimens_" . $timestamp . '.tsv' or die;
+        open my $FH3, '>', "${gnos_url}_gnos_aligned_bamsizes_for_many_specimens_" . $timestamp . '.tsv' or die;
         process_specimens( $many_specimens, $FH3, );
         close $FH3;
     }
@@ -224,129 +225,26 @@ sub map_samples {
 sub process_specimens {
     my $sample_info = shift @_;
     my $FH = shift @_;
-    print $FH "Project\tDonor ID\tSpecimen ID\tSample ID\tNormal/Tumour\tAlignment\tDate\taliquot_id\tNumber of bams\taligned bam file\tpair uploaded\n";
+    print $FH "Project\tDonor ID\tSpecimen ID\tSample ID\tNormal/Tumour\tAliquot ID\tAnalysis ID\tDate\tbam file\tSize\n";
     foreach my $project (sort keys %{$sample_info}) {
         foreach my $donor ( keys %{$sample_info->{$project}} ) {
             my %types = ();
             my @specimens = keys %{$sample_info->{$project}{$donor}};
             my $specimen_count = scalar( @specimens );
             foreach my $specimen ( @specimens ) {
-                my $d = {};
-                my $aligns = {};
                 foreach my $sample ( keys %{$sample_info->{$project}{$donor}{$specimen}} ) {
                     foreach my $alignment ( keys %{$sample_info->{$project}{$donor}{$specimen}{$sample}} ) {
                         my $type = $sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{type};
                         $types{$type}++;
                         my $aliquot_id = $sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{aliquot_id};
-
                         my $analysis_id = $sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{analysis_id};
-     	                $aligns->{$alignment} = 1; # Why is Brian doing this?
-                            # MDPQ: Whare are we reading lane counts in this script, they have all been aligned
-                            # read lane counts
-                            my $total_lanes = 0;
-                            foreach my $lane (keys %{$sample_info->{$project}{$donor}{$specimen}{$sample}{total_lanes}}) {
-                                if ($lane > $total_lanes) { 
-                                    $total_lanes = $lane; 
-                                }
-                            } # close foreach loop
-                            $d->{total_lanes_hash}{$total_lanes} = 1;
-                            $d->{total_lanes} = $total_lanes;
-                            foreach my $bam (keys %{$sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{files}}) {
-                                $sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{bams_count}++;
-                                $d->{bams}{$bam} = $sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{files}{$bam}{localpath};
-                                # What the heck was this line for?
-                                # $d->{local_bams}{$sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{files}{$bam}{localpath}} = 1;
-                                # why are we counting this twice?
-                                $d->{bams_count}++;
-                            } # close foreach my $bam loop
-
-                            my $aligned_bam = q{};
-                            my $num_bam_files = $sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{bams_count};
-                            # Test and see if there is only a single aligned bam file <-- Why is this important?
-              	            if ( $num_bam_files == 1 and $alignment ne 'unaligned' ) {
-                                ($aligned_bam) = keys %{$sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{files}};
-                                $aligned_bams_seen{$aligned_bam}++;
-			    }
-    			    elsif ( $num_bam_files > 1 and $alignment ne 'unaligned' ) {
-                                # Only enters here if there are more than 1 aligned bam file
-                                foreach (sort keys %{$sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{files}} ) {
-                                    $aligned_bams_seen{$_}++;
-                                    if ( $aligned_bam ) {
-                                        $aligned_bam .= "\t$_";
-                          	    }
-                                    else {
-                                        $aligned_bam = $_;
-                                    }
-                                } # close inner foreach loop     
-                                log_error( "Found $num_bam_files aligned bam files for analysis_id: $analysis_id\tdonor: $donor\tspecimen: $specimen\tsample: $sample" );
-                            }
-                            else {
-                                # this bam file is not aligned
-                                foreach (sort keys %{$sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{files}} ) {
-                                    $unaligned_bams_seen{$_}++;
-                                }     
-                                $aligned_bam = 'NONE';
-			    }
-
-                            my @dates = ();
-  	                    if ( defined ($sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{date}) ) {
-                                @dates = sort {$b <=> $a} @{$sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{date}};
-    	                    }
-                            else {
-                                @dates = ( '0000-00-00', );
-                            }
-                            my $date = $dates[0];
-                            # This is the header that this script originally used
-                            # print $FH "$project\t$donor\t$specimen\t$sample\t$alignment\t$date\t$num_bam_files\t$aligned_bam\t$aliquot_id";
-                            # print the first 10 columns
-                            # print $FH "$project\t$donor\t$specimen\t$sample\t$type\t$alignment\t$date\t$analysis_id\t$num_bam_files\t$aligned_bam";
-                            print $FH "$project\t$donor\t$specimen\t$sample\t$type\t$alignment\t$date\t$aliquot_id\t$num_bam_files\t$aligned_bam";
-                            # see if the use_cntl field is filled in in a helpful way
-                            # we would only expect this field to be filled in only for the 'Tumour' samles
-			    if ( $type eq 'Tumour' ) {
-                                # this specimen and sample is a 'Tumour', see if there is an entry in the use_cntls hash:
-                                if ( defined ( $use_cntls{$aliquot_id}) ) {
-                                    # Now, check to see if any of the 'Normal' bams that match this Tumour 
-                                    # have been uploaded and processed in this batch of XML files
-                                    if ( $norm_aliquot_ids{$use_cntls{$aliquot_id}} ) {
-                                        # YES, we found a corresponding normal ID
-                                        print $FH "\tYES\n";
-                                    }
-                                    elsif ( scalar( keys %{$sample_info->{$project}{$donor}} ) == 2 ) {
-                                        # It looks like there will be lots of examples where the whole
-                                        # use_cntl is mucked up, but we will still clearly have 2 specimens
-                                        # for the same donor, so they are still paired
-                                        print $FH "\tYES\n";
-                                    }
-                                    else {
-                                        # nope, the matching Normal to our Tumour sample has not been
-                                        # uploaded yet (presumably these would be weeded out of the 2 specimens
-                                        # group by the parsing above
-                                        print $FH "\tNO\n";
-				    }
-                                }
-                                else {
-                                    print $FH "\tNOT FOUND\n";
-			        }
-                            }        
-                            else {
-                                # if it failed that test up there, then it must be a 'Normal'
-                                # so lets check to see if it was encountered, and identified as a 'use_cntl'
-                                # when we were parsing all those Tumour specimens
-                                if ( defined ( $norm_use_cntls{$aliquot_id} ) ) {
-                                    print $FH "\tYES\n";
-			        }
-                                elsif ( scalar( keys %{$sample_info->{$project}{$donor}} ) == 2 ) {
-                                    # Similar to above for the Tumour samples
-                                    # it looks like there will be lots of examples where the whole
-                                    # use_cntl is mucked up, but we will still clearly have 2 specimens
-                                    # for the same donor, so they are still paired
-                                    print $FH "\tYES\n";
-			        }
-                                else {
-                                    print $FH "\tNO\n";
-			        }
-			    } # close if/else test
+                        my $i = 0;
+                        foreach my $bam (keys %{$sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{files}}) {
+	                    my $date = $sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{date}[$i];
+                            $i++;
+                            my $size = $sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{files}{$bam}{size};
+                            print $FH "$project\t$donor\t$specimen\t$sample\t$type\t$aliquot_id\t$analysis_id\t$date\t$bam\t$size\n";
+                        } # close foreach my $bam loop
 		    } # close foreach my alignment
 		} # close foreach my sample
 	    } # close foreach my specimen
@@ -429,6 +327,11 @@ sub read_sample_info {
             log_error( "SKIPPING Could not find xml file: ${id}_${gnos_url}.xml" );
             next;
 	}
+
+        # This script is all about tabulating the sizes of the uploaded aligned bam files
+        # so we are not tabulating anything else in this gnos repo
+        my $alignment = getVal($adoc, "refassem_short_name");
+        next unless ( $alignment ne 'unaligned' );
         my $project = getCustomVal($adoc2, 'dcc_project_code');
         next unless checkvar( $project, 'project', $id, );
         my $donor_id = getCustomVal($adoc2, 'submitter_donor_id');
@@ -451,19 +354,13 @@ sub read_sample_info {
         $use_control = lc($use_control) unless $use_control =~ m/N\/A/;
         my $dcc_specimen_type = getCustomVal($adoc2, 'dcc_specimen_type');
         next unless checkvar( $dcc_specimen_type, 'dcc_specimen_type', $id, );
-        my $alignment = getVal($adoc, "refassem_short_name");
+
         my $description = getVal($adoc, 'DESCRIPTION');
         next unless checkvar( $description, 'DESCRIPTION', $id, );       
-        my $aln_status = 0;
-        if ( $alignment ne 'unaligned' ) {
-            $aln_status = 1;
-        }
-        if ( $aln_status) {
-            # don't bother tabulting alignments containing unmapped reads
-            next if $description =~ m/unmapped reads extracted/;
-            # only tabulate alignments for Data Freeeze 2.0
-            next unless $description =~ m/Workflow version 2\.6\.0/;
-	}
+        # don't bother tabulting alignments containing unmapped reads
+        next if $description =~ m/unmapped reads extracted/;
+        # only tabulate alignments for Data Freeeze 2.0
+        next unless $description =~ m/Workflow version 2\.6\.0/;
 
         my $total_lanes = getCustomVal($adoc2, "total_lanes");
         my $sample_uuid = getXPathAttr($adoc2, "refname", "//ANALYSIS_SET/ANALYSIS/TARGETS/TARGET/\@refname");
@@ -471,9 +368,8 @@ sub read_sample_info {
         my $libStrategy = getVal($adoc, 'LIBRARY_STRATEGY');
         my $libSource = getVal($adoc, 'LIBRARY_SOURCE');
 
-
-      # get files
-      # now if these are defined then move onto the next step
+        # get files
+        # now if these are defined then move onto the next step
         # in the data structure each Analysis Set is sorted by it's ICGC DCC project code, then the combination of
         # donor, specimen, and sample that should be unique identifiers
         # there should only be to different types of alignment. For aligned samples there should be a single 
@@ -614,63 +510,6 @@ sub getCustomVal {
     }
 } # close sub
 
-# BOC's OLD version (modified by MDP) 
-sub Old_getCustomVal {
-    my ($dom2, $keys) = @_;
-    my @keys_arr = split /,/, $keys;
-    # this method call returns an array of XML::LibXML::Elements
-    my @nodes = ($dom2->findnodes('//ANALYSIS_ATTRIBUTES/ANALYSIS_ATTRIBUTE'));
-    # previous version:
-    # for my $node ($dom2->findnodes('//ANALYSIS_ATTRIBUTES/ANALYSIS_ATTRIBUTE')) {
-    for my $node ( @nodes ) {
-        my $i = 0;
-        print "\nThis current \$node is node $i, and contains an XML::LibXML::Element\n";
-        # this also returns an array but this time it is an array of XML::LibXML::Text objects
-        my @currKeys =  ($node->findnodes('//TAG/text()')); 
-        # This doesn't make sense, it seems to be exactly the same as @currKeys
-        my @count = $node->findnodes('//TAG/text()');
-        my $count = scalar( @count );
-        print "\$count, the number of hash keys in the \@currKeys array, contains $count\n";
-        for my $currKey ($node->findnodes('//TAG/text()')) {
-            $i++;
-            print "\tWe are testing \$currKey number ", $i - 1, " (an XML::LibXML::Text object)\n";
-            print "\t\$i contains $i\n";
-            my $keyStr = $currKey->toString();
-            print "\t\$keyStr, which I extracted from \$currKey using the ->toString() method, contains $keyStr\n";
-            foreach my $key ( @keys_arr ) {
-                print "\t\t\$key, passed in to the getCustomVal method, now contains $key\n";
-                if ( $keyStr eq $key ) {
-                    print "\t\tFound a MATCH where \$keyStr $keyStr (\$currKey) matches \$key $key!\n";
-                    my $j = 0;
-                    # whoa, this also returns an array of XML::LibXML::Text objects
-                    my @currVals = ($node->findnodes('//VALUE/text()'));
-                    # as does this why do we need a separate one?
-                    my @count_2 = $node->findnodes('//VALUE/text()');
-                    my $count_2 = scalar( @count_2 );
-                    print "\t\t\t\$count_2, the number of hash values in the \@count_2 array, contains $count_2\n";
-                    unless ( $count == $count_2 ) {
-                        print "\t\t\tNumber of Keys does not match number of values in an XML file\n";
-                        log_error( "Number of Keys does not match number of values in an XML file" );
-		    }
-                    # for my $currVal ($node->findnodes('//VALUE/text()')) {
-                    for my $currVal ( @currVals ) {
-                        $j++;   
-                        print "\t\t\t\t\$currVal, number ", $j - 1, " contains an XML::LibXML::Text object\n";
-                        print "\t\t\t\t\$j contains $j\n";
-                        if ( $j==$i ) { 
-                            print "\t\t\t\tFound another MATCH where \$j and \$i contain the same value!\n";
-                            print "\t\t\t\tNow returning ", $currVal->toString(), "\n";
-                            return($currVal->toString());
-                        }
-                    } 
-                }
-            }
-        }
-    }
-    # print "\tNow returning q{} because . . . no match found?!?\n";
-    # return("");
-    return 0;
-} # close sub
 
 sub getXPathAttr {
   my ($dom, $key, $xpath) = @_;
@@ -725,7 +564,7 @@ sub download {
 
 sub log_error {
     my ($mesg) = @_;
-    open my ($ERR), '>>', "${gnos_url}_error_log_from_gnos_report_" . $timestamp . '.txt' or die;
+    open my ($ERR), '>>', "${gnos_url}_error_log_from_gnos_aligned_bamsizes_" . $timestamp . '.txt' or die;
     print $ERR "$mesg\n";
     close $ERR;
     $error_log++;
@@ -743,14 +582,4 @@ sub checkvar {
 
 
 __END__
-
-According to my manual review of the XML::DOM module (specifically, the DOM.pm file),
-The following four packages all have a separate dispose method:
-
-XML::DOM::Node
-XML::DOM::Element
-XML::DOM::Document
-XML::DOM::DocumentType
-
-Son-of-a-bitch, that seems to have helped quite a bit!
 
