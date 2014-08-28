@@ -1,0 +1,158 @@
+=head1 VERSION
+
+Version 0.0.1
+
+=head1 AUTHOR(S)
+
+Brian O'Connor, Adam Wright
+
+=over
+
+=item --usage
+
+=item --help
+
+=item --man
+
+Print the usual program information
+
+=back
+
+=head1 DESCRIPTION
+
+A tool for identifying samples ready for alignment, scheduling on clusters, and monitoring for completion.
+
+=head1 NAME
+
+Workflow Decider - SeqWare
+
+=head1 REQUIRED ARGUMENTS
+
+=over
+
+=item --seqware-clusters[=][ ]<cluster_json>
+
+JSON file that describes the clusters available to schedule workflows to. Should be located in the config folder.
+
+=item --workflow-version[=][ ]<workflow_version>
+
+Specify the BWA workflow version you would like to run (eg. 2.6.0)
+
+=back
+
+=head1 OPTIONS
+
+=head2 GENERAL
+
+=over
+
+=item --gnos-url[=][ ]<gnos_url>
+
+URL for a GNOS server, e.g. https://gtrepo-ebi.annailas.com
+
+=for Euclid 
+   gnos_url.default: 'https://gtrepo-ebi.annailabs.com'
+
+=item --working-dir[=][ ]<working_directory>
+
+A place for temporary ini and settings files
+
+=for Euclid
+    working_directory.default: 'tmp'
+
+=item --use-cached-analysis
+
+Use the previously downloaded list of files from GNOS that are marked in the live state (only useful for testing).
+
+=item --seqware-settings[=][ ]<seqware_settings>
+
+The template seqware settings file
+
+=for Euclid
+   seqware_settings.default: 'seqware.setting'
+
+=item --report[=][ ]<report_file>
+
+The report file name that the results will be placed in by the decider
+
+=for Euclid
+   report_file.default: 'workflow_decider_report.txt'
+
+=item --use-live-cached
+
+A flag indicating that previously download xml files for each analysis file should not be downloaded again
+
+=back
+
+=head2 SCHEDULE
+
+=over 
+
+=item --schedule-ignore-failed 
+
+A flag indicating that previously failed runs for this specimen should be ignored and the specimen scheduled again
+
+=item --schedule-sample[=][ ]<sample_uuid>
+
+For only running one particular sample based on its uuid
+
+=item --schedule-center[=][ ]<center_name>
+
+For only running samples from one institute
+
+=item --schedule-ignore-lane-count
+
+Skip the check that the GNOS XML contains a count of lanes for this sample and the bams count matches
+
+=item --schedule-force-run
+
+Schedule workflows even if they were previously completed
+
+=back
+
+=head2 WORKFLOW
+
+=over
+
+=item --workflow-bwa-threads[=][ ]<thread_count>
+
+Number of threads to use for BWA
+
+=for Euclid
+   thread_count.default: 8
+
+=item --workflow-skip-scheduling
+
+Indicates no workflow should be scheduled, just summary of what would have been run.
+
+=item --workflow-upload-results
+
+A flag indicating the resulting BAM files and metadata should be uploaded to GNOS, default is to not upload!!!
+
+=item --workflow-skip-gtdownload
+
+A flag indicating that input files should be just the bam input paths and not from GNOS
+
+=item --workflow-skip-gtupload
+
+A flag indicating that upload should not take place but output files should be placed in output_prefix/output_dir
+
+=item --workflow-output-prefix[=][ ]<output_prefix>
+
+If --skip-gtupload is set, use this to specify the prefix of where output files are written
+
+=for Euclid
+    output_prefix.default: './'
+
+=item --workflow-output-dir[=][ ]<output_directory>
+
+if --skip-gtupload is set, use this to specify the dir of where output files are written
+
+=for Euclid
+   output_directory.default: 'seqware-results/'
+
+=item --workflow-input-prefix[=][ ]<prefix>
+
+if --skip-gtdownload is set, this is the input bam file prefix
+
+=back

@@ -2,7 +2,7 @@
   <workflow name="DKFZ-SNV-Calling" version="${workflow-version}" seqware_version="${seqware-version}"
   basedir="${workflow_bundle_dir}/Workflow_Bundle_DKFZ-SNV-Calling/${workflow-version}">
     <description>${workflow-description}</description>
-    <workflow_class path="${workflow_bundle_dir}/Workflow_Bundle_DKFZ-SNV-Calling/${workflow-version}/classes/io/seqware/pancancer/DKFZ-SNV-CallingWorkflow.java"/>
+    <workflow_class path="${workflow_bundle_dir}/Workflow_Bundle_DKFZ-SNV-Calling/${workflow-version}/classes/io/seqware/pancancer/DKFZSNVCallingWorkflow.java"/>
     <config path="${workflow_bundle_dir}/Workflow_Bundle_DKFZ-SNV-Calling/${workflow-version}/config/DKFZ-SNV-CallingWorkflow.ini"/>
     <requirements compute="single" memory="20M" network="local"  workflow_engine="Pegasus,Oozie" workflow_type="java"/>
   </workflow>

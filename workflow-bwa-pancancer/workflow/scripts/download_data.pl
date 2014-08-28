@@ -4,6 +4,8 @@ use strict;
 
 my ($link_dir) = @ARGV;
 
+system("mkdir -p $link_dir");
+
 check_tools();
 
 download("$link_dir/reference/bwa-0.6.2", "http://s3.amazonaws.com/pan-cancer-data/pan-cancer-reference/genome.fa.gz");
@@ -13,10 +15,8 @@ download("$link_dir/reference/bwa-0.6.2", "http://s3.amazonaws.com/pan-cancer-da
 download("$link_dir/reference/bwa-0.6.2", "http://s3.amazonaws.com/pan-cancer-data/pan-cancer-reference/genome.fa.gz.64.bwt");
 download("$link_dir/reference/bwa-0.6.2", "http://s3.amazonaws.com/pan-cancer-data/pan-cancer-reference/genome.fa.gz.64.pac");
 download("$link_dir/reference/bwa-0.6.2", "http://s3.amazonaws.com/pan-cancer-data/pan-cancer-reference/genome.fa.gz.64.sa");
-download("$link_dir/testData", "http://s3.amazonaws.com/oicr.bundle.data/pancancer_bwa_workflow/test.genome.read1.fastq.gz");
-download("$link_dir/testData", "http://s3.amazonaws.com/oicr.bundle.data/pancancer_bwa_workflow/test.genome.read2.fastq.gz");
-download("$link_dir/testData", "http://s3.amazonaws.com/pan-cancer-data/pan-cancer-unaligned-bam-samples/8015_5.bam");
-download("$link_dir/testData", "http://s3.amazonaws.com/pan-cancer-data/pan-cancer-unaligned-bam-samples/8031_6.bam");
+download("$link_dir/testData", "https://s3.amazonaws.com/oicr.workflow.bundles/released-bundles/synthetic_bam_for_GNOS_upload/sample_bam_sequence_synthetic_chr22_normal.tar.gz");
+system("tar zxf $link_dir/testData/sample_bam_sequence_synthetic_chr22_normal.tar.gz -C links/testData/");
 
 sub download {
   my ($dir, $url) = @_;

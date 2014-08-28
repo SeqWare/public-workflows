@@ -1,0 +1,12 @@
+{
+  "target-os-11": {
+     "workflow_accession": "2",
+     "username": "admin@admin.com",
+     "password": "admin",
+     "workflow_version": "2.5.0",
+     "webservice": "http://54.195.220.149:8080/SeqWareWebService",
+     "host": "master",
+     "max_workflows": "1",
+     "max_scheduled_workflows": "1"
+   }
+}
