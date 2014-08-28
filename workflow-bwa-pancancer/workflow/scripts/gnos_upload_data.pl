@@ -39,19 +39,23 @@ my $upload_url = "";
 my $test = 0;
 my $skip_validate = 0;
 # hardcoded
+my $seqware_version = "1.0.15";
 my $workflow_version = "2.6.0";
 my $workflow_name = "Workflow_Bundle_BWA";
 # hardcoded
-my $workflow_src_url = "https://github.com/SeqWare/public-workflows";
-my $workflow_url = "https://s3.amazonaws.com/oicr.workflow.bundles/released-bundles/Workflow_Bundle_BWA_".$workflow_version."_SeqWare_1.0.15.zip";
+my $workflow_src_url = "https://github.com/SeqWare/public-workflows/tree/$workflow_version/workflow-bwa-pancancer";
+my $workflow_url = "https://s3.amazonaws.com/oicr.workflow.bundles/released-bundles/Workflow_Bundle_BWA_".$workflow_version."_SeqWare_$seqware_version.zip";
+my $changelog_url = "https://github.com/SeqWare/public-workflows/blob/$workflow_version/workflow-bwa-pancancer/CHANGELOG.md";
 my $bwa_version = "0.7.8-r455";
 my $biobambam_version = "0.0.148";
 my $pcap_version = "1.1.1";
+my $samtools_version = "0.1.19";
 my $force_copy = 0;
 my $unmapped_reads_upload = 0;
 my $study_ref_name = "icgc_pancancer";
+my $analysis_center = "OICR";
 
-if (scalar(@ARGV) < 12 || scalar(@ARGV) > 17) {
+if (scalar(@ARGV) < 12 || scalar(@ARGV) > 20) {
   die "USAGE: 'perl gnos_upload_data.pl
        --metadata-urls <URLs_comma_separated>
        --bam <sample-level_bam_file_path>
@@ -59,7 +63,9 @@ if (scalar(@ARGV) < 12 || scalar(@ARGV) > 17) {
        --outdir <output_dir>
        --key <gnos.pem>
        --upload-url <gnos_server_url>
+       [--force-copy]
        [--study-refname-override <study_refname_override>]
+       [--analysis-center-override <analysis_center_override>]
        [--unmapped-reads-upload]
        [--skip-validate]
        [--test]\n"; }
@@ -76,6 +82,7 @@ GetOptions(
      "skip-validate" => \$skip_validate,
      "unmapped-reads-upload" => \$unmapped_reads_upload,
      "study-refname-override=s" => \$study_ref_name,
+     "analysis-center-override=s" => \$analysis_center,
      );
 
 # setup output dir
@@ -83,6 +90,7 @@ my $ug = Data::UUID->new;
 my $uuid = lc($ug->create_str());
 run("mkdir -p $output_dir/$uuid");
 $output_dir = $output_dir."/$uuid/";
+my $final_touch_file = "$output_dir/upload_complete.txt";
 # md5sum
 my $bam_check = `cat $md5_file`;
 my $bai_check = `cat $bam.bai.md5`;
@@ -135,12 +143,39 @@ sub upload_submission {
     if (run($cmd)) { return(1); }
   }
 
-  $cmd = "cd $sub_path; gtupload -v -c $key -u ./manifest.xml; cd -";
+  # we need to hack the manifest.xml to drop any files that are inputs and I won't upload again
   if (!$test) {
-    print "UPLOADING DATA: $cmd\n";
+    modify_manifest_file("$sub_path/manifest.xml", $sub_path);
+  }
+
+  $cmd = "cd $sub_path; gtupload -v -c $key -u ./manifest.xml; cd -";
+  print "UPLOADING DATA: $cmd\n";
+  if (!$test) {
     if (run($cmd)) { return(1); }
   }
 
+  # just touch this file to ensure monitoring tools know upload is complete
+  run("date +\%s > $final_touch_file");
+
+}
+
+sub modify_manifest_file {
+  my ($man, $sub_path) = @_;
+  open OUT, ">$man.new" or die;
+  open IN, "<$man" or die;
+  while(<IN>) {
+    chomp;
+    if (/filename="([^"]+)"/) {
+      if (-e "$sub_path/$1") {
+        print OUT "$_\n";
+      }
+    } else {
+      print OUT "$_\n";
+    }
+  }
+  close IN;
+  close OUT;
+  system("mv $man.new $man");
 }
 
 sub generate_submission {
@@ -167,14 +202,14 @@ sub generate_submission {
   my $read_group_id = "";
   # @RG PU:(.*)
   my $platform_unit = "";
-  # hardcoded
-  my $analysis_center = "OICR";
   # @CO participant_id
   my $participant_id = "";
   # hardcoded
   my $bam_file = "";
   # hardcoded
   my $bam_file_checksum = "";
+  # center name
+  my $center_name = "";
 
   # these data are collected from all files
   # aliquot_id|library_id|platform_unit|read_group_id|input_url
@@ -190,7 +225,8 @@ sub generate_submission {
     # populate refcenter from original BAM submission
     # @RG CN:(.*)
     # FIXME: GNOS currently only allows: ^UCSC$|^NHGRI$|^CGHUB$|^The Cancer Genome Atlas Research Network$|^OICR$
-    ############$refcenter = $m->{$file}{'target'}[0]{'refcenter'};
+    $refcenter = $m->{$file}{'target'}[0]{'refcenter'};
+    $center_name = $m->{$file}{'center_name'};
     $sample_uuid = $m->{$file}{'target'}[0]{'refname'};
     $sample_uuids->{$m->{$file}{'target'}[0]{'refname'}} = 1;
     # @CO sample_id
@@ -209,9 +245,6 @@ sub generate_submission {
     $read_group_id = $m->{$file}{'run'}[0]{'read_group_label'};
     # @RG PU:(.*)
     $platform_unit = $m->{$file}{'run'}[0]{'refname'};
-    # FIXME: GNOS limitation
-    # hardcoded
-    ########$analysis_center = $refcenter;
     # @CO participant_id
     my @participant_ids = keys %{$m->{$file}{'analysis_attr'}{'participant_id'}};
     if (scalar(@participant_ids) == 0) { @participant_ids = keys %{$m->{$file}{'analysis_attr'}{'submitter_donor_id'}}; }
@@ -250,15 +283,15 @@ sub generate_submission {
   # FIXME: either custom needs to work or the reference needs to be listed in GNOS
   #<!--CUSTOM DESCRIPTION="hs37d" REFERENCE_SOURCE="ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/README_human_reference_20110707"/-->
 
-  my $description = "Specimen-level BAM from the reference alignment of specimen $sample_id from donor $participant_id. This uses the SeqWare BWA-MEM PanCancer Workflow version $workflow_version available at $workflow_url. This workflow can be created from source, see https://github.com/SeqWare/public-workflows. Input BAMs are prepared and submitted to GNOS server according to the submission SOP documented at: https://wiki.oicr.on.ca/display/PANCANCER/PCAP+%28a.k.a.+PAWG%29+Sequence+Submission+SOP+-+v1.0";
+  my $description = "Specimen-level BAM from the reference alignment of specimen $sample_id from donor $participant_id. This uses the SeqWare BWA-MEM PanCancer Workflow version $workflow_version available at $workflow_url. This workflow can be created from source, see $workflow_src_url. For a complete change log see $changelog_url. Input BAMs are prepared and submitted to GNOS server according to the submission SOP documented at: https://wiki.oicr.on.ca/display/PANCANCER/PCAP+%28a.k.a.+PAWG%29+Sequence+Submission+SOP+-+v1.0. Please note the reference is hs37d, see ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/README_human_reference_20110707 for more information. Briefly this is the integrated reference sequence from the GRCh37 primary assembly (chromosomal plus unlocalized and unplaced contigs), the rCRS mitochondrial sequence (AC:NC_012920), Human herpesvirus 4 type 1 (AC:NC_007605) and the concatenated decoy sequences (hs37d5cs.fa.gz).";
 
   if ($unmapped_reads_upload) {
-    $description = "The BAM file includes unmapped reads extracted from specimen-level BAM with the reference alignment of specimen $sample_id from donor $participant_id. This uses the SeqWare BWA-MEM PanCancer Workflow version $workflow_version available at $workflow_url. This workflow can be created from source, see https://github.com/SeqWare/public-workflows. Input BAMs are prepared and submitted to GNOS server according to the submission SOP documented at: https://wiki.oicr.on.ca/display/PANCANCER/PCAP+%28a.k.a.+PAWG%29+Sequence+Submission+SOP+-+v1.0";
+    $description = "The BAM file includes unmapped reads extracted from specimen-level BAM with the reference alignment of specimen $sample_id from donor $participant_id. This uses the SeqWare BWA-MEM PanCancer Workflow version $workflow_version available at $workflow_url. This workflow can be created from source, see $workflow_src_url. For a complete change log see $changelog_url. Input BAMs are prepared and submitted to GNOS server according to the submission SOP documented at: https://wiki.oicr.on.ca/display/PANCANCER/PCAP+%28a.k.a.+PAWG%29+Sequence+Submission+SOP+-+v1.0.";
   }
 
   my $analysis_xml = <<END;
   <ANALYSIS_SET xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.ncbi.nlm.nih.gov/viewvc/v1/trunk/sra/doc/SRA_1-5/SRA.analysis.xsd?view=co">
-    <ANALYSIS center_name="$analysis_center" analysis_date="$datetime">
+    <ANALYSIS center_name="$center_name" analysis_center="$analysis_center" analysis_date="$datetime">
       <TITLE>TCGA/ICGC PanCancer Specimen-Level Alignment for Specimen $sample_id from Participant $participant_id</TITLE>
       <STUDY_REF refcenter="$refcenter" refname="$study_ref_name" />
       <DESCRIPTION>$description</DESCRIPTION>
@@ -277,7 +310,7 @@ END
                    my $dbn = $run->{'data_block_name'};
                    my $rgl = $run->{'read_group_label'};
                    my $rn = $run->{'refname'};
-                 $analysis_xml .= "              <RUN data_block_name=\"$dbn\" read_group_label=\"$rgl\" refname=\"$rn\" refcenter=\"$refcenter\" />\n";
+                 $analysis_xml .= "              <RUN data_block_name=\"$dbn\" read_group_label=\"$rgl\" refname=\"$rn\" refcenter=\"$center_name\" />\n";
                 }
               }
 
@@ -288,7 +321,9 @@ END
           <SEQ_LABELS>
 END
 
+            my $last_dbn ="";
             foreach my $dbn (keys %{$sample_uuids}) {
+              $last_dbn = $dbn;
   $analysis_xml .= <<END;
             <SEQUENCE data_block_name="$dbn" accession="NC_000001.10" seq_label="1" />
             <SEQUENCE data_block_name="$dbn" accession="NC_000002.11" seq_label="2" />
@@ -386,47 +421,54 @@ END
 END
 
   unless ($unmapped_reads_upload) {
-            my $i=0;
-            foreach my $url (keys %{$m}) {
-              foreach my $run (@{$m->{$url}{'run'}}) {
-              #print Dumper($run);
-                if (defined($run->{'read_group_label'})) {
-                   #print "READ GROUP LABREL: ".$run->{'read_group_label'}."\n";
-                   my $dbn = $run->{'data_block_name'};
-                   my $rgl = $run->{'read_group_label'};
-                   my $rn = $run->{'refname'};
-                   my $fname = $m->{$url}{'file'}[$i]{'filename'};
 
     $analysis_xml .= <<END;
-              <PIPE_SECTION section_name="Mapping">
-                <STEP_INDEX>$rgl</STEP_INDEX>
-                <PREV_STEP_INDEX>NIL</PREV_STEP_INDEX>
-                <PROGRAM>bwa</PROGRAM>
-                <VERSION>$bwa_version</VERSION>
-                <NOTES>bwa mem -t 8 -p -T 0 genome.fa.gz $fname</NOTES>
-              </PIPE_SECTION>
+                  <PIPE_SECTION section_name="fastq_extract">
+                    <STEP_INDEX>1</STEP_INDEX>
+                    <PREV_STEP_INDEX>NIL</PREV_STEP_INDEX>
+                    <PROGRAM>bamtofastq</PROGRAM>
+                    <VERSION>$biobambam_version</VERSION>
+                    <NOTES>bamtofastq exclude=QCFAIL,SECONDARY,SUPPLEMENTARY T=out.t S=out.s O=out.o O2=out.o2 collate=1 tryoq=1 filename=input.bam</NOTES>
+                  </PIPE_SECTION>
 END
-                }
-                $i++;
-              }
-            }
 
     $analysis_xml .= <<END;
-              <PIPE_SECTION section_name="Markduplicates">
-                <STEP_INDEX>markduplicates</STEP_INDEX>
-                <PREV_STEP_INDEX>bwa</PREV_STEP_INDEX>
+                  <PIPE_SECTION section_name="mapping">
+                    <STEP_INDEX>2</STEP_INDEX>
+                    <PREV_STEP_INDEX>1</PREV_STEP_INDEX>
+                    <PROGRAM>bwa</PROGRAM>
+                    <VERSION>$bwa_version</VERSION>
+                    <NOTES>bwa mem -t 8 -p -T 0 -R header.txt genome.fa.gz</NOTES>
+                  </PIPE_SECTION>
+END
+
+    $analysis_xml .= <<END;
+                  <PIPE_SECTION section_name="bam_sort">
+                    <STEP_INDEX>3</STEP_INDEX>
+                    <PREV_STEP_INDEX>2</PREV_STEP_INDEX>
+                    <PROGRAM>bamsort</PROGRAM>
+                    <VERSION>$biobambam_version</VERSION>
+                    <NOTES>bamsort inputformat=sam level=1 inputthreads=2 outputthreads=2 inputformat=sam level=1 inputthreads=2 outputthreads=2 genome.fa.gz tmpfile=out.sorttmp O=out.bam</NOTES>
+                  </PIPE_SECTION>
+END
+
+    $analysis_xml .= <<END;
+              <PIPE_SECTION section_name="mark_duplicates">
+                <STEP_INDEX>4</STEP_INDEX>
+                <PREV_STEP_INDEX>3</PREV_STEP_INDEX>
                 <PROGRAM>bammarkduplicates</PROGRAM>
                 <VERSION>$biobambam_version</VERSION>
-                <NOTES>bammarkduplicates is one of the programs in the biobambam BAM processing package</NOTES>
+                <NOTES>bammarkduplicates O=out.merged.sorted.markdup.bam M=output.metrics tmpfile=tmp.biormdup rewritebam=1 rewritebamlevel=1 index=1 md5=1 I=out.bam</NOTES>
               </PIPE_SECTION>
 END
+
   }else{
     $analysis_xml .= <<END;
-              <PIPE_SECTION section_name="UnmappedReadsExtraction">
-                <STEP_INDEX>unmapped_reads</STEP_INDEX>
-                <PREV_STEP_INDEX>bammarkduplicates</PREV_STEP_INDEX>
+              <PIPE_SECTION section_name="unmapped_reads_extraction">
+                <STEP_INDEX>1</STEP_INDEX>
+                <PREV_STEP_INDEX>NIL</PREV_STEP_INDEX>
                 <PROGRAM>samtools</PROGRAM>
-                <VERSION>0.1.19</VERSION>
+                <VERSION>$samtools_version</VERSION>
                 <NOTES>This extracts the unmapped reads out from BWA MEM aligned BAM. Note that mapped reads with unmapped mate are also extracted.</NOTES>
               </PIPE_SECTION>
 END
@@ -451,7 +493,7 @@ END
   }
   $analysis_xml .= <<END;
       </TARGETS>
-      <DATA_BLOCK>
+      <DATA_BLOCK name=\"$last_dbn\">
         <FILES>
 END
 
@@ -500,6 +542,20 @@ END
           <VALUE>$workflow_url</VALUE>
         </ANALYSIS_ATTRIBUTE>
 ";
+
+if ($unmapped_reads_upload) {
+  $analysis_xml .= "        <ANALYSIS_ATTRIBUTE>
+          <TAG>workflow_output_bam_contents</TAG>
+          <VALUE>unaligned</VALUE>
+        </ANALYSIS_ATTRIBUTE>
+";
+} else {
+  $analysis_xml .= "        <ANALYSIS_ATTRIBUTE>
+          <TAG>workflow_output_bam_contents</TAG>
+          <VALUE>aligned+unaligned</VALUE>
+        </ANALYSIS_ATTRIBUTE>
+";
+}
 
 unless ($unmapped_reads_upload) {
   $analysis_xml .= "        <ANALYSIS_ATTRIBUTE>
@@ -573,11 +629,10 @@ END
   my $uniq_run_xml = {};
   foreach my $url (keys %{$m}) {
     my $run_block = $m->{$url}{'run_block'};
-    # replace the file
-    # FIXME: this is risky
-    $run_block =~ s/filename="\S+"/filename="$bam_check.bam"/g;
-    $run_block =~ s/checksum="\S+"/checksum="$bam_check"/g;
-    $run_block =~ s/center_name="[^"]+"/center_name="$refcenter"/g;
+    # no longer modifying the run block, this is the original input reads *not* the aligned BAM result!
+    #$run_block =~ s/filename="\S+"/filename="$bam_check.bam"/g;
+    #$run_block =~ s/checksum="\S+"/checksum="$bam_check"/g;
+    #$run_block =~ s/center_name="[^"]+"/center_name="$refcenter"/g;
     $uniq_run_xml->{$run_block} = 1;
   }
 

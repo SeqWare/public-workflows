@@ -31,6 +31,7 @@ public class WorkflowClient extends OicrWorkflow {
   boolean useGtDownload = true;
   boolean useGtUpload = true;
   boolean useGtValidation = true;
+  boolean cleanup = true;
   // number of splits for bam files, default 1=no split
   int bamSplits = 1;
   String reference_path = null;
@@ -88,6 +89,7 @@ public class WorkflowClient extends OicrWorkflow {
       }
       outputDir = this.getMetadata_output_dir();
       outputPrefix = this.getMetadata_output_file_prefix();
+      resultsDir = outputPrefix + outputDir;
       gnosUploadFileURL = getProperty("gnos_output_file_url");
       gnosKey = getProperty("gnos_key");
       gnosMaxChildren = getProperty("gnos_max_children") == null ? 3 : Integer.parseInt(getProperty("gnos_max_children"));
@@ -112,7 +114,7 @@ public class WorkflowClient extends OicrWorkflow {
       if (getProperty("use_gtdownload") != null) { if("false".equals(getProperty("use_gtdownload"))) { useGtDownload = false; } }
       if (getProperty("use_gtupload") != null) { if("false".equals(getProperty("use_gtupload"))) { useGtUpload = false; } }
       if (getProperty("use_gtvalidation") != null) { if("false".equals(getProperty("use_gtvalidation"))) { useGtValidation = false; } }
-
+      if (getProperty("cleanup") != null) { if("false".equals(getProperty("cleanup"))) { cleanup = false; } }
       if (!getProperty("numOfThreads").isEmpty()) {
         numOfThreads = Integer.parseInt(getProperty("numOfThreads"));
       }
@@ -239,7 +241,7 @@ public class WorkflowClient extends OicrWorkflow {
         qcJobs.add(qcJob);
 
         // CLEANUP DOWNLOADED INPUT UNALIGNED BAM FILES
-        if (useGtDownload) {
+        if (useGtDownload && cleanup) {
           Job cleanup1 = this.getWorkflow().createBashJob("cleanup_" + i);
           cleanup1.getCommand().addArgument("rm -f " + file);
           cleanup1.setMaxMemory(smallJobMemM);
@@ -294,7 +296,7 @@ public class WorkflowClient extends OicrWorkflow {
         qcJobs.add(qcJob);
 
         // CLEANUP DOWNLOADED INPUT UNALIGNED BAM FILES
-        if (useGtDownload) {
+        if (useGtDownload && cleanup) {
           Job cleanup1 = this.getWorkflow().createBashJob("cleanup2_" + i);
           cleanup1.getCommand().addArgument("rm -f " + file);
           cleanup1.setMaxMemory(smallJobMemM);
@@ -391,7 +393,7 @@ public class WorkflowClient extends OicrWorkflow {
       .addArgument("tmpfile=unmapped2.sorttmp")
       .addArgument("O=unmappedReads2.bam");
 
-  	unmappedReadsJob2.setMaxMemory("4000");
+  	unmappedReadsJob2.setMaxMemory("8000");
   	unmappedReadsJob2.addParent(job04);
   	  
   	unmappedReadsJob3 = this.getWorkflow().createBashJob("unmappedReads3");
@@ -427,12 +429,14 @@ public class WorkflowClient extends OicrWorkflow {
     
     
     // CLEANUP LANE LEVEL BAM FILES
-    for (int i = 0; i < numBamFiles; i++) {
-      Job cleanup2 = this.getWorkflow().createBashJob("cleanup3_" + i);
-      cleanup2.getCommand().addArgument("rm -f out_" + i + ".bam");
-      cleanup2.addParent(job04);
-      cleanup2.setMaxMemory(smallJobMemM);
-      cleanup2.addParent(qcJobs.get(i));
+    if (cleanup) {
+      for (int i = 0; i < numBamFiles; i++) {
+        Job cleanup2 = this.getWorkflow().createBashJob("cleanup3_" + i);
+        cleanup2.getCommand().addArgument("rm -f out_" + i + ".bam");
+        cleanup2.addParent(job04);
+        cleanup2.setMaxMemory(smallJobMemM);
+        cleanup2.addParent(qcJobs.get(i));
+      }
     }
 
     // PREPARE METADATA & UPLOAD
@@ -486,16 +490,18 @@ public class WorkflowClient extends OicrWorkflow {
     job06.addParent(mergeUnmappedJob);
 
     // CLEANUP FINAL BAM
-    Job cleanup3 = this.getWorkflow().createBashJob("cleanup3");
-    cleanup3.getCommand().addArgument("rm -f *.bam "
-                                       + this.dataDir + outputFileName
-                                       + " " + this.dataDir + outputUnmappedFileName); 
-    cleanup3.addParent(job05);
-    cleanup3.addParent(job06);
-    for (Job qcJob : qcJobs) {
-      cleanup3.addParent(qcJob);
+    if (cleanup) {
+      Job cleanup3 = this.getWorkflow().createBashJob("cleanup3");
+      cleanup3.getCommand().addArgument("rm -f *.bam "
+                                         + this.dataDir + outputFileName
+                                         + " " + this.dataDir + outputUnmappedFileName); 
+      cleanup3.addParent(job05);
+      cleanup3.addParent(job06);
+      for (Job qcJob : qcJobs) {
+        cleanup3.addParent(qcJob);
+      }
+      cleanup3.setMaxMemory(smallJobMemM);
     }
-    cleanup3.setMaxMemory(smallJobMemM);
 
   }
 
