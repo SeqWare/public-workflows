@@ -5,43 +5,67 @@ import net.sourceforge.seqware.pipeline.workflowV2.model.*;
 import java.util.*;
 import java.util.logging.*;
 
-public class DKFZSNVCallingWorkflow extends AbstractWorkflowDataModel {
-
-    // GENERAL
+/**
+ * This is the DKFZ seqware workflow which hosts and calls several workflows:
+ * - DKFZ SNV Calling
+ * - DKFZ Indel Calling
+ * - DKFZ Copy number estimation
+ *
+ * All workflows themselves are implemented in such a way that they use SGE directly to run their jobs.
+ *
+ * All workflows basically rely on two merged bam (control and tumor sample) files as input files. In addition, the copy number estimation workflow needs input files from EMBL's delly workflow.
+ */
+public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
+	
     // comma-seperated for multiple bam inputs
-    ArrayList<String> inputMetadataURLs = new ArrayList<String>();
     // used to download with gtdownload
-
+    ArrayList<String> inputMetadataURLs = new ArrayList<String>();
     String gnosInputMetadataURLs = null;
 
     String gnosUploadFileURL = null;
     String gnosUploadDir = null;
-    String gnosDownloadDir = null;
-    String gnosOutputDir = null;
-    String alignmentOutputDir = null;
-    String mpileupOutputDir = null;
+    String gnosDownloadDirGeneric = null;
+    String gnosDownloadDirSpecific = null;
+    //String gnosOutputDir = null;
+    String directoryAlignmentFiles = null;
+    String directoryDellyFiles = null;
+    String directorySNVCallingResults = null;
+    String directoryIndelCallingResults = null;
+    String directoryCNEResults = null;
+    String directoryBundledFiles = null;
+    
+    List<String> processDirectories = Arrays.asList(gnosDownloadDirGeneric, gnosDownloadDirSpecific, directoryAlignmentFiles, directoryDellyFiles, directorySNVCallingResults, directoryIndelCallingResults, directoryCNEResults);
 
     String gnosKey = null;
-    String outputdir = null;
-    String outputPrefix = null;
+    //String outputdir = null;
+    String directoryBaseOutput = null;
 
-    boolean useGtDownload = true;
-    boolean useGtUpload = true;
-
-    // GTDownload
-    // each retry is 1 minute
+    // GTDownload settings
     String gtdownloadRetries = "30";
     String gtdownloadMd5Time = "120";
     String gtdownloadMem = "8";
     String smallJobMemM = "3000";
 
+	// Input parameters and files
+	String pid;
+	
+    String inputFileTumorURL = null;
+    String inputFileNormalURL = null;
+    String inputFileDependenciesURL = null;
+    String inputFileDellyURL = null;
+
     String inputFileTumor = null;
     String inputFileNormal = null;
     String inputFileDependencies = null;
+    String inputFileDelly = null;
 
-    boolean doCleanup = false;
-    String pid = "";
+
+	// Run flags
+    boolean useGtDownload = true;
+    boolean useGtUpload = true;
+
     boolean debugmode = false;
+    boolean doCleanup = false;
     boolean doSNVCalling = false;
     boolean doIndelCalling = false;
     boolean doCopyNumberEstimation = false;
@@ -55,55 +79,64 @@ public class DKFZSNVCallingWorkflow extends AbstractWorkflowDataModel {
         }
     }
 
+	/**
+	 * This workflow isn't using file provisioning since we're using
+	 * GeneTorrent. So this method is just being used to setup various
+	 * variables.
+	 */
     @Override
     public Map<String, SqwFile> setupFiles() {
 
-        /*
-         * This workflow isn't using file provisioning since we're using
-         * GeneTorrent. So this method is just being used to setup various
-         * variables.
-         */
         try {
-            outputPrefix = getProperty("output_prefix");
-            outputdir = getProperty("output_dir");
-            gnosDownloadDir = getProperty("gnos_download_dir");
 
-            alignmentOutputDir = String.format("/%s/%s/%s/alignment", outputPrefix, outputdir, pid);
-            mpileupOutputDir = String.format("/%s/%s/%s/mpileup", outputPrefix, outputdir, pid);
+            pid = getProperty("pid");
+
+            debugmode = "true".equals(getProperty("debug_mode"));
+            String outputdir = getProperty("output_dir");
+            if (debugmode) outputdir = "testdata";
+            directoryBaseOutput = getProperty("output_prefix");
+
+			String outputBaseDir = String.format("%s/%s/%s", directoryBaseOutput, outputdir, pid);
+			
+            gnosDownloadDirGeneric = String.format("%s/%s/gnosDownload", getProperty("output_prefix"), outputdir);
+            gnosDownloadDirSpecific = outputBaseDir + "/gnosDownload";
+            directoryBundledFiles = directoryBaseOutput + "/bundledFiles";
+            
+			directoryAlignmentFiles = String.format("%s/alignment", outputBaseDir);
+            directoryDellyFiles = String.format("%s/delly", outputBaseDir);
+            directorySNVCallingResults = String.format("%s/mpileup", outputBaseDir);
+            directoryIndelCallingResults = String.format("%s/platypus_indel", outputBaseDir);
+            directoryCNEResults = String.format("%s/ACEseq_dbg", outputBaseDir); 
 
             gnosInputMetadataURLs = getProperty("gnos_input_metadata_urls");
             for (String url : gnosInputMetadataURLs.split(",")) {
                 inputMetadataURLs.add(url);
             }
 
-            pid = getProperty("pid");
-
             gnosUploadFileURL = getProperty("gnos_output_file_url");
             gnosKey = getProperty("gnos_key");
             gnosUploadDir = getProperty("gnos_upload_dir");
-
-            inputFileNormal = getProperty("input_file_control");
-            inputFileTumor = getProperty("input_file_tumor");
-            inputFileDependencies = getProperty("input_file_dependencies");
 
             doCleanup = "true".equals(getProperty("clean_up"));
             doSNVCalling = "true".equals(getProperty("snv_calling"));
             doIndelCalling = "true".equals(getProperty("indel_calling"));
             doCopyNumberEstimation = "true".equals(getProperty("ace_seq"));
 
-            debugmode = "true".equals(getProperty("debug_mode"));
-            if (debugmode) outputdir = "testdata";
+            inputFileNormalURL = getProperty("input_file_control");
+            inputFileTumorURL = getProperty("input_file_tumor");
+            inputFileDependenciesURL = getProperty("input_file_dependencies");
+            if (doCopyNumberEstimation) inputFileDellyURL = loadProperty("input_file_dependencies", null);
+
+            useGtDownload = !"false".equals(getProperty("use_gtdownload"));
+            useGtUpload = !"false".equals(getProperty("use_gtupload"));
 
             gtdownloadRetries = loadProperty("gtdownloadRetries", gtdownloadRetries);
             gtdownloadMd5Time = loadProperty("gtdownloadMd5time", gtdownloadMd5Time);
             gtdownloadMem = loadProperty("gtdownloadMemG", gtdownloadMem);
             smallJobMemM = loadProperty("smallJobMemM", smallJobMemM);
 
-            useGtDownload = !"false".equals(getProperty("use_gtdownload"));
-            useGtUpload = !"false".equals(getProperty("use_gtupload"));
-
         } catch (Exception e) {
-            Logger.getLogger(DKFZSNVCallingWorkflow.class.getName()).log(Level.SEVERE, null, e);
+            Logger.getLogger(DKFZBundleWorkflow.class.getName()).log(Level.SEVERE, null, e);
             throw new RuntimeException("Problem parsing variable values: " + e.getMessage());
         }
 
@@ -123,31 +156,89 @@ public class DKFZSNVCallingWorkflow extends AbstractWorkflowDataModel {
             job.addParent(parentJob);
         }
         String fullConfiguration = "dkfzPancancerBase" + (debugmode ? ".dbg" : "") + "@" + analysisConfigurationID;
-        job.getCommand().addArgument("cd " + this.getWorkflowBaseDir() + "/RoddyBundlePancancer")
-                .addArgument(" && bash roddy " + runMode + " " + fullConfiguration + " " + pid)
-                .addArgument("--useconfig=applicationPropertiesAllLocal.ini")
-                .addArgument("--waitforjobs");
+        job.getCommand()
+			.addArgument("cd " + this.getWorkflowBaseDir() + "/RoddyBundlePancancer")
+            .addArgument(String.format(" && bash roddy.sh %s %s %s --useconfig=applicationPropertiesAllLocal.ini --waitforjobs ", runMode, fullConfiguration, pid));
         if (debugmode)
             job.getCommand().addArgument("--verbositylevel=5 ");
         return job;
     }
 
-    private Job createGNOSDownloadJob(String name, String file, String type, String id, Job parent) {
+	private Job createDefaultGNOSJob(String name, Job parent) {
         Job job = this.getWorkflow().createBashJob(name);
-        addDownloadJobArgs(job, file, type, id);
         job.setMaxMemory(gtdownloadMem + "000");
         job.addParent(parent);
         return job;
+	}
+		
+	private Job addGNOSDownloadScriptArgs(Job job, String fileURL, String targetDirectory, String elementID) {
+        job.getCommand()
+                .addArgument(
+					String.format("lockfile %s.lock; ", targetDirectory) +
+					String.format("perl %s/scripts/launch_and_monitor_gnos.pl ", this.getWorkflowBaseDir()) + 
+					String.format("--command 'gtdownload -c %s -d %s -p %s ' ", gnosKey, fileURL, targetDirectory) +
+					String.format("--file-grep %s --search-path . --retries %s --md5-retries %s; ", elementID, gtdownloadRetries, gtdownloadMd5Time) +
+					String.format("rm -rf %s.lock; ", targetDirectory)
+				);
+		return job;
+	}
+   
+    private String getElementIDFromURL(String url) {
+		String[] urlElements = url.split("/");
+		return urlElements[urlElements.length - 1];
+	}
+  
+	private CreateDownloadJobResult createDefaultGNOSDownloadJob(Job parent, String fileURL, String targetDirectory) {
+		String elementID = getElementIDFromURL(fileURL);
+		Job job = createDefaultGNOSJob("GNOS download job", parent);
+		String outputDirectory = targetDirectory + "/" + elementID;
+        addGNOSDownloadScriptArgs(job, fileURL, outputDirectory, elementID);
+        return new CreateDownloadJobResult(job, elementID, outputDirectory);
+	}
+	
+	private void addSafeLinkCommand(Job job, String src, String dst) {
+		String lockfile = dst + ".lock~";
+		job.getCommand().addArgument(String.format("lockfile %s; [[ ! -f %s ]] && ln -sn %s %s; rm -rf %s; ", lockfile, dst, src, dst, lockfile));
+	}
+  
+    private Job createGNOSBamDownloadJob(String fileURL, SampleType sampleType, Job parent) {
+		CreateDownloadJobResult jcr = createDefaultGNOSDownloadJob(parent, fileURL, gnosDownloadDirSpecific);
+	
+		String bamSrc = String.format("%s/*.bam", jcr.outputDirectory);
+		String bamDst = String.format("%s/%s_%s_merged.mdup.bam", directoryAlignmentFiles, sampleType.name(), pid);
+		String baiSrc = bamSrc + ".bai";
+		String baiDst = bamDst + ".bai"; 
+		addSafeLinkCommand(jcr.job, bamSrc, bamDst);
+		addSafeLinkCommand(jcr.job, baiSrc, baiDst);
+        return jcr.job;
     }
+    
+    private Job createGNOSDellyDownloadJob(String fileURL, Job parent) {
+		CreateDownloadJobResult jcr = createDefaultGNOSDownloadJob(parent, fileURL, gnosDownloadDirSpecific);
+
+		String dellySrc = String.format("%s/*.txt", jcr.outputDirectory);
+		String dellyDst = String.format("%s/%s.DELLY.somaticFilter.highConf.bedpe.txt", directoryDellyFiles, pid);
+		addSafeLinkCommand(jcr.job, dellySrc, dellyDst);
+		return jcr.job;
+	}
+    
+    private Job createDependenciesDownloadJob(String fileURL, Job parent) {
+		CreateDownloadJobResult jcr = createDefaultGNOSDownloadJob(parent, fileURL, gnosDownloadDirGeneric);
+
+		String tarFile = directoryBaseOutput + "/workflow-dependencies.tar.gz";
+		String extractedDirectory = directoryBaseOutput + "/bundledFiles";
+		String lockfile = tarFile + ".lock~";
+		jcr.job.getCommand().addArgument(
+					String.format("lockfile %s; [[ ! -d %s ]] && cd %s && tar -xf *.tar.gz && ln -sf bundledFiles %s; rm -rf %s; ", lockfile, jcr.outputDirectory, directoryBaseOutput, lockfile)
+				);
+		return jcr.job;
+	}
 
     private Job createGNOSUploadJob(String name, String file, Job parent) {
-        Job jobUpload = this.getWorkflow().createBashJob(name);
-        addUploadJobArgs(jobUpload, file);
-        jobUpload.setMaxMemory(gtdownloadMem + "000");
-        jobUpload.addParent(parent);
-        return jobUpload;
+        Job job = createDefaultGNOSJob(name, parent);
+        addUploadJobArgs(job, file);
+        return job;
     }
-
 
     @Override
     public void buildWorkflow() {
@@ -157,18 +248,19 @@ public class DKFZSNVCallingWorkflow extends AbstractWorkflowDataModel {
         // download the normal and tumor bamfile and the dependencies jar
         Job jobDownloadTumorBam = null;
         Job jobDownloadControlBam = null;
+        Job jobDownloadDellyBedPe = null;
         Job jobDownloadWorkflowDependencies = null;
         if (runAtLeastOneJob) {
             Job createDirs = this.getWorkflow().createBashJob("CreateDirs");
-            createDirs.getCommand()
-                    .addArgument("cd /" + outputPrefix)
-                    .addArgument("&& mkdir -p " + alignmentOutputDir)
-                    .addArgument("&& mkdir -p " + mpileupOutputDir)
-                    .addArgument("&& mkdir -p " + gnosDownloadDir)
-                    .addArgument("&& mkdir -p " + gnosUploadDir);
-            jobDownloadTumorBam = createGNOSDownloadJob("GNOSDownload Tumor", inputFileTumor, "BAM", "tumor", createDirs);
-            jobDownloadControlBam = createGNOSDownloadJob("GNOSDownload Normal", inputFileNormal, "BAM", "control", createDirs);
-            jobDownloadWorkflowDependencies = createGNOSDownloadJob("GNOSDownload Dependencies", inputFileDependencies, "TAR", "dependencies", createDirs);
+            StringBuffer createDirArgs = new StringBuffer();
+            for(String processDirectory : processDirectories)
+				createDirArgs.append("mkdir -p ").append(processDirectory).append(";");
+			createDirs.getCommand().addArgument(createDirArgs.toString());
+			
+            jobDownloadTumorBam = createGNOSBamDownloadJob(inputFileTumorURL, SampleType.tumor, createDirs);
+            jobDownloadControlBam = createGNOSBamDownloadJob(inputFileNormalURL, SampleType.control, createDirs);
+            jobDownloadDellyBedPe = createGNOSDellyDownloadJob(inputFileDellyURL, createDirs);
+            jobDownloadWorkflowDependencies = createDependenciesDownloadJob(inputFileDependenciesURL, createDirs);
         }
 
         // Creaty job variables
@@ -189,13 +281,13 @@ public class DKFZSNVCallingWorkflow extends AbstractWorkflowDataModel {
 
         if (doCopyNumberEstimation) {
             Job jobCopyNumberEstimation = createRoddyJob("Roddy:CNE", pid, "copyNumberEstimation", Arrays.asList(jobDownloadControlBam, jobDownloadTumorBam, jobDownloadWorkflowDependencies));
-            createGNOSUploadJob("GNOSUpload VCF", "snvs_" + pid + ".vcf.gz", jobCopyNumberEstimationFinal);
+            createGNOSUploadJob("GNOSUpload VCF Copy Number Estimation", "snvs_" + pid + ".vcf.gz", jobCopyNumberEstimationFinal);
             //TODO Create additional files upload job.
         }
 
 
         // CLEANUP DOWNLOADED INPUT BAM FILES (And intermediate files?)
-        if (doCleanup) {
+       /* if (doCleanup) {
             Job cleanup = this.getWorkflow().createBashJob("clean up");
             cleanup.getCommand().addArgument("rm -fr /" + outputPrefix + "/" + outputdir + " ;")
                     .addArgument("rm -fr /" + outputPrefix + "/" + gnosDownloadDir + ";")
@@ -209,52 +301,24 @@ public class DKFZSNVCallingWorkflow extends AbstractWorkflowDataModel {
                 if (doIndelCalling) cleanup.addParent(jobIndelCalling);
                 if (doCopyNumberEstimation) cleanup.addParent(jobCopyNumberEstimationFinal);
             }
-        }
+        }*/
     }
 
-    private Job addDownloadJobArgs(Job job, String fileURL, String filetype, String type) {
-        String[] urlElements = fileURL.split("/");
-        String dir = urlElements[urlElements.length - 1];
-        String gnosOutputDir = String.format("/%s/%s/%s", outputPrefix, gnosDownloadDir, dir);
-
-        job.getCommand()
-                .addArgument("perl " + this.getWorkflowBaseDir() + "/scripts/launch_and_monitor_gnos.pl")
-                .addArgument("--command 'gtdownload -c " + gnosKey + " -d " + fileURL + " -p /datastore/gnos_download '")
-                .addArgument("--file-grep " + dir)
-                .addArgument("--search-path .")
-                .addArgument("--retries " + gtdownloadRetries)
-                .addArgument("--md5-retries " + gtdownloadMd5Time + ";");
-
-        if (filetype.equalsIgnoreCase("BAM")) {
-            String bamTumorSrc = String.format("%s/*.bam", gnosOutputDir);
-            String baiTumorSrc = bamTumorSrc + ".bai";
-            String bamTumorDst = String.format("%s/%s_%s_merged.mdup.bam", alignmentOutputDir, type, pid);
-            String baiTumorDst = bamTumorDst + ".bai";
-            job.getCommand().addArgument(String.format("ln -sn %s  %s ;", bamTumorSrc, bamTumorDst))
-                    .addArgument(String.format("ln -sf %s  %s ;", baiTumorSrc, baiTumorDst));
-        }
-        if (filetype.equalsIgnoreCase("TAR")) {
-            String tarFile = "/" + outputPrefix + "/workflow-dependencies.tar.gz";
-            job.getCommand().addArgument("cd /" + outputPrefix + " && if [ ! -d \"bundledFiles\" ]; ")
-                    .addArgument(String.format("then  ln -sf  %s/*.tar.gz %s; ", gnosOutputDir, tarFile))
-                    .addArgument(String.format("tar -xvf %s  && rm %s; fi", tarFile, tarFile));
-        }
-        return (job);
-    }
+	
 
     private Job addUploadJobArgs(Job job, String file) {
 
         job.getCommand()
-                .addArgument(String.format(" cd %s && md5sum %s | awk '{printf $1}' > %s.md5 ;", mpileupOutputDir, file, file));
+                .addArgument(String.format(" cd %s && md5sum %s | awk '{printf $1}' > %s.md5 ;", directorySNVCallingResults, file, file));
 
         job.getCommand()
                 .addArgument("perl " + this.getWorkflowBaseDir() + "/scripts/gnos_upload_data.pl")
-                .addArgument("--bam " + mpileupOutputDir + "/" + file)
+                .addArgument("--bam " + directorySNVCallingResults + "/" + file)
                 .addArgument("--key " + gnosKey)
-                .addArgument("--outdir " + outputPrefix + "/" + gnosUploadDir)
+                //.addArgument("--outdir " + outputPrefix + "/" + gnosUploadDir)
                 .addArgument("--metadata-urls " + gnosInputMetadataURLs)
-                .addArgument("--upload-url " + gnosUploadFileURL)
-                .addArgument("--bam-md5sum-file  /datastore/" + outputdir + "/" + pid + "/mpileup/" + file + ".md5 ");
+                .addArgument("--upload-url " + gnosUploadFileURL);
+                //.addArgument("--bam-md5sum-file  /datastore/" + outputdir + "/" + pid + "/mpileup/" + file + ".md5 ");
 
         if (debugmode) {
             job.getCommand().addArgument("--test");

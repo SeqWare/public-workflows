@@ -1,0 +1,242 @@
+package io.seqware.pancancer;
+
+/**
+ * Mine
+ */
+import net.sourceforge.seqware.pipeline.workflowV2.AbstractWorkflowDataModel;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import net.sourceforge.seqware.pipeline.workflowV2.model.Job;
+import net.sourceforge.seqware.pipeline.workflowV2.model.SqwFile;
+
+public class DKFZSNVCallingWorkflow extends AbstractWorkflowDataModel {
+
+    // GENERAL
+    // comma-seperated for multiple bam inputs
+    String inputBamPaths = null;
+    ArrayList<String> bamPaths = new ArrayList<String>();
+    ArrayList<String> inputURLs = new ArrayList<String>();
+    ArrayList<String> inputMetadataURLs = new ArrayList<String>();
+    // used to download with gtdownload
+    String gnosInputFileURLs = null;
+    String gnosInputMetadataURLs = null;
+    String gnosUploadFileURL = null;
+    String gnosKey = null;
+    boolean useGtDownload = true;
+    boolean useGtUpload = true;
+    // number of splits for bam files, default 1=no split
+    int bamSplits = 1;
+    String reference_path = null;
+    String dataDir = "data/";
+    String outputDir = "results";
+    String outputPrefix = "./";
+    String outputvbp = "vbp";
+    String outputrpp = "rpp";
+    String inputfiles ="";
+    String resultsDir = outputPrefix + outputDir;
+    String outputFileName = "merged_output.bam";
+    // GTDownload
+    // each retry is 1 minute
+    String gtdownloadRetries = "30";
+    String gtdownloadMd5Time = "120";
+    String gtdownloadMem = "8";
+    String smallJobMemM = "3000";
+    String inputFileTumor = null;
+    String inputFileNormal = null;
+    String inputFileDependencies = null;
+    boolean doCleanup = false;
+    String pid = "";
+    
+//    enum FileTyp {
+//        BAM, BAI, TAR
+//      }
+    
+    @Override
+    public Map<String, SqwFile> setupFiles() {
+
+        /*
+         * This workflow isn't using file provisioning since we're using
+         * GeneTorrent. So this method is just being used to setup various
+         * variables.
+         */
+        try {
+
+            inputBamPaths = getProperty("input_bam_paths");
+            for (String path : inputBamPaths.split(",")) {
+                bamPaths.add(path);
+            }
+            gnosInputFileURLs = getProperty("gnos_input_file_urls");
+            for (String url : gnosInputFileURLs.split(",")) {
+                inputURLs.add(url);
+            }
+            gnosInputMetadataURLs = getProperty("gnos_input_metadata_urls");
+            for (String url : gnosInputMetadataURLs.split(",")) {
+                inputMetadataURLs.add(url);
+            }
+            outputDir = this.getMetadata_output_dir();
+            outputPrefix = this.getMetadata_output_file_prefix();
+            resultsDir = outputPrefix + outputDir;
+            gnosUploadFileURL = getProperty("gnos_output_file_url");
+            gnosKey = getProperty("gnos_key");
+            
+            pid = getProperty("pid");
+            
+            inputFileNormal= getProperty("input_file_normal");
+            inputFileTumor = getProperty("input_file_tumor");
+            inputFileDependencies = getProperty("input_file_dependencies");
+            if (getProperty("clean_up") != null) {
+                if ("true".equals(getProperty("clean_up"))) {
+                    doCleanup= true;
+                }
+            }
+            
+            outputvbp= getProperty("output_vbp");
+            outputrpp= getProperty("output_rpp");
+            inputfiles=resultsDir+outputrpp+"/stds/alignment";
+            
+            gtdownloadRetries = getProperty("gtdownloadRetries") == null ? "30"
+                    : getProperty("gtdownloadRetries");
+            gtdownloadMd5Time = getProperty("gtdownloadMd5time") == null ? "120"
+                    : getProperty("gtdownloadMd5time");
+            gtdownloadMem = getProperty("gtdownloadMemG") == null ? "8"
+                    : getProperty("gtdownloadMemG");
+            smallJobMemM = getProperty("smallJobMemM") == null ? "3000"
+                    : getProperty("smallJobMemM");
+    //        inputFileNormal = getProberty("inputFileNormal");
+    //        inputFileTumor = getProberty("inputFileTumor");
+            if (getProperty("use_gtdownload") != null) {
+                if ("false".equals(getProperty("use_gtdownload"))) {
+                    useGtDownload = false;
+                }
+            }
+            if (getProperty("use_gtupload") != null) {
+                if ("false".equals(getProperty("use_gtupload"))) {
+                    useGtUpload = false;
+                }
+            }
+        } catch (Exception e) {
+            Logger.getLogger(DKFZSNVCallingWorkflow.class.getName()).log(
+                    Level.SEVERE, null, e);
+            throw new RuntimeException("Problem parsing variable values: "
+                    + e.getMessage());
+        }
+
+        return this.getFiles();
+    }
+
+    @Override
+    public void setupDirectory() {
+       // creates the final output
+       // this.addDirectory(dataDir);
+       // this.addDirectory(resultsDir);
+       // this.addDirectory(inputfiles);
+       // this.addDirectory(resultsDir+outputvbp);
+
+    }
+
+    @Override
+    public void buildWorkflow() {
+
+        // the download job that either downloads or locates the file on the
+        // filesystem
+
+        Job createDirs = this.getWorkflow().createBashJob("CreateDirs");
+        createDirs.getCommand().addArgument("cd /datastore && mkdir -p proddata/"+pid+"/alignment");
+
+        //download bam file tumor 
+        Job GNOSDownloadTumor = this.getWorkflow().createBashJob("GNOSDownload Tumor");
+        addDownloadJobArgs(GNOSDownloadTumor, bamPaths.get(0), inputFileTumor, "BAM","tumor");
+        GNOSDownloadTumor.setMaxMemory(gtdownloadMem + "000");
+        GNOSDownloadTumor.addParent(createDirs);
+        
+        //download bam file normal 
+        Job GNOSDownloadNormal = this.getWorkflow().createBashJob("GNOSDownload Normal");
+        addDownloadJobArgs(GNOSDownloadNormal, bamPaths.get(1), inputFileNormal, "BAM","control");
+        GNOSDownloadNormal.setMaxMemory(gtdownloadMem + "000");
+        GNOSDownloadNormal.addParent(createDirs);
+
+        Job GNOSDownloadDependencies = this.getWorkflow().createBashJob("GNOSDownload Dependencies");
+        addDownloadJobArgs(GNOSDownloadDependencies, bamPaths.get(1), inputFileDependencies, "TAR", "dependencies");
+        GNOSDownloadDependencies.setMaxMemory(gtdownloadMem + "000");
+        GNOSDownloadDependencies.addParent(createDirs);
+        
+//        Job extractArchive = this.getWorkflow().createBashJob("extract Archive");
+//        extractArchive.getCommand().addArgument("cd /datastore && if [ ! -d \"bundledFiles\" ]; then cd /datastore/proddata/rpp/stds/alignment/6dbc745f-def3-41ba-ae4a-e61f35f80947 &&  tar -xvf * && move bundledFiles /datastore/ fi");
+//        extractArchive.addParent(GNOSDownloadDependencies);
+  
+        Job SNVCalling = this.getWorkflow().createBashJob("SNVCalling");
+        SNVCalling.addParent(GNOSDownloadNormal);
+        SNVCalling.addParent(GNOSDownloadTumor);
+        SNVCalling.addParent(GNOSDownloadDependencies);
+        SNVCalling.getCommand().addArgument("cd "+this.getWorkflowBaseDir()+"/RoddyBundlePancancer && bash roddy.sh run otpProjects_pancancer@snvCalling "+pid +
+        		"--useconfig=applicationPropertiesAllLocal.ini --waitforjobs --verbositylevel=5 ");
+        
+//        Job SNVCalling = this.getWorkflow().createBashJob("IndelCalling");
+//        SNVCalling.addParent(GNOSDownloadNormal);
+//        SNVCalling.addParent(GNOSDownloadTumor);
+//     //   SNVCalling.addParent(GNOSDownloadDependencies);
+//        SNVCalling.getCommand().addArgument("cd "+this.getWorkflowBaseDir()+"/RoddyBundlePancancer && bash roddy.sh run otpProjects_pancancer@indelCalling stds " +
+//                "--useconfig=applicationPropertiesAllLocal.ini --waitforjobs --verbositylevel=5 ");
+        
+        
+        // TODO: look at Kerien's code for generating GNOS metadata
+
+        // The directory:
+        // analysis/DKFZ/SNV/panCancer/{GNOSDonorID}/mpileup[_indel]/[snvs|indels]_{GNOSDonorID}.vcf.gz
+    //    Job GNOSUpload = this.getWorkflow().createBashJob("GNOSUpload");
+        // GNOSUpload.getCommand().addArgument(this.getWorkflowBaseDir()+"/bin/upload_gnos.pl "+getProperty("GNOSDonorID")+" analysis/DKFZ/SNV/panCancer/{GNOSDonorID}/mpileup[_indel]/[snvs|indels]_{GNOSDonorID}.vcf.gz");
+    //    GNOSUpload.addParent(SNVCalling);
+        
+        
+        //TODO: create md5sum file
+        
+//        Job GNOSUpload = this.getWorkflow().createBashJob("GNOSUpload");
+//        GNOSUpload.getCommand().addArgument("/scripts/gnos_upload_data.pl --bam  outputFileName --key "+gnosKey+" --outdir finalOutDir --metadata-urls https://gtrepo-dkfz.annailabs.com/cghub/metadata/analysisSubmission/1af1586c-05e9-11e4-86b9-9541c49f5d8e " +
+//        		"--upload-url https://gtrepo-dkfz.annailabs.com --bam-md5sum-file  tumor_SNV_CALLING_TEST.md5 --test");
+//        GNOSUpload.addParent(SNVCalling);
+//        
+
+        // // CLEANUP DOWNLOADED INPUT UNALIGNED BAM FILES
+       if(doCleanup){
+         Job cleanup = this.getWorkflow().createBashJob("clean up");
+         cleanup.getCommand().addArgument("rm -fr /datastore/proddata");
+         cleanup.setMaxMemory(smallJobMemM);
+         cleanup.addParent(SNVCalling);
+       }
+    }
+
+    private Job addDownloadJobArgs(Job job, String file, String fileURL, String filetype, String type) {
+
+        // a little unsafe
+        String[] pathElements = file.split("/");
+        String analysisId = pathElements[0];
+        
+        String[] urlElements = fileURL.split("/");
+        String dir = urlElements[urlElements.length-1];
+        
+        job.getCommand()
+                .addArgument(
+                        "perl " + this.getWorkflowBaseDir()
+                                + "/scripts/launch_and_monitor_gnos.pl")
+                .addArgument(
+                        "--command 'gtdownload -c " + gnosKey + " -vv -d "
+                                + fileURL +" -p /datastore/proddata/"+pid+"/alignment '")
+                .addArgument("--file-grep " + analysisId)
+                .addArgument("--search-path .")
+                .addArgument("--retries " + gtdownloadRetries)
+                .addArgument("--md5-retries " + gtdownloadMd5Time +";");
+        
+        if(filetype.equalsIgnoreCase("BAM")){
+            job.getCommand().addArgument("ln -s /datastore/proddata/"+pid+"/alignment/"+dir+"/*.bam  /datastore/proddata/"+pid+"/alignment/"+type+"_"+pid+"_merged.mdup.bam ;" );
+            job.getCommand().addArgument("ln -s /datastore/proddata/"+pid+"/alignment/"+dir+"/*.bam.bai  /datastore/proddata/"+pid+"/alignment/"+type+"_"+pid+"_merged.mdup.bam.bai ;" );
+        }
+        if(filetype.equalsIgnoreCase("TAR")){
+            job.getCommand().addArgument("cd /datastore && if [ ! -d \"bundledFiles\" ]; then cd /datastore/proddata/"+pid+"/alignment/"+dir+" &&  tar -xvf dkfz-workflow*.tar.gz && mv bundledFiles /datastore/ ; fi");
+        }   
+        return (job);
+    }
+
+
+}
