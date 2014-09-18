@@ -8,11 +8,11 @@
     </prerequisites>
 
     <groupId>io.seqware.pancancer</groupId>
-    <artifactId>workflow-DKFZ-SNV-Calling</artifactId>
+    <artifactId>DKFZBundleWorkflow</artifactId>
     <version>1.0</version>
     <packaging>jar</packaging>
 
-    <name>workflow-DKFZ-SNV-Calling</name>
+    <name>DKFZBundleWorkflow</name>
     <url>http://maven.apache.org</url>
 
     <properties>
@@ -20,8 +20,8 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <seqware-version>1.0.13</seqware-version>
         <skipITs>true</skipITs>
-        <workflow-full-name>Workflow_Bundle_DKFZ-SNV-Calling_${workflow-version}_SeqWare_${seqware-version}</workflow-full-name>
-        <workflow-dir>${project.build.directory}/${workflow-full-name}/Workflow_Bundle_DKFZ-SNV-Calling/${workflow-version}</workflow-dir>
+        <workflow-full-name>Workflow_Bundle_DKFZBundleWorkflow_${workflow-version}_SeqWare_${seqware-version}</workflow-full-name>
+        <workflow-dir>${project.build.directory}/${workflow-full-name}/Workflow_Bundle_DKFZBundleWorkflow/${workflow-version}</workflow-dir>
     </properties>
 
     <dependencies>

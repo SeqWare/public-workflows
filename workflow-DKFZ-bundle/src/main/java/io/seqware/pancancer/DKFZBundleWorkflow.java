@@ -365,45 +365,58 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
             Job jobDownloadControlBam = null;
             Job jobDownloadDellyBedPe = null;
             Job jobDownloadWorkflowDependencies = null;
+			Job createDirs = this.getWorkflow().createBashJob("CreateDirs");
             if (runAtLeastOneJob) {
                 List<File> processDirectories = Arrays.asList(gnosDownloadDirGeneric, directoryAlignmentFiles, directoryDellyFiles, directorySNVCallingResults, directoryIndelCallingResults, directoryCNEResults);
-                Job createDirs = this.getWorkflow().createBashJob("CreateDirs");
                 StringBuilder createDirArgs = new StringBuilder();
                 for (File processDirectory : processDirectories) {
                     createDirArgs.append("mkdir -p ").append(processDirectory.getAbsolutePath()).append(";");
                 }
                 createDirs.getCommand().addArgument(createDirArgs.toString());
 
-                jobDownloadWorkflowDependencies = createDependenciesDownloadJob(inputFileDependenciesURL, createDirs);
-                jobDownloadTumorBam = createGNOSBamDownloadJob(inputFileTumorURL, SampleType.tumor, createDirs);
-                jobDownloadControlBam = createGNOSBamDownloadJob(inputFileNormalURL, SampleType.control, createDirs);
-                if (doCopyNumberEstimation && ! useDellyOnDisk) {
-                    jobDownloadDellyBedPe = createGNOSDellyDownloadJob(inputFileDellyURL, createDirs);
-                }
+				if(useGtDownload) {
+					jobDownloadWorkflowDependencies = createDependenciesDownloadJob(inputFileDependenciesURL, createDirs);
+					jobDownloadTumorBam = createGNOSBamDownloadJob(inputFileTumorURL, SampleType.tumor, createDirs);
+					jobDownloadControlBam = createGNOSBamDownloadJob(inputFileNormalURL, SampleType.control, createDirs);
+					if (doCopyNumberEstimation && ! useDellyOnDisk) {
+						jobDownloadDellyBedPe = createGNOSDellyDownloadJob(inputFileDellyURL, createDirs);
+					}
+				}
             }
 
             // Create job variables
             Job jobSNVCalling;
             Job jobIndelCalling = null;
             Job jobCopyNumberEstimationFinal = null;
-
+			List<Job> downloadJobDependencies = new LinkedList<Job>();
+			for(Job job : Arrays.asList(jobDownloadControlBam, jobDownloadTumorBam, jobDownloadWorkflowDependencies)) {
+				if(job == null) continue;
+				downloadJobDependencies.add(job);
+			}
+			//If no download was started, add at least createdirs.
+			if(downloadJobDependencies.size() == 0) 
+				downloadJobDependencies.add(createDirs);
 
             if (doSNVCalling) {
                 logger.info("SNV Calling will be done.");
-                jobSNVCalling = createRoddyJob("RoddySNVCalling", pid, "snvCalling", Arrays.asList(jobDownloadControlBam, jobDownloadTumorBam, jobDownloadWorkflowDependencies));
+                jobSNVCalling = createRoddyJob("RoddySNVCalling", pid, "snvCalling", downloadJobDependencies);
 //                createGNOSUploadJob("GNOSUpload Raw VCF SNVCalling", new File(directorySNVCallingResults, "snvs_" + pid + "_raw.vcf.gz"), jobSNVCalling);
 //                createGNOSUploadJob("GNOSUpload VCF SNVCalling", new File(directorySNVCallingResults, "snvs_" + pid + ".vcf.gz"), jobSNVCalling);
             }
 
             if (doIndelCalling) {
                 logger.info("Indel Calling will be done.");
-                jobIndelCalling = createRoddyJob("RoddyIndelCalling", pid, "indelCalling", Arrays.asList(jobDownloadControlBam, jobDownloadTumorBam, jobDownloadWorkflowDependencies));
+                jobIndelCalling = createRoddyJob("RoddyIndelCalling", pid, "indelCalling", downloadJobDependencies);
 //                createGNOSUploadJob("GNOSUpload Raw VCF IndelCalling", new File(directoryIndelCallingResults, "indels_" + pid + "_raw.vcf.gz"), jobIndelCalling);
 //                createGNOSUploadJob("GNOSUpload VCF IndelCalling", new File(directoryIndelCallingResults, "indels_" + pid + ".vcf.gz"), jobIndelCalling);
             }
+            
+            if(jobDownloadDellyBedPe != null)
+				downloadJobDependencies.add(jobDownloadDellyBedPe);
+            
             if (doCopyNumberEstimation) {
                 logger.info("Copy number estimation will be done.");
-                Job jobCopyNumberEstimation = createRoddyJob("RoddyCNE", pid, "copyNumberEstimation", Arrays.asList(jobDownloadControlBam, jobDownloadTumorBam, jobDownloadWorkflowDependencies));
+                Job jobCopyNumberEstimation = createRoddyJob("RoddyCNE", pid, "copyNumberEstimation", downloadJobDependencies);
                 //createGNOSUploadJob("GNOSUpload VCF Copy Number Estimation", new File(directoryCNEResults, "snvs_" + pid + ".vcf.gz"), jobCopyNumberEstimationFinal);
                 //TODO Create additional files upload job.
                 //Upload all vcfs + tabix files
