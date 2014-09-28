@@ -68,7 +68,7 @@ sub get {
 
         if (not -e $analysis_xml_path or not eval {$xs->XMLin($analysis_xml_path); } ) {
            say $parse_log "skipping $analysis_id - no xml file available: $analysis_xml_path";
-           next;
+           die;
         } 
 
         my $analysis_data = $xs->XMLin($analysis_xml_path);
@@ -230,7 +230,6 @@ sub get {
             $participants->{$center_name}{$donor_id}{$sample_id}{$alignment}{$aliquot_id}{$library_name}{files}{$file_name} = $file_info;
         }
     }
-
     close $parse_log;
 
     return $participants;
