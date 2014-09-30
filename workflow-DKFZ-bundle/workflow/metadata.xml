@@ -1,0 +1,9 @@
+<bundle version="1.0">
+  <workflow name="DKFZBundleWorkflow" version="${workflow-version}" seqware_version="${seqware-version}"
+  basedir="${workflow_bundle_dir}/Workflow_Bundle_DKFZBundleWorkflow/${workflow-version}">
+    <description>${workflow-description}</description>
+    <workflow_class path="${workflow_bundle_dir}/Workflow_Bundle_DKFZBundleWorkflow/${workflow-version}/classes/io/seqware/pancancer/DKFZBundleWorkflow.java"/>
+    <config path="${workflow_bundle_dir}/Workflow_Bundle_DKFZBundleWorkflow/${workflow-version}/config/DKFZ-Workflow-Bundle.ini"/>
+    <requirements compute="single" memory="20M" network="local"  workflow_engine="Pegasus,Oozie" workflow_type="java"/>
+  </workflow>
+</bundle>
