@@ -2,6 +2,9 @@ package SeqWare::Cluster;
 
 use common::sense;
 
+use FindBin qw($Bin);
+use lib "$Bin/../lib";
+
 use IPC::System::Simple;
 use autodie qw(:all);
 use Carp::Always;
@@ -19,7 +22,13 @@ use Data::Dumper;
 sub cluster_seqware_information {
     my ($class, $report_file, $clusters_json, $ignore_failed, $run_workflow_version) = @_;
 
-    my $clusters = decode_json( read_file($clusters_json));
+    my ($clusters, $cluster_file_path);
+    foreach my $cluster_json (@{$clusters_json}) {
+        $cluster_file_path = "$Bin/../$cluster_json";
+        die "file does not exist $cluster_file_path" unless (-f $cluster_file_path);
+        my $cluster = decode_json( read_file($cluster_file_path));
+         $clusters = {%$clusters, %$cluster};
+    }
 
     my %cluster_information;
     my %running_samples;
@@ -125,6 +134,8 @@ sub running_sample_id {
     my ($report_file, $seqware_run) = @_;
 
     my @ini_file =  split "\n", $seqware_run->{iniFile}[0];
+print Dumper $seqware_run;
+die;
  
     my %parameters;
     foreach my $line (@ini_file) {
@@ -142,7 +153,7 @@ sub running_sample_id {
     say $report_file "\t\t\tCWD: ".$parameters{currentWorkingDir};
     say $report_file "\t\t\tWORKFLOW ACCESSION: ".$parameters{swAccession}."\n";
 
-    return $sorted_urls;
+    return $sample_id;
 } 
 
 
