@@ -11,11 +11,18 @@ use lib "$Bin/../lib";
 
 use Getopt::Euclid;
 
+use Config::Simple;
+
 use SeqWare::Cluster;
 use SeqWare::Schedule;
 use GNOS::SampleInformation;
 
+use Decider::Config;
+
 use Data::Dumper;
+
+# add information from config file into %ARGV parameters.
+my %ARGV = %{Decider::Config->get(\%ARGV)};
 
 open my $report_file, '>', "$Bin/../".$ARGV{'--report'};
 
@@ -77,7 +84,7 @@ sub get_whitelist {
    my ($whitelist_path) = @_;
 
    my $file = "$Bin/../whitelist/$whitelist_path";
-   die "Whitelist does not exist" if (not -e $file);
+   die "Whitelist does not exist: $file" if (not -e $file);
 
    open my $whitelist, '<', $file;
 
@@ -93,7 +100,7 @@ sub get_blacklist {
    my ($blacklist_path) = @_;
 
    my $file = "$Bin/../blacklist/$blacklist_path";
-   die "Blacklist does not exist" if (not -e $file);
+   die "Blacklist does not exist: $file" if (not -e $file);
 
    open my $blacklist, '<', $file;
 
