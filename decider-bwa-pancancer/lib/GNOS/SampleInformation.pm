@@ -13,6 +13,7 @@ use File::Slurp;
 use XML::LibXML;
 use XML::LibXML::Simple qw(XMLin);
 
+use HTTP::Tiny;
 use Data::Dumper;
 
 sub get {
@@ -274,14 +275,21 @@ sub download_analysis {
     my $browser = LWP::UserAgent->new();
     $browser->timeout($lwp_download_timeout);
     my $response = $browser->get($url);
-    if ($response->is_success) {
+    # x-died flag has to do with aborted chunk downloads
+    # in HTTPS.  
+    if ($response->is_success && ! $response->{'x-died'}) {
         open(my $FH, ">:encoding(UTF-8)", $out);
         write_file($FH, $response->decoded_content);
         close $FH;
     } 
     else {
         say $response->status_line;
-    
+
+	if ($response->{'x-died'}) {
+	    say "Error: ", $response->{'x-died'}, " Falling back to wget.";
+	    say "Try updating Net::HTTP to solce this problem";
+	}
+
         $response = system("wget -q -O $out $url");
         if ($response != 0) {
             $response = system("lwp-download $url $out");
