@@ -17,6 +17,7 @@ use SeqWare::Cluster;
 use SeqWare::Schedule;
 use GNOS::SampleInformation;
 
+use Decider::Database;
 use Decider::Config;
 
 use Data::Dumper;
@@ -34,13 +35,17 @@ $whitelist = get_whitelist($ARGV{'--schedule-whitelist'})
                                        if ($ARGV{'--schedule-whitelist'});
 $blacklist = get_blacklist($ARGV{'--schedule-blacklist'})
                                        if ($ARGV{'--schedule-blacklist'});
-
 say 'Getting SeqWare Cluster Information';
-my ($cluster_information, $running_sample_ids)
+my ($cluster_information, $running_sample_ids, $failed_samples, $completed_samples)
           = SeqWare::Cluster->cluster_seqware_information( $report_file,
                                                   $ARGV{'--seqware-clusters'}, 
                                                   $ARGV{'--schedule-ignore-failed'},
                                                   $ARGV{'--workflow-version'});
+print Dumper $failed_samples;
+
+die;
+my $failed_db = Decider::Database->failed_connect();
+die;
 
 say 'Reading in GNOS Sample Information';
 my $sample_information = GNOS::SampleInformation->get( $ARGV{'--working-dir'},

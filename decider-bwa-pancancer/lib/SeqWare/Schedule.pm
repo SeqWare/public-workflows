@@ -149,7 +149,7 @@ sub create_workflow_ini {
     my $local_bams_string = $sample->{local_bams_string};
     my $gnos_input_file_urls = $sample->{gnos_input_file_urls};
     my $analysis_url_string = $sample->{analysis_url_string};
-
+    
     $workflow_ini->param('input_bam_paths', $local_bams_string) if ($local_bams_string);
     $workflow_ini->param('gnos_input_file_urls', $gnos_input_file_urls) 
                                                              if ($gnos_input_file_urls);
@@ -313,6 +313,13 @@ sub schedule_sample {
                 my $current_workflow_version = $library->{workflow_version};
                 my @current_workflow_versions = keys $current_workflow_version;
                 $current_workflow_version = $current_workflow_versions[0];
+
+                my @current_workflow_version = split '.', $current_workflow_version;
+                my @run_workflow_version = split '.', $run_workflow_version;
+
+print Dumper \@current_workflow_version;
+print Dumper \@run_workflow_version;
+die;
 
                 if (($alignment_id eq 'unaligned')
                     or (!$current_workflow_version and $run_workflow_version le '2.5.0')

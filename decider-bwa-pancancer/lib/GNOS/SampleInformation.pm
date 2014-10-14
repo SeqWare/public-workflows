@@ -229,6 +229,7 @@ sub get {
             my $file_info = $files->{$file_name};
             $participants->{$center_name}{$donor_id}{$sample_id}{$alignment}{$aliquot_id}{$library_name}{files}{$file_name} = $file_info;
         }
+last;
     }
     close $parse_log;
 
