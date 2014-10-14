@@ -150,6 +150,7 @@ sub create_workflow_ini {
     my $gnos_input_file_urls = $sample->{gnos_input_file_urls};
     my $analysis_url_string = $sample->{analysis_url_string};
 
+    $workflow_ini->param('sample_id', $sample_id) if ($sample_id);
     $workflow_ini->param('input_bam_paths', $local_bams_string) if ($local_bams_string);
     $workflow_ini->param('gnos_input_file_urls', $gnos_input_file_urls) 
                                                              if ($gnos_input_file_urls);
