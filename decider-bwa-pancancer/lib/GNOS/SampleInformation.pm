@@ -286,8 +286,7 @@ sub download_analysis {
         say $response->status_line;
 
 	if ($response->{'x-died'}) {
-	    say "Error: ", $response->{'x-died'}, " Falling back to wget.";
-	    say "Try updating Net::HTTP to solce this problem";
+	    say "XML chunk error: ", $response->{'x-died'}, " Falling back to wget...";
 	}
 
         $response = system("wget -q -O $out $url");
