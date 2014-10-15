@@ -2,6 +2,9 @@ package SeqWare::Cluster;
 
 use common::sense;
 
+use FindBin qw($Bin);
+use lib "$Bin/../lib";
+
 use IPC::System::Simple;
 use autodie qw(:all);
 use Carp::Always;
@@ -19,15 +22,23 @@ use Data::Dumper;
 sub cluster_seqware_information {
     my ($class, $report_file, $clusters_json, $ignore_failed, $run_workflow_version) = @_;
 
-    my $clusters = decode_json( read_file($clusters_json));
+    my ($clusters, $cluster_file_path);
+    foreach my $cluster_json (@{$clusters_json}) {
+        $cluster_file_path = "$Bin/../$cluster_json";
+        die "file does not exist $cluster_file_path" unless (-f $cluster_file_path);
+        my $cluster = decode_json( read_file($cluster_file_path));
+         $clusters = {%$clusters, %$cluster};
+    }
 
-    my %cluster_information;
-    my %running_samples;
-    my $cluster_info;
-    my $running_samples_urls;
+    my (%cluster_information,
+       %running_samples,
+       %failed_samples,
+       %completed_samples,
+       $cluster_info,
+       $samples_status_ids);
     foreach my $cluster_name (keys %{$clusters}) {
         my $cluster_metadata = $clusters->{$cluster_name};
-        ($cluster_info, $running_samples_urls) 
+        ($cluster_info, $samples_status_ids) 
             = seqware_information( $report_file,
                                    $cluster_name, 
                                    $cluster_metadata,
@@ -37,13 +48,21 @@ sub cluster_seqware_information {
            $cluster_information{$cluster} = $cluster_info->{$cluster};
         }
 
-        foreach my $url (keys %{$running_samples_urls}) {
-           $running_samples{$url} = 1;
+        foreach my $sample_id (keys %{$samples_status_ids->{running}}) {
+           $running_samples{$sample_id} = 1;
         }
 
+        foreach my $sample_id (keys %{$samples_status_ids->{failed}}) {
+             $failed_samples{$sample_id} = $samples_status_ids->{failed}{$sample_id};
+        }
+
+        foreach my $sample_id (keys %{$samples_status_ids->{completed}}) {
+             $completed_samples{$sample_id} = $samples_status_ids->{completed}->{$sample_id};
+        }
+      
     }
 
-    return (\%cluster_information, \%running_samples);
+    return (\%cluster_information, \%running_samples, \%failed_samples, \%completed_samples);
 }
 
 sub seqware_information {
@@ -73,16 +92,16 @@ sub seqware_information {
     my $xs = XML::Simple->new(ForceArray => 1, KeyAttr => 1);
     my $workflow_information = $xs->XMLin($workflow_information_xml);
 
-    my $running_samples;
+    my $samples_status;
     if ($workflow_information->{name}) {
         my $workflow_runs_xml = `wget -O - --http-user='$user' --http-password=$password -q $web/workflows/$workflow_accession/runs`;
         my $seqware_runs_list = $xs->XMLin($workflow_runs_xml);
         my $seqware_runs = $seqware_runs_list->{list};
 
-        $running_samples = find_available_clusters($report_file, $seqware_runs,
-                   $workflow_accession, $running_samples, $run_workflow_version);
+        $samples_status = find_available_clusters($report_file, $seqware_runs,
+                   $workflow_accession, $samples_status, $run_workflow_version);
     }
-    my $running = scalar(keys %{$running_samples});
+    my $running = scalar(keys %{$samples_status->{running}});
     my %cluster_info;
     if ($running < $max_running ) {
         say $report_file  "\tTHERE ARE $running RUNNING WORKFLOWS WHICH IS LESS THAN MAX OF $max_running, ADDING TO LIST OF AVAILABLE CLUSTERS";
@@ -96,11 +115,11 @@ sub seqware_information {
         say $report_file "\tCLUSTER HAS RUNNING WORKFLOWS, NOT ADDING TO AVAILABLE CLUSTERS";
     }
 
-    return (\%cluster_info, $running_samples);
+    return (\%cluster_info, $samples_status);
 }
 
 sub find_available_clusters {
-    my ($report_file, $seqware_runs, $workflow_accession, $running_samples) = @_;
+    my ($report_file, $seqware_runs, $workflow_accession, $samples_status) = @_;
 
     say $report_file "\tWORKFLOWS ON THIS CLUSTER";
     foreach my $seqware_run (@{$seqware_runs}) {
@@ -108,24 +127,28 @@ sub find_available_clusters {
 
         say $report_file "\t\tWORKFLOW: ".$workflow_accession." STATUS: ".$run_status;
 
-        my $running_status = { 'pending' => 1,   'running' => 1,
-                               'scheduled' => 1, 'submitted' => 1 };
-        if ($running_status->{$run_status}) {
-            my $sample_id;
-            $running_samples->{$sample_id}{$run_status} = 1
-               if ( $sample_id = running_sample_id($report_file, $seqware_run));
+        my ($sample_id, $created_timestamp);
+
+     
+        if ( ($sample_id, $created_timestamp) = get_sample_info($report_file, $seqware_run))    {
+
+            my $running_status = { 'pending' => 1,   'running' => 1,
+                                   'scheduled' => 1, 'submitted' => 1 };
+            $running_status = 'running' if ($running_status->{$run_status});
+            $samples_status->{$run_status}{$sample_id}{$created_timestamp} = 1;
         }
      }
 
 
-     return $running_samples;
+     return $samples_status;
 }
 
-sub running_sample_id {
+sub  get_sample_info {
     my ($report_file, $seqware_run) = @_;
 
     my @ini_file =  split "\n", $seqware_run->{iniFile}[0];
- 
+
+    my $created_timestamp = $seqware_run->{createTimestamp}[0];
     my %parameters;
     foreach my $line (@ini_file) {
          my ($parameter, $value) = split '=', $line, 2;
@@ -133,6 +156,7 @@ sub running_sample_id {
     }
 
     my $sample_id = $parameters{sample_id};
+   
 
     my @urls = split /,/, $parameters{gnos_input_metadata_urls};
     say $report_file "\t\t\tSAMPLE: $sample_id";
@@ -142,7 +166,9 @@ sub running_sample_id {
     say $report_file "\t\t\tCWD: ".$parameters{currentWorkingDir};
     say $report_file "\t\t\tWORKFLOW ACCESSION: ".$parameters{swAccession}."\n";
 
-    return $sorted_urls;
+    $sample_id //= $sorted_urls; 
+
+    return ($sample_id, $created_timestamp);
 } 
 
 

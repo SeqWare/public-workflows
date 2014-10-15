@@ -11,11 +11,19 @@ use lib "$Bin/../lib";
 
 use Getopt::Euclid;
 
+use Config::Simple;
+
 use SeqWare::Cluster;
 use SeqWare::Schedule;
 use GNOS::SampleInformation;
 
+use Decider::Database;
+use Decider::Config;
+
 use Data::Dumper;
+
+# add information from config file into %ARGV parameters.
+my %ARGV = %{Decider::Config->get(\%ARGV)};
 
 open my $report_file, '>', "$Bin/../".$ARGV{'--report'};
 
@@ -27,13 +35,16 @@ $whitelist = get_whitelist($ARGV{'--schedule-whitelist'})
                                        if ($ARGV{'--schedule-whitelist'});
 $blacklist = get_blacklist($ARGV{'--schedule-blacklist'})
                                        if ($ARGV{'--schedule-blacklist'});
-
 say 'Getting SeqWare Cluster Information';
-my ($cluster_information, $running_sample_ids)
+my ($cluster_information, $running_sample_ids, $failed_samples, $completed_samples)
           = SeqWare::Cluster->cluster_seqware_information( $report_file,
                                                   $ARGV{'--seqware-clusters'}, 
                                                   $ARGV{'--schedule-ignore-failed'},
                                                   $ARGV{'--workflow-version'});
+
+
+#my $failed_db = Decider::Database->failed_connect();
+
 
 say 'Reading in GNOS Sample Information';
 my $sample_information = GNOS::SampleInformation->get( $ARGV{'--working-dir'},
@@ -77,7 +88,7 @@ sub get_whitelist {
    my ($whitelist_path) = @_;
 
    my $file = "$Bin/../whitelist/$whitelist_path";
-   die "Whitelist does not exist" if (not -e $file);
+   die "Whitelist does not exist: $file" if (not -e $file);
 
    open my $whitelist, '<', $file;
 
@@ -93,7 +104,7 @@ sub get_blacklist {
    my ($blacklist_path) = @_;
 
    my $file = "$Bin/../blacklist/$blacklist_path";
-   die "Blacklist does not exist" if (not -e $file);
+   die "Blacklist does not exist: $file" if (not -e $file);
 
    open my $blacklist, '<', $file;
 

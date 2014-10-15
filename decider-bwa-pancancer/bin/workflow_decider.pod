@@ -26,7 +26,19 @@ A tool for identifying samples ready for alignment, scheduling on clusters, and 
 
 Workflow Decider - SeqWare
 
-=head1 REQUIRED ARGUMENTS
+=head1 REQUIRED
+
+=item --decider-config[=][ ]<decider_path>
+
+The path to the file containing the default settings for the decider. If another option is chosen via command line option the command line setting will take presidence. 
+
+=over
+
+=head1 OPTIONS
+
+=over
+
+=head2 MAIN
 
 =over
 
@@ -37,14 +49,13 @@ file in the conf folder.
 
 =for Euclid:
         file.type: readable
+        repeatable 
 
 =item --workflow-version[=][ ]<workflow_version>
 
 Specify the BWA workflow version you would like to run (eg. 2.6.0)
 
 =back
-
-=head1 OPTIONS
 
 =head2 GENERAL
 
@@ -54,15 +65,9 @@ Specify the BWA workflow version you would like to run (eg. 2.6.0)
 
 URL for a GNOS server, e.g. https://gtrepo-ebi.annailabs.com
 
-=for Euclid 
-   gnos_url.default: 'https://gtrepo-ebi.annailabs.com'
-
 =item --working-dir[=][ ]<working_directory>
 
 A place for temporary ini and settings files
-
-=for Euclid
-    working_directory.default: 'tmp'
 
 =item --use-cached-analysis
 
@@ -72,15 +77,9 @@ Use the previously downloaded list of files from GNOS that are marked in the liv
 
 The template seqware settings file
 
-=for Euclid
-   seqware_settings.default: 'seqware.setting'
-
 =item --report[=][ ]<report_file>
 
 The report file name that the results will be placed in by the decider
-
-=for Euclid
-   report_file.default: 'workflow_decider_report.txt'
 
 =item --use-live-cached
 
@@ -90,10 +89,9 @@ A flag indicating that previously download xml files for each analysis file shou
 
 =item --lwp-download-timeout[=][ ]<wait_time>
 
-This flag is used to specify the amount of time lwp download should wait for an xml file. If zero is spcified it will skip lwp download and attempt other methods. 
+This flag is used to specify the amount of time lwp download should wait for an xml file. If zero is specified it will skip lwp download and attempt other methods. 
 
 =for Euclid
-   wait_time.default: 300
    wait_time.type: integer
 
 =back

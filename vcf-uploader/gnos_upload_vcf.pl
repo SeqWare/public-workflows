@@ -15,6 +15,7 @@ use Time::Piece;
 # This tool takes metadata URLs and VCF path(s). It then downloads metadata,                #
 # parses it, generates submission files, and then performs the uploads.                     #
 # See https://github.com/SeqWare/public-workflows/blob/develop/vcf-uploader/README.md       #
+# Also see https://wiki.oicr.on.ca/display/PANCANCER/PCAWG+VCF+Submission+SOP+-+v1.0        #
 #############################################################################################
 
 #############
@@ -27,9 +28,9 @@ my $md5_file = "";
 my $vcfs_idx;
 my $md5_idx_file = "";
 my $tarballs;
-my $tarball_types;
 my $md5_tarball_file;
 
+# TODO: Sheldon, we will need parameters to the program for the various hard-coded bits below
 my $parser = new XML::DOM::Parser;
 my $output_dir = "test_output_dir";
 my $key = "gnostest.pem";
@@ -45,7 +46,6 @@ my $workflow_name = "Workflow_Bundle_Broad_Cancer_Variant_Analysis";
 my $workflow_src_url = "https://github.com/broadinstitute/workflow-broad-cancer/tree/$workflow_version/workflow-broad-cancer";
 my $workflow_url = "https://s3.amazonaws.com/oicr.workflow.bundles/released-bundles/Workflow_Bundle_Broad_Cancer_Variant_Analysis_".$workflow_version."_SeqWare_$seqware_version.zip";
 my $changelog_url = "https://github.com/broadinstitute/workflow-broad-cancer/blob/$workflow_version/workflow-broad-cancer/CHANGELOG.md";
-# todo, add tools for this upload type
 my $force_copy = 0;
 my $study_ref_name = "icgc_pancancer_vcf";
 my $analysis_center = "OICR";
@@ -53,18 +53,16 @@ my $metadata_url;
 my $make_runxml = 0;
 my $make_expxml = 0;
 
-# TODO: check the counts here
+# TODO: check the argument counts here
 if (scalar(@ARGV) < 12 || scalar(@ARGV) > 36) {
   die "USAGE: 'perl gnos_upload_vcf.pl
-       --metadata-url <URL_for_specimen-level_aligned_BAM_input>
+       --metadata-urls <URLs_for_specimen-level_aligned_BAM_input_comma_sep>
        --vcfs <sample-level_vcf_file_path_comma_sep_if_multiple>
-       --vcf-types <sample-level_vcf_file_types_comma_sep_if_multiple_same_order_as_vcfs>
        --vcf-md5sum-files <file_with_vcf_md5sum_comma_sep_same_order_as_vcfs>
        --vcf-idxs <sample-level_vcf_idx_file_path_comma_sep_if_multiple>
        --vcf-idx-md5sum-files <file_with_vcf_idx_md5sum_comma_sep_same_order_as_vcfs>
        --tarballs <tar.gz_non-vcf_files_comma_sep_if_multiple>
        --tarball-md5sum-files <file_with_tarball_md5sum_comma_sep_same_order_as_tarball>
-       --tarball-types <sample-level_tarball_file_types_comma_sep_if_multiple_same_order_as_vcfs>
        --outdir <output_dir>
        --key <gnos.pem>
        --upload-url <gnos_server_url>
@@ -80,12 +78,10 @@ if (scalar(@ARGV) < 12 || scalar(@ARGV) > 36) {
 GetOptions(
      "metadata-url=s" => \$metadata_url,
      "vcfs=s" => \$vcfs,
-     "vcf-types=s" => \$vcf_types,
      "vcf-md5sum-files=s" => \$md5_file,
      "vcf-idxs=s" => \$vcfs_idx,
      "vcf-idx-md5sum-files=s" => \$md5_idx_file,
      "tarballs=s" => \$tarballs,
-     "tarball-types=s" => \$tarball_types,
      "tarball-md5sum-files=s" => \$md5_tarball_file,
      "outdir=s" => \$output_dir,
      "key=s" => \$key,
@@ -124,14 +120,11 @@ my @idx_checksums;
 my @tarball_checksums;
 my @tarball_arr = split /,/, $tarballs;
 my @md5_tarball_file_arr = split /,/, $md5_tarball_file;
-my @tarball_types_arr = split /,/, $tarball_types;
 
+# TODO: Sheldon, we'll need more validation here, check each VCF file for headers etc. See https://wiki.oicr.on.ca/display/PANCANCER/PCAWG+VCF+Submission+SOP+-+v1.0
 print "VALIDATING PARAMS\n";
 if (scalar(@vcf_arr) != scalar(@md5_file_arr)) {
   die "VCF and VCF md5sum file count don't match!\n";
-}
-if (scalar(@vcf_arr) != scalar(@vcf_types_arr)) {
-  die "VCF and VCF types count don't match!\n";
 }
 if (scalar(@vcf_arr) != scalar(@vcfs_idx_arr)) {
   die "VCF and VCF index count don't match!\n";
@@ -141,9 +134,6 @@ if (scalar(@vcf_arr) != scalar(@md5_idx_file_arr)) {
 }
 if (scalar(@tarball_arr) != scalar(@md5_tarball_file_arr)) {
   die "Tarball and Tarball md5sum count don't match!\n";
-}
-if (scalar(@tarball_arr) != scalar(@tarball_types_arr)) {
-  die "Tarball and Tarball types count don't match!\n";
 }
 
 print "COPYING FILES TO OUTPUT DIR\n";
@@ -155,7 +145,6 @@ for(my $i=0; $i<scalar(@vcf_arr); $i++) {
   push @vcf_checksums, $vcf_check;
   push @idx_checksums, $idx_check;
   if ($force_copy) {
-    # TODO: will need to ensure I'm using the correct filename extension here
     # rsync to destination
     run("rsync -rauv `pwd`/$vcf_arr[$i] $output_dir/ && rsync -rauv `pwd`/$md5_file_arr[$i] $output_dir/ && rsync -rauv `pwd`/$vcfs_idx_arr[$i] $output_dir/ && rsync -rauv `pwd`/$md5_idx_file_arr[$i] $output_dir/");
     # INFO: I was thinking about renaming files but I think it's safer to not do this
@@ -183,8 +172,16 @@ for(my $i=0; $i<scalar(@tarball_arr); $i++) {
 print "DOWNLOADING METADATA FILES\n";
 my $metad = download_metadata($metadata_url);
 
+my $input_json_hash = generate_input_json($metad);
+
+my $output_json_hash = generate_output_json($metad);
+
+#print Dumper ($metad);
+#print Dumper ($input_json_hash);
+#print Dumper ($output_json_hash);
+
 print "GENERATING SUBMISSION\n";
-my $sub_path = generate_submission($metad);
+my $sub_path = generate_submission($metad, $input_json_hash, $output_json_hash);
 
 print "VALIDATING SUBMISSION\n";
 if (validate_submission($sub_path)) { die "The submission did not pass validation! Files are located at: $sub_path\n"; }
@@ -196,6 +193,87 @@ if (upload_submission($sub_path)) { die "The upload of files did not work!  File
 ###############
 # SUBROUTINES #
 ###############
+
+# this method generates a nice summary of the inputs to this workflow
+# for inclusion in the analysis.xml
+sub generate_input_json {
+  my ($metad) = @_;
+  my $d = {};
+  # cleanup and pull out the info I want, key off of specimen ID e.g. the SM field in the BAM header aka the aliquot_id in SRA XML
+  foreach my $url (keys %{$metad}) {
+    print "URL: $url\n";
+    # pull back the target sample UUID
+    my $target = $metad->{$url}{'target'}[0]{'refname'};
+    # now fill in various info
+    my $r = {};
+    $r->{'specimen'} = $target;
+    $r->{'attributes'}{'center_name'} = $metad->{$url}{'center_name'};
+    $r->{'attributes'}{'analysis_id'} = $metad->{$url}{'analysis_id'};
+    $r->{'attributes'}{'analysis_url'} = $url;
+    $r->{'attributes'}{'study_ref'} = $metad->{$url}{'study_ref'}[0]{'refname'};
+    $r->{'attributes'}{'dcc_project_code'} = join(",", keys %{$metad->{$url}{'analysis_attr'}{'dcc_project_code'}});
+    $r->{'attributes'}{'submitter_donor_id'} = join(",", keys %{$metad->{$url}{'analysis_attr'}{'submitter_donor_id'}});
+    $r->{'attributes'}{'submitter_sample_id'} = join(",", keys %{$metad->{$url}{'analysis_attr'}{'submitter_sample_id'}});
+    $r->{'attributes'}{'dcc_specimen_type'} = join(",", keys %{$metad->{$url}{'analysis_attr'}{'dcc_specimen_type'}});
+    $r->{'attributes'}{'use_cntl'} = join(",", keys %{$metad->{$url}{'analysis_attr'}{'use_cntl'}});
+    $r->{'attributes'}{'submitter_specimen_id'} = join(",", keys %{$metad->{$url}{'analysis_attr'}{'submitter_specimen_id'}});
+
+    push(@{$d->{'workflow_inputs'}}, $r);
+  }
+  return($d);
+}
+
+# this method generates a nice summary of the outputs from this workflow
+# for inclusion in the analysis.xml
+sub generate_output_json {
+  my ($metad) = @_;
+  my $d = {};
+  # cleanup and pull out the info I want, key off of specimen ID e.g. the SM field in the BAM header aka the aliquot_id in SRA XML
+  foreach my $url (keys %{$metad}) {
+    print "URL: $url\n";
+    # pull back the target sample UUID
+    my $target = $metad->{$url}{'target'}[0]{'refname'};
+    # now fill in various info
+    my $r = {};
+    $r->{'specimen'} = $target;
+    $r->{'attributes'}{'center_name'} = $metad->{$url}{'center_name'};
+    $r->{'attributes'}{'analysis_id'} = $metad->{$url}{'analysis_id'};
+    $r->{'attributes'}{'analysis_url'} = $url;
+    $r->{'attributes'}{'study_ref'} = $metad->{$url}{'study_ref'}[0]{'refname'};
+    $r->{'attributes'}{'dcc_project_code'} = join(",", keys %{$metad->{$url}{'analysis_attr'}{'dcc_project_code'}});
+    $r->{'attributes'}{'submitter_donor_id'} = join(",", keys %{$metad->{$url}{'analysis_attr'}{'submitter_donor_id'}});
+    $r->{'attributes'}{'submitter_sample_id'} = join(",", keys %{$metad->{$url}{'analysis_attr'}{'submitter_sample_id'}});
+    $r->{'attributes'}{'dcc_specimen_type'} = join(",", keys %{$metad->{$url}{'analysis_attr'}{'dcc_specimen_type'}});
+    $r->{'attributes'}{'use_cntl'} = join(",", keys %{$metad->{$url}{'analysis_attr'}{'use_cntl'}});
+    $r->{'attributes'}{'submitter_specimen_id'} = join(",", keys %{$metad->{$url}{'analysis_attr'}{'submitter_specimen_id'}});
+
+    # now files
+    process_files($r, $target, \@vcf_arr);
+    process_files($r, $target, \@vcfs_idx_arr);
+    process_files($r, $target, \@tarball_arr);
+
+    push(@{$d->{'workflow_outputs'}}, $r);
+  }
+  return($d);
+}
+
+# parse info from the file name
+# TODO: Sheldon, want better validation here... something that barfs if extra files are provided that don't conform to the naming standard. See https://wiki.oicr.on.ca/display/PANCANCER/PCAWG+VCF+Submission+SOP+-+v1.0
+sub process_files {
+  my ($r, $target, $arr) = @_;
+  foreach my $file (@{$arr}) {
+
+    if($file =~ /$target\.([^\.]+)_([^\.]+)\.(\d+)\.([^\.]+)\./) {
+      $r->{'files'}{$file}{'specimen'} = $target;
+      $r->{'files'}{$file}{'workflow_name'} = $1;
+      my $workflow_version = $2;
+      $r->{'files'}{$file}{'date'} = $3;
+      $r->{'files'}{$file}{'file_type'} = $4;
+      $workflow_version =~ s/-/\./g;
+      $r->{'files'}{$file}{'workflow_version'} = $workflow_version;
+    }
+  }
+}
 
 sub validate_submission {
   my ($sub_path, $vcf_check) = @_;
@@ -254,7 +332,7 @@ sub modify_manifest_file {
 
 sub generate_submission {
 
-  my ($m) = @_;
+  my ($m, $input_json_hash, $output_json_hash) = @_;
 
   # const
   my $t = gmtime;
@@ -351,14 +429,14 @@ sub generate_submission {
   }
   my $str = to_json($pi2);
   $global_attr->{"pipeline_input_info"}{$str} = 1;
-  #print Dumper($global_attr);
+  # print Dumper($global_attr);
 
   my $description = "This is the variant calling for specimen $sample_id from donor $participant_id. The results consist of one or more VCF files plus optional tar.gz files that contain additional file types. This uses the $workflow_name workflow, version $workflow_version available at $workflow_url. This workflow can be created from source, see $workflow_src_url. For a complete change log see $changelog_url. Note the 'ANALYSIS_TYPE' is 'REFERENCE_ASSEMBLY' but a better term to describe this analysis is 'SEQUENCE_VARIATION' as defined by the EGA's SRA 1.5 schema. Please note the reference used for alignment was hs37d, see ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/README_human_reference_20110707 for more information. Briefly this is the integrated reference sequence from the GRCh37 primary assembly (chromosomal plus unlocalized and unplaced contigs), the rCRS mitochondrial sequence (AC:NC_012920), Human herpesvirus 4 type 1 (AC:NC_007605) and the concatenated decoy sequences (hs37d5cs.fa.gz). Variant calls may not be present for all contigs in this reference.";
 
   my $analysis_xml = <<END;
   <ANALYSIS_SET xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.ncbi.nlm.nih.gov/viewvc/v1/trunk/sra/doc/SRA_1-5/SRA.analysis.xsd?view=co">
     <ANALYSIS center_name="$center_name" analysis_center="$analysis_center" analysis_date="$datetime">
-      <TITLE>TCGA/ICGC PanCancer Specimen-Level Alignment for Specimen $sample_id from Participant $participant_id</TITLE>
+      <TITLE>TCGA/ICGC PanCancer Donor-Level Variant Calling for Participant $participant_id</TITLE>
       <STUDY_REF refcenter="$refcenter" refname="$study_ref_name" />
       <DESCRIPTION>$description</DESCRIPTION>
       <ANALYSIS_TYPE>
@@ -486,7 +564,7 @@ END
             <PIPELINE>
 END
 
-# TODO: these need to come from a template instead
+# TODO: Sheldon, these need to come from a template instead
 
     $analysis_xml .= <<END;
                   <PIPE_SECTION section_name="ContaminationAnalysis">
@@ -560,10 +638,12 @@ END
 
     # this is a merge of the key-values from input XML
     # changing some key names to prevent conflicts
+    # I'm actually now skipping a lot more than before since 1) combining multiple inputs makes this more complex, 2) I have a nice JSON that describes inputs/outputs and 3) folks can look back at the original BAM analysis.xml for more details if they need it, no need to duplicate here.
     foreach my $key (keys %{$global_attr}) {
       foreach my $val (keys %{$global_attr->{$key}}) {
     	  if ($key eq "pipeline_input_info") {
-          $key = "alignment_pipeline_input_info";
+          #$key = "alignment_pipeline_input_info";
+          next;
         } elsif ($key eq "workflow_name") {
           $key = "alignment_workflow_name";
         } elsif ($key eq "workflow_version") {
@@ -573,19 +653,26 @@ END
         } elsif ($key eq "workflow_bundle_url") {
           $key = "alignment_workflow_bundle_url";
         } elsif ($key eq "workflow_output_bam_contents") {
-          $key = "alignment_workflow_output_bam_contents";
+          #$key = "alignment_workflow_output_bam_contents";
+          next;
         } elsif ($key eq "qc_metrics") {
-          $key = "alignment_qc_metrics";
+          #$key = "alignment_qc_metrics";
+          next;
         } elsif ($key eq "timing_metrics") {
-          $key = "alignment_timing_metrics";
+          #$key = "alignment_timing_metrics";
+          next;
         } elsif ($key eq "markduplicates_metrics") {
-          $key = "alignment_markduplicates_metrics";
+          #$key = "alignment_markduplicates_metrics";
+          next;
         } elsif ($key eq "bwa_version") {
-          $key = "alignment_bwa_version";
+          #$key = "alignment_bwa_version";
+          next;
         } elsif ($key eq "biobambam_version") {
-          $key = "alignment_biobambam_version";
+          #$key = "alignment_biobambam_version";
+          next;
         } elsif ($key eq "PCAP-core_version") {
-          $key = "alignment_PCAP-core_version";
+          #$key = "alignment_PCAP-core_version";
+          next;
         }
 
         $analysis_xml .= "        <ANALYSIS_ATTRIBUTE>
@@ -598,9 +685,19 @@ END
 
   # TODO
   # variant_pipeline_input_info
+  $analysis_xml .= "        <ANALYSIS_ATTRIBUTE>
+          <TAG>variant_pipeline_input_info</TAG>
+          <VALUE>" . &to_json($input_json_hash) . "</VALUE>
+        </ANALYSIS_ATTRIBUTE>
+";
 
   # TODO
   # variant_pipeline_output_info
+  $analysis_xml .= "        <ANALYSIS_ATTRIBUTE>
+          <TAG>variant_pipeline_output_info</TAG>
+          <VALUE>" . &to_json($output_json_hash) . "</VALUE>
+        </ANALYSIS_ATTRIBUTE>
+";
 
   # some metadata about this workflow
   $analysis_xml .= "        <ANALYSIS_ATTRIBUTE>
