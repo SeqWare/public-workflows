@@ -13,7 +13,6 @@ use File::Slurp;
 use XML::LibXML;
 use XML::LibXML::Simple qw(XMLin);
 
-use HTTP::Tiny;
 use Data::Dumper;
 
 sub get {
