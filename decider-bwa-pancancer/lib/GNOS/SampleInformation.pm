@@ -44,6 +44,7 @@ sub get {
     foreach my $result_id (keys %{$results}) {
         my $result = $results->{$result_id};
         my $analysis_full_url = $result->{analysis_full_uri};
+	say $analysis_full_url;
 
         my $analysis_id = $i;
         if ( $analysis_full_url =~ /^(.*)\/([^\/]+)$/ ) {
@@ -88,7 +89,7 @@ sub get {
         }
 
         my %analysis_result = %{$analysis_result};      
-        my $last_modified = $analysis_result{last_modified};
+        my $upload_date = $analysis_result{upload_date};
         my $analysis_xml_path =  "$working_dir/xml/data_$analysis_id.xml";
         my $center_name = $analysis_result{center_name};
         my $analysis_data_uri = $analysis_result{analysis_data_uri};
@@ -217,7 +218,7 @@ sub get {
 
         $center_name = 'seqware';
         if ($alignment ne 'unaligned') { 
-            $alignment = "$alignment - $analysis_id - $workflow_name - $workflow_version - $last_modified";
+            $alignment = "$alignment - $analysis_id - $workflow_name - $workflow_version - $upload_date";
         }
 
         foreach my $attribute (keys %{$library}) {
