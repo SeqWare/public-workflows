@@ -41,11 +41,10 @@ my ($cluster_information, $running_sample_ids, $failed_samples, $completed_sampl
                                                   $ARGV{'--seqware-clusters'}, 
                                                   $ARGV{'--schedule-ignore-failed'},
                                                   $ARGV{'--workflow-version'});
-print Dumper $failed_samples;
 
-die;
-my $failed_db = Decider::Database->failed_connect();
-die;
+
+#my $failed_db = Decider::Database->failed_connect();
+
 
 say 'Reading in GNOS Sample Information';
 my $sample_information = GNOS::SampleInformation->get( $ARGV{'--working-dir'},

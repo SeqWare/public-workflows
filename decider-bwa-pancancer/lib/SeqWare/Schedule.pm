@@ -64,7 +64,7 @@ sub schedule_samples {
                              $skip_gtupload,
                              $upload_results,
                              $input_prefix, 
-                             $gnos_url,
+                	     $gnos_url,
                              $ignore_failed, 
                              $working_dir, 
                              $center_name, 
@@ -314,17 +314,24 @@ sub schedule_sample {
                 my @current_workflow_versions = keys $current_workflow_version;
                 $current_workflow_version = $current_workflow_versions[0];
 
-                my @current_workflow_version = split '.', $current_workflow_version;
-                my @run_workflow_version = split '.', $run_workflow_version;
+                my @current_workflow_version = split /\./, $current_workflow_version;
+                my @run_workflow_versions = split /\./, $run_workflow_version;
 
-print Dumper \@current_workflow_version;
-print Dumper \@run_workflow_version;
-die;
 
-                if (($alignment_id eq 'unaligned')
-                    or (!$current_workflow_version and $run_workflow_version le '2.5.0')
-                    or ($current_workflow_version eq $run_workflow_version))  {
-                    $aligns->{$alignment_id} = 1;
+                #should add to list of aligns if unaliged or the workflow has already been run with a workflow where the first two version numbers are greater than or equal to the desired workflow version. 
+                if ( ($alignment_id eq 'unaligned') 
+                   or (
+                        (defined $current_workflow_version)
+                    and ( 
+                          ($current_workflow_versions[0] > $run_workflow_versions[0]) 
+                        or (
+                          ($current_workflow_versions[0] == $run_workflow_versions[0]) 
+                           and ($current_workflow_versions[1] >= $run_workflow_versions[1])
+                           )
+                        )
+                      )
+                    ) {
+                         $aligns->{$alignment_id} = 1;
                 }
 
                 my $files = $library->{files};
