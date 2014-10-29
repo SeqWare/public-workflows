@@ -9,7 +9,7 @@
 # a specific way of treating the specimens (instead of putting the T/N pairs
 # on the same line)
 # 
-# Last Modified: 2014-08-24, Status: basically working
+# Last Modified: 2014-10-20, Status: basically working
 
 use strict;
 use warnings;
@@ -70,6 +70,7 @@ my %study_names = ( 'BLCA-US' => "Bladder Urothelial Cancer - TGCA, US",
                     'CLLE-ES' => "Chronic Lymphocytic Leukemia - CLL with mutated and unmutated IgVH",
                     'CMDI-UK' => "Chronic Myeloid Disorders - Myelodysplastic Syndromes, Myeloproliferative Neoplasms \& Other Chronic Myeloid Malignancies",
                     'COAD-US' => "Colon Adenocarcinoma - TCGA, US",
+                    'DLBC-US' => "Lymphoid Neoplasm Diffuse Large B-cell Lymphoma - TCGA, US",
                     'EOPC-DE' => "Prostate Cancer - Early Onset",
                     'ESAD-UK' => "Esophageal adenocarcinoma",
                     'GACA-CN' => "Gastric Cancer - Intestinal- and diffuse-type",
@@ -85,6 +86,7 @@ my %study_names = ( 'BLCA-US' => "Bladder Urothelial Cancer - TGCA, US",
                     'LIHC-US' => "Liver Hepatocellular carcinoma - TCGA, US",
                     'LIRI-JP' => "Liver Cancer - Hepatocellular carcinoma (Virus associated)",
                     'LUAD-US' => "Lung Adenocarcinoma - TCGA, US",
+                    'LUSC-US' => "Lung Squamous Cell Carcinoma - TCGA, US",
                     'MALY-DE' => "Malignant Lymphoma",
                     'ORCA-IN' => "Oral Cancer - Gingivobuccal",
                     'OV-AU'   => "Ovarian Cancer - Serous cystadenocarcinoma",
@@ -128,7 +130,7 @@ my $sample_info = read_sample_info();
 # Process the data structure that has been passed in and print out
 # a table showing the donors, specimens, samples, number of bam files, alignment
 # status, etc.
-map_samples($sample_info);
+map_samples();
 
 # STEP 3. QC
 # if any errors were detected during the run, notify the user
@@ -150,11 +152,8 @@ END {
 ###############
 
 sub map_samples {
-    die "\$sample_info hashref is empty!" unless ($sample_info);
     foreach my $project (sort keys %{$sample_info}) {
-        if ( $project ) {
-            print STDERR "Now processing XML files for $project\n";
-        }
+        print STDERR "Now processing XML files for $project\n" if $project;
         # Parse the data structure built from all of the XML files, and parse them out
         # into three categories--and three new data structures
         foreach my $donor ( keys %{$sample_info->{$project}} ) {
@@ -185,9 +184,6 @@ sub map_samples {
                     } 
 		}
 	    } # close inner foreach loop
-            # print "\n", Data::Dumper->new([\$sample_info],[qw(sample_info)])->Indent(1)->Quotekeys(0)->Dump, "\n";
-            # exit;
-            # print "\n", Data::Dumper->new([\%types],[qw(types)])->Indent(1)->Quotekeys(0)->Dump, "\n";
             # These are exclusive tests, so test the worse case first
 	    if ( $many_normals ) {
                 log_error( "Found more than two Normal specimens for this donor: $donor" );
@@ -206,9 +202,6 @@ sub map_samples {
 	    }
 	} # close foreach $donor
     } # close foreach project
-
-    # print "\n", Data::Dumper->new([\$sample_info],[qw(sample_info)])->Indent(1)->Quotekeys(0)->Dump, "\n";
-    # exit;
 
     # At this point all of the data parsed from the xml files should be allocated into
     # one of these three hash references (unless the specimen field was blank
@@ -235,19 +228,16 @@ sub map_samples {
 } # close sub
 
 sub process_specimens {
-    my $sample_info = shift @_;
-#    print "\n", Data::Dumper->new([\$sample_info],[qw(sample_info)])->Indent(1)->Quotekeys(0)->Dump, "\n";
-#    exit;
-    my $FH = shift @_;
+    my ( $sample_info, $FH, ) =  @_;
     my $endpoint = $urls{$gnos_url};
 
     print $FH "Study\tProject Code\tDonor ID\tSpecimen/Sample ID\tSample/Aliquot ID\tAnalyzed Sample/Aliquot GUUID\tGNOS endpoint\tType\n";
     foreach my $project (sort keys %{$sample_info}) {
         my $study = $study_names{$project};
         $study = "NO STUDY FOUND" unless $study;     
-        foreach my $donor ( keys %{$sample_info->{$project}} ) {
-            foreach my $specimen ( keys %{$sample_info->{$project}{$donor}{specimens}} ) {
-                foreach my $sample ( keys %{$sample_info->{$project}{$donor}{specimens}->{$specimen}} ) {
+        foreach my $donor ( sort keys %{$sample_info->{$project}} ) {
+            foreach my $specimen ( sort keys %{$sample_info->{$project}{$donor}{specimens}} ) {
+                foreach my $sample ( sort keys %{$sample_info->{$project}{$donor}{specimens}->{$specimen}} ) {
                     my $aliquot = $sample_info->{$project}{$donor}{specimens}->{$specimen}{$sample}->{aliquot_id};
                     my $sample_uuid = $sample_info->{$project}{$donor}{specimens}->{$specimen}{$sample}->{sample_uuid};
                     my $type = $sample_info->{$project}{$donor}{specimens}->{$specimen}{$sample}->{type};
@@ -324,9 +314,7 @@ sub read_sample_info {
             # create an XML::DOM object:
             $adoc = $parser->parsefile ("xml/${id}_${gnos_url}.xml");
             # create ANOTHER XML::DOM object, using a different Perl library
-            # $adoc2 = XML::LibXML->new->parse_file("xml/${id}_${gnos_url}.xml");
             $adoc2 = $parser2->parse_file("xml/${id}_${gnos_url}.xml");
-            #print STDERR "Created two new DOM objects for $id\n";
 	}
         else {
             print STDERR "Could not find this xml file: ${id}_${gnos_url}.xml\n    SKIPPING\n\n";
@@ -337,6 +325,7 @@ sub read_sample_info {
       # for Data Freeze Train 2.0 we are only interested in unaligned bams
       # so we are not tabulating anything else in this gnos repo
       my $alignment = getVal($adoc, "refassem_short_name");
+      $adoc->dispose unless ( $alignment eq 'unaligned' );
       next unless ( $alignment eq 'unaligned' );
       my $project = getCustomVal($adoc2, 'dcc_project_code');
       next unless checkvar( $project, 'project', $id, );
@@ -390,17 +379,20 @@ sub read_sample_info {
             if ( $dcc_specimen_type =~ m/Normal/ ) {
                 log_error( "MISMATCH dcc_specimen type in $id.xml OVERRIDING from Tumour to Normal" );            
                 $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{type} = 'Normal';
+                $norm_aliquot_ids{$aliquot_id}++;
             }            
-            # keep track of the correct use_cntl for this Tumour Sample by storing
-            # this information in the %use_cntls hash, where the hash key is the 
-            # aliquot_id for this sample, and the hash value is the use_cntl for
-            # this sample, extracted from the XML files
-            $use_cntls{$aliquot_id} = $use_control;
-            # add the aliquot_id to a list of the all the Tumour Aliquot IDs
-            $tum_aliquot_ids{$aliquot_id}++;
-            # add the aliquot_id specified as the Normal control to a list of all
-            # the Normal aliquot IDs that get extracted from all the XML files
-            $norm_use_cntls{$use_control}++;
+            else {
+                # keep track of the correct use_cntl for this Tumour Sample by storing
+                # this information in the %use_cntls hash, where the hash key is the 
+                # aliquot_id for this sample, and the hash value is the use_cntl for
+                # this sample, extracted from the XML files
+                $use_cntls{$aliquot_id} = $use_control;
+                # add the aliquot_id to a list of the all the Tumour Aliquot IDs
+                $tum_aliquot_ids{$aliquot_id}++;
+                # add the aliquot_id specified as the Normal control to a list of all
+                # the Normal aliquot IDs that get extracted from all the XML files
+                $norm_use_cntls{$use_control}++;
+	    }
         }
         else {
             # otherwise, this is not a Tumour, so we give it a 'type'
@@ -410,13 +402,19 @@ sub read_sample_info {
             if ( $dcc_specimen_type =~ m/tumour/ ) {
                 log_error( "MISMATCH dcc_specimen type in $id.xml OVERRIDING from Normal to Tumour" );            
                 $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{type} = 'Tumour';
+                $tum_aliquot_ids{$aliquot_id}++;
+                $use_cntls{$aliquot_id} = $use_control;
+                $norm_use_cntls{$use_control}++;
             }            
-            # Add this aliquot ID to this list of all the 'Normal' 
-            # aliquot ids encountered in this XML
-            $norm_aliquot_ids{$aliquot_id}++;
+            else {
+                # Add this aliquot ID to this list of all the 'Normal' 
+                # aliquot ids encountered in this XML
+                $norm_aliquot_ids{$aliquot_id}++;
+	    }
         }
         print STDERR "Finished parsing xml and building data structure for $id\n";
-        $doc->dispose;
+        # $doc->dispose;
+        $adoc->dispose;
     } # close foreach loop
     return($d);
 } # close sub
@@ -540,98 +538,5 @@ sub checkvar {
 
 __END__
 
-Here is the dumped data structure with my new modification
 
-$sample_info->{'CLLE-ES'}{'030'}{'types'}{'Tumour'}
-
-$sample_info = \{
-    'CLLE-ES' => { PROJECT
-      '030' => { DONOR
-
-        types => {
-          Tumour => [
-            '030-0066-01TD'
-          ],
-          Normal => [
-            '030-0067-01ND'
-          ]
-        },
-
-        specimens => {
-
-          '030-0067-01ND' => { SPECIMEN
-            '030-0067-01ND' => { SAMPLE
-              use_control => 'N/A',
-              sample_uuid => '9d326842-318e-4594-a225-b3e5d6d99385',
-              analysis_url => 'https://gtrepo-bsc.annailabs.com/cghub/data/analysis/download/fc7b03bc-e110-11e3-8e67-07a5fb958afb',
-              type => 'Normal',
-              analysis_id => 'fc7b03bc-e110-11e3-8e67-07a5fb958afb',
-              aliquot_id => '9d326842-318e-4594-a225-b3e5d6d99385'
-            }
-          },
-
-          '030-0066-01TD' => { SPECIMEN
-            '030-0066-01TD' => { SAMPLE
-              use_control => '9d326842-318e-4594-a225-b3e5d6d99385',
-              sample_uuid => '3f72f750-5666-44e7-acaf-a912d89475be',
-              analysis_url => 'https://gtrepo-bsc.annailabs.com/cghub/data/analysis/download/fe6e9044-e110-11e3-8d55-0aa5fb958afb',
-              type => 'Tumour',
-              analysis_id => 'fe6e9044-e110-11e3-8d55-0aa5fb958afb',
-              aliquot_id => '3f72f750-5666-44e7-acaf-a912d89475be'
-            }
-          }
-        }
-      },
-
-Dang, wouldn't you know it, this is a singleton, the very first one
-
-Now processing XML files for CLLE-ES
-
-$sample_info = \{
-    types => {
-      Normal => [
-        '002-01-1ND'
-      ]
-    },
-    specimens => {
-      '002-01-1ND' => {
-        '002-01-1ND' => {
-          use_control => 'N/A',
-          sample_uuid => '5c182461-639b-4cda-b064-ec58df4b93eb',
-          analysis_url => 'https://gtrepo-bsc.annailabs.com/cghub/data/analysis/download/33e8779c-f216-11e3-8569-f7a7fb958afb',
-          type => 'Normal',
-          analysis_id => '33e8779c-f216-11e3-8569-f7a7fb958afb',
-          aliquot_id => '5c182461-639b-4cda-b064-ec58df4b93eb'
-        }
-      }
-    }
-  };
-
-Running time:  0.82 minutes
-514|mperry@cn4-74|bsc >
-
-# This was the original version of this subroutine, but I changed it a bit
-sub getCustomVal {
-  my ($dom2, $keys) = @_;
-  my @keys_arr = split /,/, $keys;
-  for my $node ($dom2->findnodes('//ANALYSIS_ATTRIBUTES/ANALYSIS_ATTRIBUTE')) {
-    my $i=0;
-    for my $currKey ($node->findnodes('//TAG/text()')) {
-      $i++;
-      my $keyStr = $currKey->toString();
-      foreach my $key (@keys_arr) {
-        if ($keyStr eq $key) {
-          my $j=0;
-          for my $currVal ($node->findnodes('//VALUE/text()')) {
-            $j++;   
-            if ($j==$i) { 
-              return($currVal->toString());
-            }
-          } 
-        }
-      }
-    }
-  }
-  return("");
-} # close sub
 

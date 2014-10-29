@@ -1,85 +1,129 @@
 #!/usr/bin/perl
 #
-# File: gnos_report_generator.pl
+# File: pcap_data_freeze_download_report_generator.pl
 # 
-# DESCRIPTION
-# A tool for reporting on the total number of aligned and unaligned
-# bam files in a GNOS repository
+# based on, and forked from my previous script named: pcap_data_freeze_1.0_report_generator.pl
 #
-# This script is designed to take the data.xml file
-# returned by cgquery, and use it to either download, and 
-# then parse, all of the GNOS xml files listed in the data.xml file
-# OR, if you have already downloaded the xmls, then the script
-# Will parse them.
+# CONCEPT: For the first ICGC PanCancer Data freeze (which we ended up calling Data Freeze 
+# Train 1.0) the key goal was to upload and align as many things as possible. Note that this
+# was different for the first stage of Data Freeze Train 2.0 where the goal was upload as
+# many unaligned bam files by a certain time.  To create accurate counts and tables of the 
+# content from all of the GNOS repositories, I created a new, different, script named 
+# pcap_data_freeze_2.0_NEW_report_generator.pl.  Its goal was NOT to generate a list of 
+# downloadable bam files, but instead was to count who was ready to go (and paired, and stuff).
 #
-# [UPDATE] 2014-08-28 I am extending the capability of this script 
-# so that I can run just one script and get information on qc_metrics for 
-# aligned samples as well as the md5 checksum and the bam file size
-# this is going to involve incorporating some code from Joseph Lugo
-# who just completed his co-op workterm here.
+# Fast forward to today, now that over half of the alignments are done folks want to know
+# how to get their hands on everything for downloading.  Therefore I am going update this
+# script to that it meets the current code in my other scripts (error-checking and such).
 #
-# Last Modified: 2014-10-17, Status: works as advertised
+# Last Modified: 2014-10-22, Status: in development
 
 use strict;
-# use warnings;
 use XML::DOM;
 use Data::Dumper;
+use JSON qw( decode_json );
 use Getopt::Long;
 use XML::LibXML;
-use JSON qw( decode_json );
 use Cwd;
+use Carp;
+
+# globally overriding calls to die, and sending them to Carp
+
+# as shown by brian d foy on page 50 in Mastering Perl
+
+$SIG{__DIE__} = sub { &Carp::confess };
 
 ####################
 # GLOBAL VARIABLES #
 ###################
+
 my $error_log = 0;
 my $skip_down = 0;
 my $gnos_url = q{};
-my $specific_sample;
 my $xml_file = undef;
 my $uri_list = undef;
 
-my @repos = qw( bsc cghub dkfz ebi etri osdc osdc_icgc osdc_tcga riken );
+my @repos = qw( bsc cghub dkfz ebi etri osdc_icgc osdc_tcga riken );
 
-my %urls = ( bsc   => "https://gtrepo-bsc.annailabs.com",
-             cghub => "https://cghub.annalabs.com",
-             dkfz  => "https://gtrepo-dkfz.annailabs.com",
-             ebi   => "https://gtrepo-ebi.annailabs.com",
-             etri  => "https://gtrepo-etri.annailabs.com",
-             osdc  => "https://gtrepo-osdc.annailabs.com",
+my %urls = ( bsc        => "https://gtrepo-bsc.annailabs.com",
+             cghub      => "https://cghub.ucsc.edu",
+             dkfz       => "https://gtrepo-dkfz.annailabs.com",
+             ebi        => "https://gtrepo-ebi.annailabs.com",
+             etri       => "https://gtrepo-etri.annailabs.com",
              osdc_icgc  => "https://gtrepo-osdc-icgc.annailabs.com",
              osdc_tcga  => "https://gtrepo-osdc-tcga.annailabs.com",
-             riken => "https://gtrepo-riken.annailabs.com",
+             riken      => "https://gtrepo-riken.annailabs.com",
 );
 
+# a hash only used to store the analysis_ids of
+# alignments
 my %analysis_ids = ();
-my %aliquot_ids = ();
-my %norm_aliquot_ids = ();
-my %tum_aliquot_ids = ();
-my %aligned_aliquot_ids = (); # a hash to hold the aliquot_ids of uniformly aligned bam files
-my %norm_use_cntls = ();
-my %use_cntls = ();
-my %unaligned_bams_seen = ();
-my %aligned_bams_seen = ();
-my %multiple_aligned_bams = ();
 my %sample_uuids = ();
+my %aliquot_ids = ();
+my %list_of_t_aliq_ids = ();
+my %list_of_n_aliq_ids = ();
+my %aligned_aliquot_ids = (); # a hash to hold the aliquot_ids of uniformly aligned bam files
+my %n_aliq_ids_from_use_cntls = ();
+my %use_cntls_of = ();
+my %multiple_aligned_bams = ();
+my %aligned_bams = ();
+my %bams_seen = ();
 my %problems = ();
-my %qc_metrics = ();
 my %qc_p = ();
+my %qc_metrics = ();
 my $single_specimens = {};
 my $two_specimens = {};
 my $many_specimens = {};
+my $counter = 0;
 
-GetOptions("gnos-url=s" => \$gnos_url, "xml-file=s" => \$xml_file, "sample=s" => \$specific_sample, "skip-meta-download" => \$skip_down, "uri-list=s" => \$uri_list, );
+my %study_names = ( 'BLCA-US' => "Bladder Urothelial Cancer - TGCA, US",
+                    'BOCA-UK' => "Bone Cancer - Osteosarcoma / chondrosarcoma / rare subtypes",
+                    'BRCA-EU' => "Breast Cancer - ER+ve, HER2-ve",
+                    'BRCA-US' => "Breast Cancer - TCGA, US",
+                    'BRCA-UK' => "Breast Cancer - Triple Negative/lobular/other",
+                    'BTCA-SG' => "Biliary tract cancer - Gall bladder cancer / Cholangiocarcinoma",
+                    'CESC-US' => "Cervical Squamous Cell Carcinoma - TCGA, US",
+                    'CLLE-ES' => "Chronic Lymphocytic Leukemia - CLL with mutated and unmutated IgVH",
+                    'CMDI-UK' => "Chronic Myeloid Disorders - Myelodysplastic Syndromes, Myeloproliferative Neoplasms \& Other Chronic Myeloid Malignancies",
+                    'COAD-US' => "Colon Adenocarcinoma - TCGA, US",
+                    'DLBC-US' => "Lymphoid Neoplasm Diffuse Large B-cell Lymphoma - TCGA, US",
+                    'EOPC-DE' => "Prostate Cancer - Early Onset",
+                    'ESAD-UK' => "Esophageal adenocarcinoma",
+                    'GACA-CN' => "Gastric Cancer - Intestinal- and diffuse-type",
+                    'GBM-US'  => "Brain Glioblastoma Multiforme - TCGA, US",
+                    'HNSC-US' => "Head and Neck Squamous Cell Carcinoma - TCGA, US",
+                    'KICH-US' => "Kidney Chromophobe - TCGA, US",
+                    'KIRC-US' => "Kidney Renal Clear Cell Carcinoma - TCGA, US",
+                    'KIRP-US' => "Kidney Renal Papillary Cell Carcinoma - TCGA, US",
+                    'LAML-KR' => "Blood cancer - Acute myeloid leukaemia", 
+                    'LAML-US' => "Acute Myeloid Leukemia - TCGA, US",
+                    'LGG-US'  => "Brain Lower Grade Gliona - TCGA, US",
+                    'LICA-FR' => "Liver Cancer - Hepatocellular carcinoma",
+                    'LIHC-US' => "Liver Hepatocellular carcinoma - TCGA, US",
+                    'LIRI-JP' => "Liver Cancer - Hepatocellular carcinoma (Virus associated)",
+                    'LUAD-US' => "Lung Adenocarcinoma - TCGA, US",
+                    'LUSC-US' => "Lung Squamous Cell Carcinoma - TCGA, US",
+                    'MALY-DE' => "Malignant Lymphoma",
+                    'OV-AU'   => "Ovarian Cancer - Serous cystadenocarcinoma",
+                    'OV-US'   => "Ovarian Serous Cystadenocarcinoma - TCGA, US",
+                    'ORCA-IN' => "Oral Cancer - Gingivobuccal",
+                    'PACA-AU' => "Pancreatic Cancer - Ductal adenocarcinoma",
+                    'PACA-CA' => "Pancreatic Cancer - Ductal adenocarcinoma - CA",
+                    'PAEN-AU' => "Pancreatic Cancer - Endocrine neoplasms",
+                    'PBCA-DE' => "Pediatric Brain Tumors",
+                    'PRAD-UK' => "Prostate Cancer - Adenocarcinoma",
+                    'PRAD-US' => "Prostate Adenocarcinoma - TCGA, US",
+                    'READ-US' => "Rectum Adenocarcinoma - TCGA, US",
+                    'SARC-US' => "Sarcoma - TCGA, US",
+                    'SKCM-US' => "Skin Cutaneous melanoma - TCGA, US",
+                    'STAD-US' => "Gastric Adenocarcinoma - TCGA, US",
+                    'THCA-US' => "Head and Neck Thyroid Carcinoma - TCGA, US",
+                    'UCEC-US' => "Uterine Corpus Endometrial Carcinoma- TCGA, US",
+);
 
-# In the data_live XML file downloaded by cgquery one such XML element looks like this:
-# <analysis_full_uri>https://gtrepo-ebi.annailabs.com/cghub/metadata/analysisFull/c74231a4-f0b3-11e3-bddc-c84f2e14b9ce</analysis_full_uri>
-# And you can modify that to looke like this:
-# https://gtrepo-ebi.annailabs.com/cghub/metadata/analysisFull/c74231a4-f0b3-11e3-bddc-c84f2e14b9ce
-# or you can paste this string in front of a list of analysis_ids:
-# https://gtrepo-ebi.annailabs.com/cghub/metadata/analysisFull/ (make sure you change the repo name to match the one you are using)
+GetOptions("gnos-url=s" => \$gnos_url, "xml-file=s" => \$xml_file, "skip-meta-download" => \$skip_down, "uri-list=s" => \$uri_list, );
 
-my $usage = "USAGE: There are two ways to runs this script:\nEither provide the name of an XML file on the command line:\n$0 --xml-file <data.xml> --gnos-url <abbrev>\nOR provide the name of a file that contains a list of GNOS repository analysis_full_uri links:\n$0 --uri-list <list.txt> --gnos-url <abbrev>.\n\nThe script will also generate this message if you provide both an XML file AND a list of URIs\n";
+my $usage = "USAGE: There are two ways to runs this script:\nEither provide the name of an XML file on the command line:\n$0 --xml-file <data.xml> --gnos-url <repo>\n OR provide the name of a file that contains a list of GNOS repository analysis_full_uri links:\n$0 --uri-list <list.txt> --gnos-url <repo>.\n\nThe script will also generate this message if you provide both an XML file AND a list of URIs\n";
 
 die $usage unless $xml_file or $uri_list;
 die $usage if $xml_file and $uri_list;
@@ -88,13 +132,14 @@ die $usage unless $gnos_url;
 ##############
 # MAIN STEPS #
 ##############
-print STDERR scalar localtime, "\n";
 
+print STDERR scalar localtime, "\n\n";
 my @now = localtime();
-my $timestamp = sprintf( "%04d_%02d_%02d_%02d%02d", $now[5]+1900, $now[4]+1, $now[3], $now[2], $now[1], );
+# rearrange the following to suit your stamping needs.
+# it currently generates YYYYMMDDhhmmss
+my $timestamp = sprintf("%04d_%02d_%02d_%02d%02d", $now[5]+1900, $now[4]+1, $now[3], $now[2], $now[1],);
 
-# STEP 1. READ INFO FROM GNOS
-# This subroutine call returns a hashref
+# READ INFO FROM GNOS
 my $sample_info = read_sample_info();
 
 # STEP 2. MAP SAMPLES
@@ -111,19 +156,9 @@ map_samples();
 # %qc_metrics hash:
 process_qc() if %qc_metrics;
 
-# now review to see if any aligned bam files were listed
-# in the metadata for more than one single donor
-foreach my $bam ( sort keys %aligned_bams_seen ) {
-    if ( $aligned_bams_seen{$bam} > 1 ) {
+foreach my $bam ( sort keys %bams_seen ) {
+    if ( $bams_seen{$bam} > 1 ) {
         log_error( "Found multiple donors using this aligned bam: $bam" ); 
-    }
-} # close foreach loop
-
-# now review to see if any unaligned bam files were listed
-# in the metadata for more than one single donorp
-foreach my $bam ( sort keys %unaligned_bams_seen ) {
-    if ( $unaligned_bams_seen{$bam} > 1 ) {
-        log_error( "Found multiple donors using this unaligned bam: $bam" ); 
     }
 } # close foreach loop
 
@@ -146,8 +181,12 @@ foreach my $id ( sort keys %aligned_aliquot_ids ) {
 } # close foreach loop
 
 # if any errors were detected during the run, notify the user
-print STDERR "WARNING: Logged $error_log errors in ${gnos_url}_error_log_gnos_report.txt stamped with $timestamp\n" if $error_log;
-
+if ( $error_log ) {
+    print STDERR "WARNING: Logged $error_log errors in ${gnos_url}_data_freeze_download_report_generator_error_log.txt stamped with $timestamp\n";
+}
+else {
+    print STDERR "NO ERRORS FOUND: Apparently no errors were detected while processing pcap_data_freeze_download_report_generator.pl for $gnos_url\n";
+}
 
 END {
     no integer;
@@ -158,23 +197,16 @@ END {
 # SUBROUTINES #
 ###############
 
-# This subroutine operates on the 
-# global variable $sample_info, which is a 
-# huge hashref data structure generated by the
-# read_sample_info subroutine
 sub map_samples {
-    #    my $rec_no = 0;
     foreach my $project (sort keys %{$sample_info}) {
-        print STDERR "Now processing XML files for $project\n" if $project;
-        # Iteratively parse the data structure built from all of the XML files, 
-        # and sort them out into one of three categories
-        # --and three new data structures
+        if ( $project ) {
+            print STDERR "Now processing XML files for $project\n";
+        }
+        # Parse the data structure built from all of the XML files, and parse them out
+        # into three categories--and three new data structures
         foreach my $donor ( keys %{$sample_info->{$project}} ) {
             # at a minimum, each donor should have two specimens (or types)
             # a Normal specimen, or type, and a Tumour specimen, or type
-            # Each specimen will initially be unaligned, but after running 
-            # the SeqWare uniform alignment workflow then each specimen will
-            # will ALSO have an alignment
             # Based on the snapshot of live analysis objects in this
             # GNOS repo, on this day, calculate which donors have matched
             # pairs of Tumour/Normal specimens
@@ -237,155 +269,95 @@ sub map_samples {
     } # close foreach project
 
     # At this point all of the data parsed from the xml files should be allocated into
-    # one of these three hash references (unless the specimen field was blank)
+    # one of these three hash references (unless the specimen field was blank
     # Test each hash reference to see if it contains any data, if it does
     # then use the process_specimens subroutine to extract that data into a table
     # and print out each table into individual files:
     if ( keys %{$single_specimens} ) {
-        open my $FH1, '>', "${gnos_url}_gnos_report_for_unpaired_specimens_" . $timestamp . '.tsv' or die;
+        open my $FH1, '>', "${gnos_url}_pcap_download_report_for_unpaired_specimen_alignments_" . $timestamp . '.tsv' or die;
         process_specimens( $single_specimens, $FH1, );
         close $FH1;
     }
 
     if ( keys %{$two_specimens} ) {
-        open my $FH2, '>', "${gnos_url}_gnos_report_for_paired_specimens_" . $timestamp . '.tsv' or die;
+        open my $FH2, '>', "${gnos_url}_pcap_download_report_for_paired_alignments_" . $timestamp . '.tsv' or die;
         process_specimens( $two_specimens, $FH2, );
         close $FH2;
     }
 
     if ( keys %{$many_specimens} ) {
-        open my $FH3, '>', "${gnos_url}_gnos_report_for_many_specimens_" . $timestamp . '.tsv' or die;
+        open my $FH3, '>', "${gnos_url}_pcap_download_report_for_many_specimen_alignments_" . $timestamp . '.tsv' or die;
         process_specimens( $many_specimens, $FH3, );
         close $FH3;
     }
 } # close sub
 
-# I can imagine 4 types of submissions: Tumour unaligned, Tumour aligned, Normal unaligned, Normal aligned
-# Data structure for 1 donor could have 1 or 2 specimens, but I have sorted that out above (in theory)
-# So if there is only a single specimen, that could be Normal OR Tumour but it could have both an aligned
-# and an unaligned, so that is two rows in the output table--it could have two rows, but it may not.
-
 sub process_specimens {
-    my ( $sample_info, $FH, ) = @_;
+    my $sample_info = shift @_;
+    my $FH = shift @_;
+    my $endpoint = $urls{$gnos_url};
 
-    print $FH "Project\tDonor ID\tSpecimen ID\tSample ID\tNormal/Tumour\tAlignment\tDate\taliquot_id\tNumber of bams\taligned bam file\tfilesize\tMD5 checksum\tpair uploaded\n";
+    print $FH "Study\tProject Code\tDonor ID\tSpecimen/Sample ID\tSample/Aliquot ID\tNormal/Tumour designation\tAnalyzed Sample/Aliquot GUUID\tGNOS endpoint\tAnalysis ID\tbam file\tpair aligned\n";
     foreach my $project (sort keys %{$sample_info}) {
+        my $study = $study_names{$project};
+        $study = "NO STUDY FOUND" unless $study;     
         foreach my $donor ( keys %{$sample_info->{$project}} ) {
-            my %types = ();
-            my @specimens = keys %{$sample_info->{$project}{$donor}};
-            my $specimen_count = scalar( @specimens );
-            foreach my $specimen ( @specimens ) {
-                my $d = {};
-                #      my $aligns = {};
+            foreach my $specimen (keys %{$sample_info->{$project}{$donor}}) {
                 foreach my $sample ( keys %{$sample_info->{$project}{$donor}{$specimen}} ) {
                     foreach my $alignment ( keys %{$sample_info->{$project}{$donor}{$specimen}{$sample}} ) {
                         my $type = $sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{type};
-                        $types{$type}++;
                         my $aliquot_id = $sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{aliquot_id};
-                        my $analysis_id = $sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{analysis_id};
-                        foreach my $bam (keys %{$sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{files}}) {
-                            $sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{bams_count}++;
-                        } # close foreach my $bam loop
-
-                        my $bamsize = 0;
-                        my $md5 = 0;
-                        my $aligned_bam = q{};
-                        my $num_bam_files = $sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{bams_count};
-                        # Test and see if there is only a single aligned bam file
-           	        if ( $num_bam_files == 1 and $alignment ne 'unaligned' ) {
-                            # To pass this test there is only one single aligned bam file for this specimen
-                            ($aligned_bam) = keys %{$sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{files}};
-                            $bamsize = $sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{files}{$aligned_bam}{size};
-                            $md5 = $sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{files}{$aligned_bam}{checksum};
-                            # add the name of this aligned bam file to a storage/counting hash
-                            $aligned_bams_seen{$aligned_bam}++;
-  		        }
-    			elsif ( $num_bam_files > 1 and $alignment ne 'unaligned' ) {
-                            # Only enters here if there are more than 1 aligned bam file
-                            # this is Undoubtedly an error situation that we want to catch.  It could mean that
-                            # SeqWare or a Cloud shepherd uploaded this bam twice, OR that the uniform alignment was launched twice
-                            foreach (sort keys %{$sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{files}} ) {
-                                # add the name of each aligned bam file
-                                $aligned_bams_seen{$_}++;
-                                # if this is not the first time through this list of bam files then just concatenate 
-                                # the bam file names into a long string
-                                if ( $aligned_bam ) {
-                                    $aligned_bam .= "\t$_";
-                          	}
-                                else {
-                                    # If this is the very bam file in that list then this
-                                    # is the first name that will get printed
-                                    $aligned_bam = $_;
-                                }                                    
-                            } # close inner foreach loop     
-                            log_error( "Found $num_bam_files aligned bam files for analysis_id: $analysis_id\tdonor: $donor\tspecimen: $specimen\tsample: $sample" );
-                        }
-                        else {
-                            # this bam file is not aligned
-                            foreach (sort keys %{$sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{files}} ) {
-                                $unaligned_bams_seen{$_}++;
-                            }     
-                            $aligned_bam = 'NONE';
-                            $bamsize = 'NONE';
-                            $md5 = 'NONE';
- 		        }
-
-                            my @dates = ();
-  	                    if ( defined ($sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{date}) ) {
-                                @dates = sort {$b <=> $a} @{$sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{date}};
-    	                    }
-                            else {
-                                @dates = ( '0000-00-00', );
+                            foreach my $bam (keys %{$sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{files}}) {
+                                # next if $bam =~ m/bai/;
+                                $sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{bams_count}++;
                             }
-                            my $date = $dates[0];
-                            # This is the header that this script originally used
-                            # print $FH "$project\t$donor\t$specimen\t$sample\t$alignment\t$date\t$num_bam_files\t$aligned_bam\t$aliquot_id";
-                            # print the first 10 columns
-                            # print $FH "$project\t$donor\t$specimen\t$sample\t$type\t$alignment\t$date\t$analysis_id\t$num_bam_files\t$aligned_bam";
-                    
-                            print $FH "$project\t$donor\t$specimen\t$sample\t$type\t$alignment\t$date\t$aliquot_id\t$num_bam_files\t$aligned_bam\t$bamsize\t$md5";
-                            # see if the use_cntl field is filled in in a helpful way
-                            # we would only expect this field to be filled in only for the 'Tumour' samles
+                        my $analysis_id = $sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{analysis_id};
+                            my $aligned_bam = q{};
+                            my $num_bam_files = $sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{bams_count};
+                            # Test and see if there is only a single bam file
+              	            if ( $num_bam_files == 1 ) {
+                                ($aligned_bam) = keys %{$sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{files}};
+                                $bams_seen{$aligned_bam}++;
+			    }
+    			    elsif ( $num_bam_files > 1 ) {
+                                ($aligned_bam) = sort keys %{$sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{files}};     
+                                my $bam;
+                                foreach (sort keys %{$sample_info->{$project}{$donor}{$specimen}{$sample}{$alignment}{files}} ) {
+                                    $bam .= "$_ ";
+                                }     
+                                log_error( "Found $num_bam_files bam files for $donor $specimen $sample $bam" );
+                                $bams_seen{$aligned_bam}++;
+                            }
+                            else {
+                                log_error( "Could not find any aligned bam files for donor: $donor" );
+                                $aligned_bam = 'NONE';
+			    }
+
+                            # print the first 9 columns
+                            print $FH "$study\t$project\t$donor\t$specimen\t$sample\t$type\t$aliquot_id\t$endpoint\t$analysis_id\t$aligned_bam";
+                            # test to see if what type of sample was aligned (either a 'Tumour' or a 'Normal')
 			    if ( $type eq 'Tumour' ) {
-                                # this specimen and sample is a 'Tumour', see if there is an entry in the use_cntls hash:
-                                if ( defined ( $use_cntls{$aliquot_id}) ) {
-                                    # Now, check to see if any of the 'Normal' bams that match this Tumour 
-                                    # have been uploaded and processed in this batch of XML files
-                                    if ( $norm_aliquot_ids{$use_cntls{$aliquot_id}} ) {
-                                        # YES, we found a corresponding normal ID
-                                        print $FH "\tYES\n";
-                                    }
-                                    elsif ( scalar( keys %{$sample_info->{$project}{$donor}} ) == 2 ) {
-                                        # It looks like there will be lots of examples where the whole
-                                        # use_cntl is mucked up, but we will still clearly have 2 specimens
-                                        # for the same donor, so they are still paired
+                                # it is a 'Tumour', so lets see if there is an entry in the use_cntls hash
+                                if ( defined ( $use_cntls_of{$aliquot_id}) ) {
+                                    # Now, check to see if the 'Normal' that matches this Tumour has been processed in this batch
+                                    if ( $list_of_n_aliq_ids{$use_cntls_of{$aliquot_id}} ) {
+                                        # YES, we found a normal ID corresponding, and it has been aligned
                                         print $FH "\tYES\n";
                                     }
                                     else {
-                                        # nope, the matching Normal to our Tumour sample has not been
-                                        # uploaded yet (presumably these would be weeded out of the 2 specimens
-                                        # group by the parsing above)
+                                        # nope, the matching Normal to our Tumour sample has not been aligned yet
                                         print $FH "\tNO\n";
 				    }
                                 }
                                 else {
-                                    # then this aliquot_id was never entered into the 
-                                    # use_cnts hash
                                     print $FH "\tNOT FOUND\n";
 			        }
                             }        
                             else {
                                 # if it failed that test up there, then it must be a 'Normal'
-                                # so lets check to see if it was encountered, and identified as a 'use_cntl'
-                                # when we were parsing all those Tumour specimens
-                                if ( defined ( $norm_use_cntls{$aliquot_id} ) ) {
-                                    print $FH "\tYES\n";
-			        }
-                                elsif ( scalar( keys %{$sample_info->{$project}{$donor}} ) == 2 ) {
-                                    # Similar to above for the Tumour samples
-                                    # it looks like there will be lots of examples where the whole
-                                    # use_cntl is mucked up, but we will still clearly have 2 specimens
-                                    # for the same donor, so they are still paired
+                                # so lets check to see if it was encountered, identified as a 'use_cntl'
+                                # when we were parsing all those Tumour alignments
+                                if ( defined ( $n_aliq_ids_from_use_cntls{$aliquot_id} ) ) {
                                     print $FH "\tYES\n";
 			        }
                                 else {
@@ -397,7 +369,6 @@ sub process_specimens {
 	    } # close foreach my specimen
 	} # close foreach my donor
     } # close foreach my project
-    # print Data::Dumper->new([\$sample_info],[qw(sample_info)])->Indent(1)->Quotekeys(0)->Dump, "\n";
 } # close sub
 
 sub read_sample_info {
@@ -410,12 +381,12 @@ sub read_sample_info {
     my $parser = new XML::DOM::Parser;
     my $parser2 = XML::LibXML->new;
     if ( $xml_file ) {
-        # read in the xml file returned by the cgquery command
         $doc = $parser->parsefile("$xml_file");
         my $nodes = $doc->getElementsByTagName ("Result");
         my $n = $nodes->getLength;
 
-        # extract the URIs from the data.xml file
+        # iterate over the Result XML files that were downloaded into the 
+        # xml/ directory  
         for ( my $i = 0; $i < $n; $i++ ) {
             my $node = $nodes->item ($i);
             my $aurl = getVal($node, "analysis_full_uri"); 
@@ -423,9 +394,8 @@ sub read_sample_info {
                 $aurl = $1."/".lc($2);
             } 
             push @uris, $aurl;
-        }
+        }   
         $doc->dispose;
-        print STDERR "Finished. analysis_full_uris extracted\n";
     }
     elsif ( $uri_list ) {
         open my $URIS, '<', $uri_list or die "Could not open $uri_list for reading!";
@@ -435,6 +405,7 @@ sub read_sample_info {
     }
     print STDERR "Entering foreach my \$uri loop\n";
     foreach my $uri ( @uris ) {
+        $counter++;
         my ( $id ) = $uri =~ m/analysisFull\/([\w-]+)$/;
         print STDERR ">> Processing $id, checking for files\n";
         # select the skip download option and the script will just use 
@@ -463,16 +434,23 @@ sub read_sample_info {
         
             # create an XML::DOM object:
             $adoc = $parser->parsefile ("xml/${id}_${gnos_url}.xml");
-            # create ANOTHER XML::DOM object, using a different Perl library
-            # I was always creating an additional new object
-            # in the previous code, so now I am trying to do it
-            # the same as the other parser, and keep reusing it 
-            # on each iteration
             $adoc2 = $parser2->parse_file("xml/${id}_${gnos_url}.xml");
 	}
         else {
             print STDERR "Could not find this xml file: ${id}_${gnos_url}.xml    SKIPPING\n\n";
             log_error( "SKIPPING Could not find xml file: ${id}_${gnos_url}.xml" );
+            next;
+	}
+
+        # 2014-10-15 N.B. This script ignores any files that do not contain
+        # aligned bams, and so we would expect a single analysis_id that
+        # would uniquely identify this one XML file that is currently being
+        # parsed:
+
+        my $alignment = getVal($adoc, "refassem_short_name");
+        next unless checkvar( $alignment, 'refassem_short_name', $id, );       
+        if ( $alignment eq 'unaligned' ) {
+            $adoc->dispose;
             next;
 	}
         my $project = getCustomVal($adoc2, 'dcc_project_code');
@@ -494,82 +472,64 @@ sub read_sample_info {
         $use_control = lc($use_control) unless $use_control =~ m/N\/A/;
         my $dcc_specimen_type = getCustomVal($adoc2, 'dcc_specimen_type');
         next unless checkvar( $dcc_specimen_type, 'dcc_specimen_type', $id, );
-        my $alignment = getVal($adoc, "refassem_short_name");
+        my $study = getVal($adoc, 'study');
+        # Test if this XML file is for a TCGA dataset
+        if ( $study eq 'PAWG' ) {
+            # TCGA datasets use the analysis_id instead of the aliquot_id
+            # to identify the correct paired Normal dataset
+            $aliquot_id = $analysis_id;
+        }
+
         my $description = getVal($adoc, 'DESCRIPTION');
         next unless checkvar( $description, 'DESCRIPTION', $id, );       
         my $qc_json = 0;
         my $dupl_json = 0;
-        my $aln_status = 0;
-        if ( $alignment ne 'unaligned' ) {
-            $aln_status = 1;
-        }
-        if ( $aln_status) {
-            # don't bother tabulating alignments containing unmapped reads
-            next if $description =~ m/unmapped reads extracted/;
-            # only tabulate alignments for Data Freeeze 2.0
-            next unless $description =~ m/Workflow version 2\.6\.\d/;
-            # if the current XML metadata file is for a uniformly aligned
-            # aligned bam file then: keep track of its aliquot_id in this
-            # hash named %aligned_aliquot_ids.  At the same time, create an arrayref
-            # for this hash key that is a list of the analysis_ids for this aliquot_id
-            # you may recall that the analysis_id is typically the filename for the XML 
-            # file, and we would not expect that there would be more than a single
-            # analysis_id mapping to a uniformly aligned bam file aliquot_id
-            # however this can, and has happened, so we want to know if 
-            # this is such an instance
-            push @{$aligned_aliquot_ids{$aliquot_id}}, $analysis_id;
-            $qc_json = getCustomVal($adoc2, "qc_metrics");
-            $dupl_json = getCustomVal($adoc2, "markduplicates_metrics");
-	}
 
-#        my $total_lanes = getCustomVal($adoc2, "total_lanes");
+        # don't bother tabulating alignments containing unmapped reads
+        next if $description =~ m/unmapped reads extracted/;
+        # only tabulate alignments for Data Freeeze 2.0
+        next unless $description =~ m/Workflow version 2\.6\.\d/;
+        push @{$aligned_aliquot_ids{$aliquot_id}}, $analysis_id;
+        $qc_json = getCustomVal($adoc2, "qc_metrics");
+        $dupl_json = getCustomVal($adoc2, "markduplicates_metrics");
         my $sample_uuid = getXPathAttr($adoc2, "refname", "//ANALYSIS_SET/ANALYSIS/TARGETS/TARGET/\@refname");
-#        my $libName = getVal($adoc, 'LIBRARY_NAME');
-#        my $libStrategy = getVal($adoc, 'LIBRARY_STRATEGY');
-#        my $libSource = getVal($adoc, 'LIBRARY_SOURCE');
-
-
-      # get files
-      # now if these are defined then move onto the next step
-        # in the data structure each Analysis Set is sorted by it's ICGC DCC project code, then the combination of
         # donor, specimen, and sample that should be unique identifiers
-        # there should only be two different types of alignment. For aligned samples there should be a single 
-        # modification date, for the unaligned, each bam file will have a slightly different one, so
-        # we will take the most recent one (sort the array later)
-        push @{ $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{$alignment}{date} }, $mod_time; 
+        # in the data structure each Analysis Set is sorted by it's ICGC DCC project code, then the combination of
+
+#        push @{ $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{$alignment}{date} }, $mod_time; 
         $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{$alignment}{analysis_url} = $analysisDataURI; 
         $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{$alignment}{use_control} = $use_control; 
         $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{$alignment}{sample_uuid} = $sample_uuid;
         $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{$alignment}{analysis_id} = $analysis_id;
         $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{$alignment}{aliquot_id} = $aliquot_id;
+
         my $type;
-        # We already checked to see if use_cntl had a valid value
-        # (First check to see if there is a value in use_cntl)
-        # then check to see if it is N/A.  If it is N/A then this is a Normal sample
-        if ( $use_control && $use_control ne 'N/A' ) {
-            # if it passes the test then it must be a 'Tumour', so we give it a 'type'
-            # 'type' = 'Tumour'
+        # we checked above to ensure there is a value in $use_control
+        # now check to see if it is N/A.  If it is N/A then this is a Normal sample
+        if ( $use_control ne 'N/A' ) {
+            # if it passes the test then it must be a 'Tumour', so we assign it a 'type'
             $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{$alignment}{type} = 'Tumour';
             $type = 'Tumour';
-            # Now lets check to see if this type matches the contents of the dcc_specimen_type
+
+            # Check to see if this type matches the contents of the dcc_specimen_type
             if ( $dcc_specimen_type =~ m/Normal/ ) {
-                log_error( "MISMATCH dcc_specimen type in $id.xml OVERRIDING from Tumour to Normal" );            
+                log_error( "MISMATCH dcc_specimen type in ${id}_${gnos_url}.xml OVERRIDING from Tumour to Normal" );            
                 $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{$alignment}{type} = 'Normal';
                 $type = 'Normal';
-                $norm_aliquot_ids{$aliquot_id}++; 
+                $list_of_n_aliq_ids{$aliquot_id}++; 
             }            
             else {
                 # keep track of the correct use_cntl for this Tumor Sample by storing
-                # this information in the %use_cntls hash, where the hash key is the 
+                # this information in the %use_cntls_of hash, where the hash key is the 
                 # aliquot_id for this sample, and the hash value is the use_cntl for
-                # this sample, extracted from the XML files
-                $use_cntls{$aliquot_id} = $use_control;
+                # this sample, 
+                $use_cntls_of{$aliquot_id} = $use_control;
                 # add the aliquot_id to a list of the all the Tumour Aliquot IDs
-                $tum_aliquot_ids{$aliquot_id}++;
+                $list_of_t_aliq_ids{$aliquot_id}++;
                 # add the aliquot_id specified as the Normal control to a list of all
                 # the Normal aliquot IDs that get exrtracted from all the XML files
-                $norm_use_cntls{$use_control}++;
-	    }
+                $n_aliq_ids_from_use_cntls{$use_control}++;
+            }
         }
         else {
             # otherwise, this is not a Tumour, so we give it a 'type'
@@ -578,28 +538,28 @@ sub read_sample_info {
             $type = 'Normal';
             # Now lets check to see if this type matches the contents of the dcc_specimen_type
             if ( $dcc_specimen_type =~ m/tumour/ ) {
-                log_error( "MISMATCH dcc_specimen type in $id.xml OVERRIDING from Normal to Tumour" );            
+                log_error( "MISMATCH dcc_specimen type in ${id}_${gnos_url}.xml OVERRIDING from Normal to Tumour" );            
                 $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{$alignment}{type} = 'Tumour';
                 $type = 'Tumour';
-                $tum_aliquot_ids{$aliquot_id}++;
-                $use_cntls{$aliquot_id} = $use_control;
-                $norm_use_cntls{$use_control}++;
+                $list_of_t_aliq_ids{$aliquot_id}++;
+                $use_cntls_of{$aliquot_id} = $use_control;
+                $n_aliq_ids_from_use_cntls{$use_control}++;
             }            
             else {
                 # Add this aliquot ID to this list of all the 'Normal' 
                 # aliquot ids encountered in this XML
-                $norm_aliquot_ids{$aliquot_id}++;
+                $list_of_n_aliq_ids{$aliquot_id}++;
 	    }
         }
 
-        # this subroutine call returns a hashref:
         my $files = readFiles($adoc);
         foreach my $file(keys %{$files}) {
-            next if $file =~ m/\.bai/;
-            $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{$alignment}{files}{$file}{size} = $files->{$file}{size}; 
-            $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{$alignment}{files}{$file}{checksum} = $files->{$file}{checksum}; 
-#            $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{$alignment}{files}{$file}{localpath} = "$file"; 
-            # if this is an alignment from Data Freeze Train 2.0 then extract the qc details and print them out
+              next if $file =~ m/\.bai/;
+              $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{$alignment}{files}{$file}{size} = $files->{$file}{size}; 
+              $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{$alignment}{files}{$file}{checksum} = $files->{$file}{checksum}; 
+              $d->{$project}{$donor_id}{$specimen_id}{$sample_id}{$alignment}{files}{$file}{localpath} = "$file"; 
+              # $bams_seen{$file}{$sample_id}++;
+# if this is an alignment from Data Freeze Train 2.0 then extract the qc details and print them out
             if ( $qc_json ) {
                 my $param = {
                     json => $qc_json,
@@ -618,6 +578,7 @@ sub read_sample_info {
 	    }
         } # close foreach my $file
         $adoc->dispose;
+        # print "    Finished parsing Record number $counter: $id\n";
     } # close foreach my $uri loop
     return($d);
 } # close sub
@@ -627,15 +588,15 @@ sub readFiles {
     my $ret = {};
     my $nodes = $d->getElementsByTagName ("file");
     my $n = $nodes->getLength;
-    for (my $i = 0; $i < $n; $i++) {
+    for ( my $i = 0; $i < $n; $i++ ) {
         my $node = $nodes->item ($i);
-	my $currFile = getVal($node, 'filename');
+        my $currFile = getVal($node, 'filename');
 	my $size = getVal($node, 'filesize');
 	my $check = getVal($node, 'checksum');
         $ret->{$currFile}{size} = $size;
         $ret->{$currFile}{checksum} = $check;
     }
-    return($ret);
+  return($ret);
 } # close sub
 
 # My "NEW" Version, from 2014-07-30
@@ -695,6 +656,45 @@ sub getCustomVal {
     }
 } # close sub
 
+sub getXPathAttr {
+  my ($dom, $key, $xpath) = @_;
+  for my $node ($dom->findnodes($xpath)) {
+    return($node->getValue());
+  }
+  return "";
+} # close sub
+
+sub getVal {
+  my ($node, $key) = @_;
+  if ($node != undef) {
+    if (defined($node->getElementsByTagName($key))) {
+      if (defined($node->getElementsByTagName($key)->item(0))) {
+        if (defined($node->getElementsByTagName($key)->item(0)->getFirstChild)) {
+          if (defined($node->getElementsByTagName($key)->item(0)->getFirstChild->getNodeValue)) {
+           return($node->getElementsByTagName($key)->item(0)->getFirstChild->getNodeValue);
+          }
+        }
+      }
+    }
+  }
+  return(undef);
+} # close sub
+
+sub download {
+  my ($url, $out) = @_;
+
+  my $r = system("wget -q -O $out $url");
+  if ($r) {
+	  $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME}=0;
+    $r = system("lwp-download $url $out");
+    if ($r) {
+	    print "ERROR DOWNLOADING: $url\n";
+	    exit(1);
+    }
+  }
+} # close sub
+
+
 sub extract_qc {
     # this is a hashref coming in
     my ( $param ) = @_;
@@ -722,7 +722,7 @@ sub process_qc {
     # So my idea here is to iterate over the qc_metrics data structure we built and perform the necessary calculations
     # Then addin the relevant values from the qc_param
     # and then print that out to a separate file
-    open my ($QC), '>', "$gnos_url" . '_qc_metrics_report_' . "$timestamp" . '.tsv' or die "Could not open file to write qc report";
+    open my ($QC), '>', "$gnos_url" . '_pcap_download_qc_metrics_report_' . "$timestamp" . '.tsv' or die "Could not open file to write qc report";
     my @fields = ( 'DCC Project Code', 'Donor ID', 'Specimen ID', 'Sample ID', 'Type', 'analysis_id', 'aliquot_id', 'bam file name', 'bam file size', '#_total_bases', '#_total_mapped_bases', '#_total_reads', 'average coverage', '%_mapped_bases', '%_mapped_reads', '%_mapped_reads_properly_paired', '%_unmapped_reads', '%_duplicated_reads', '%_GC_r1_and_r2', '%_divergent_bases', );
     print $QC join( "\t", @fields, ), "\n";
     my %multiple_alignments = ();
@@ -787,60 +787,9 @@ sub process_qc {
     close $QC;
 } # close sub
 
-sub getXPathAttr {
-  my ($dom, $key, $xpath) = @_;
-  for my $node ($dom->findnodes($xpath)) {
-    return($node->getValue());
-  }
-  return "";
-} # close sub
-
-sub getVal {
-  my ($node, $key) = @_;
-  if ( defined($node) ) {
-    if (defined($node->getElementsByTagName($key))) {
-      if (defined($node->getElementsByTagName($key)->item(0))) {
-        if (defined($node->getElementsByTagName($key)->item(0)->getFirstChild)) {
-          if (defined($node->getElementsByTagName($key)->item(0)->getFirstChild->getNodeValue)) {
-           return($node->getElementsByTagName($key)->item(0)->getFirstChild->getNodeValue);
-          }
-        }
-      }
-    }
-  }
-  return(undef);
-} # close sub
-
-sub download {
-    my ($url, $out) = @_;
-    # recall that $out contains both the path and the 
-    # filename
-    # if ( -e "$out" ) {
-    #     print STDERR "Detected a previous copy of xml/$out Skipping\n";
-    #     return;
-    # }
-    # -O specifies the name of the desired output file
-    # -q equals quiet, it suppresses all of the wget STDERR
-    # -nc means no-clobber, it will not overwrite a file that is already
-    # in that directory
-    # Nope, this -nc is not working as I anticipated
-    print STDERR ">>>>>>  Attempting to download $out using wget\n";
-    my $r = system("wget -nc -q -O $out $url");
-    if ($r) {
-        print STDERR ">>>>>>  wget download FAILED\n";
-        $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME}=0;
-        print STDERR ">>>>>>>>  Attempting to download $out using lwp\n";
-        $r = system("lwp-download $url $out");
-        if ($r) {
-	    print STDERR "ERROR DOWNLOADING: $url\n";
-	    exit(1);
-        }
-    }
-} # close sub
-
 sub log_error {
     my ($mesg) = @_;
-    open my ($ERR), '>>', "${gnos_url}_error_log_from_gnos_report_" . $timestamp . '.txt' or die;
+    open my ($ERR), '>>', "${gnos_url}_data_freeze_download_error_log_" . $timestamp . '.txt' or die;
     print $ERR "$mesg\n";
     close $ERR;
     $error_log++;
@@ -859,20 +808,91 @@ sub checkvar {
 
 __END__
 
-According to my manual review of the XML::DOM module (specifically, the DOM.pm file),
-The following four packages all have a separate dispose method:
+2014-10-20 I am not sure why, but this script keeps dying on me in a very familiar way whenever I try to run it
+on the XML file I generated from ebi last week.  Here is the tail of the STDERR just before it dies:
 
-XML::DOM::Node
-XML::DOM::Element
-XML::DOM::Document
-XML::DOM::DocumentType
+>> Processing d322582f-8fea-42ea-9778-2886dc89b918, checking for files
+Detected a previous copy of xml/d322582f-8fea-42ea-9778-2886dc89b918_ebi.xml and will use that
+>> Processing a1ff579c-df6c-4229-9243-56b40f8ad9f9, checking for files
+Detected a previous copy of xml/a1ff579c-df6c-4229-9243-56b40f8ad9f9_ebi.xml and will use that
+>> Processing 2414de7b-8157-4100-98cc-50fa847fc8ef, checking for files
+Detected a previous copy of xml/2414de7b-8157-4100-98cc-50fa847fc8ef_ebi.xml and will use that
+>> Processing 090776d7-2e5b-4af9-b16f-58da45799b0a, checking for files
+Detected a previous copy of xml/090776d7-2e5b-4af9-b16f-58da45799b0a_ebi.xml and will use that
+>> Processing 30a3102c-08a2-42cf-ac3d-03b88c5f2630, checking for files
+Detected a previous copy of xml/30a3102c-08a2-42cf-ac3d-03b88c5f2630_ebi.xml and will use that
+>> Processing 3042ecf3-773e-44dd-9e96-8065edf88469, checking for files
+Detected a previous copy of xml/3042ecf3-773e-44dd-9e96-8065edf88469_ebi.xml and will use that
+>> Processing b434dc5d-153f-446b-a446-93c62d0ae184, checking for files
+Detected a previous copy of xml/b434dc5d-153f-446b-a446-93c62d0ae184_ebi.xml and will use that
+>> Processing abf6c2e0-7bc6-4721-b5ac-adea5617a781, checking for files
+Detected a previous copy of xml/abf6c2e0-7bc6-4721-b5ac-adea5617a781_ebi.xml and will use that
+>> Processing 481ec00c-b11c-4067-8b11-51f149d2e688, checking for files
+Detected a previous copy of xml/481ec00c-b11c-4067-8b11-51f149d2e688_ebi.xml and will use that
+>> Processing 0570d14a-051f-47c3-b13e-1b481c6f9a30, checking for files
+Detected a previous copy of xml/0570d14a-051f-47c3-b13e-1b481c6f9a30_ebi.xml and will use that
+>> Processing 3b9ec038-f606-4641-8f8d-0b1d22010175, checking for files
+Detected a previous copy of xml/3b9ec038-f606-4641-8f8d-0b1d22010175_ebi.xml and will use that
+>> Processing 141527a7-87dc-4496-a15f-d18bbb412533, checking for files
+Detected a previous copy of xml/141527a7-87dc-4496-a15f-d18bbb412533_ebi.xml and will use that
 
-Son-of-a-bitch, that seems to have helped quite a bit!
+And here is the tail of the error log that I am collecting on each run:
 
-2014-09-29 I am not exactly sure why just yet, although it may have something to do
-with the difference between aliquot IDs and stuff, but the QC part of this script does 
-something different with cghub files (different than I expected).
+Number of Keys does not match number of values in an XML file: missing/blank values?
+SKIPPED 08fc7fb2-ae75-4ac6-b657-e7bd03186c0f_ebi.xml because $project was False
+MISMATCH dcc_specimen type in 8c70e93f-022d-4584-ad2c-d95e1ecd4f0b_ebi.xml OVERRIDING from Normal to Tumour
+MISMATCH dcc_specimen type in adbee5b2-f26c-47c9-b4f6-44f155099f3a_ebi.xml OVERRIDING from Normal to Tumour
+MISMATCH dcc_specimen type in 2de64be2-144f-484a-ba61-7ef5a5906a92_ebi.xml OVERRIDING from Normal to Tumour
+MISMATCH dcc_specimen type in e2a7e454-734d-4cf0-8a48-3d7d5cf1d4a0_ebi.xml OVERRIDING from Normal to Tumour
+MISMATCH dcc_specimen type in 3e5c2340-7eaa-4984-a1f0-75da3828fcd7_ebi.xml OVERRIDING from Normal to Tumour
+MISMATCH dcc_specimen type in d598fd0f-6d84-4d21-9655-77fa61e6b6ae_ebi.xml OVERRIDING from Normal to Tumour
+MISMATCH dcc_specimen type in 0c46aece-e99f-4206-b08e-fe33406dd270_ebi.xml OVERRIDING from Normal to Tumour
+MISMATCH dcc_specimen type in 47c14d34-4151-4a81-a024-187eaf18b889_ebi.xml OVERRIDING from Normal to Tumour
 
+I do not see any obvious correlations here.  This is the second time in a row that it happened. I thought that I had detected the problem by changing the $doc->dispose into a $adoc->dispose.  Okay, new idea: run the the basic gnos_report_generator.pl just like last Friday.
+
+Sumbitch!! The other script could handle it.  WTF?
+Detected a previous copy of xml/35cbde01-2587-4420-a24e-67d79aec43b5_ebi.xml and will use that
+>> Processing 5c3c2e48-c5e3-4e7f-9786-74db3d63a930, checking for files
+Detected a previous copy of xml/5c3c2e48-c5e3-4e7f-9786-74db3d63a930_ebi.xml and will use that
+>> Processing 6b412c67-4a7b-4609-b118-139cd28bb820, checking for files
+Detected a previous copy of xml/6b412c67-4a7b-4609-b118-139cd28bb820_ebi.xml and will use that
+>> Processing 7d126159-934b-4a7d-a428-b914bf5c81bd, checking for files
+Detected a previous copy of xml/7d126159-934b-4a7d-a428-b914bf5c81bd_ebi.xml and will use that
+>> Processing e7fc4eb1-919d-4765-97c4-fe33b5c50070, checking for files
+Detected a previous copy of xml/e7fc4eb1-919d-4765-97c4-fe33b5c50070_ebi.xml and will use that
+>> Processing f85f3ec1-1a5a-475e-91bc-3f683c6d7b09, checking for files
+Detected a previous copy of xml/f85f3ec1-1a5a-475e-91bc-3f683c6d7b09_ebi.xml and will use that
+>> Processing e4046517-331f-4813-865a-184ec2eee1cb, checking for files
+Detected a previous copy of xml/e4046517-331f-4813-865a-184ec2eee1cb_ebi.xml and will use that
+>> Processing 866fd360-24ac-4946-95e9-3849cbf35619, checking for files
+Detected a previous copy of xml/866fd360-24ac-4946-95e9-3849cbf35619_ebi.xml and will use that
+>> Processing 875e39d3-301b-4d73-be1d-8da793cefb92, checking for files
+Detected a previous copy of xml/875e39d3-301b-4d73-be1d-8da793cefb92_ebi.xml and will use that
+>> Processing bf48d336-a0aa-4928-a111-9eebcabaae07, checking for files
+Detected a previous copy of xml/bf48d336-a0aa-4928-a111-9eebcabaae07_ebi.xml and will use that
+>> Processing 6eeb1cd4-d902-4cfb-8b6e-494cadc4a472, checking for files
+Detected a previous copy of xml/6eeb1cd4-d902-4cfb-8b6e-494cadc4a472_ebi.xml and will use that
+Now processing XML files for BOCA-UK
+Now processing XML files for BRCA-EU
+Now processing XML files for BRCA-UK
+Now processing XML files for CMDI-UK
+Now processing XML files for ESAD-UK
+Now processing XML files for LICA-FR
+Now processing XML files for LIHC-US
+Now processing XML files for PACA-CA
+Now processing XML files for PBCA-DE
+Now processing XML files for PRAD-UK
+Now processing XML files for TCGA_MUT_BENCHMARK_4
+WARNING: Logged 819 errors in ebi_error_log_gnos_report.txt stamped with 2014_10_20_1448
+Running time:  5.63 minutes
+
+Okay, definitely a problem here:
+Detected a previous copy of xml/474874c9-270c-41d1-aaa3-26127c7783bb_ebi.xml and will use that
+>> Processing ea79d176-02ed-4d78-96dd-36b6fa2795cc, checking for files
+Detected a previous copy of xml/ea79d176-02ed-4d78-96dd-36b6fa2795cc_ebi.xml and will use that
+>> Processing b01b349c-79bc-445f-a9c2-d87b71c26cf8, checking for files
+Detected a previous copy of xml/b01b349c-79bc-445f-a9c2-d87b71c26cf8_ebi.xml and will use that
 
 
 

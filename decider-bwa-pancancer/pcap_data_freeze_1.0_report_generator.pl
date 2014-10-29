@@ -98,12 +98,6 @@ my %study_names = ( 'BLCA-US' => "Bladder Urothelial Cancer - TGCA, US",
                     'UCEC-US' => "Uterine Corpus Endometrial Carcinoma- TCGA, US",
 );
 
-# MDP: these are the two that you may really want to use:
-# --gnos-url (one of the six choices above)
-# --skip-meta-download 
-#   print "\t--gnos-url           a URL for a GNOS server, e.g. https://gtrepo-ebi.annailabs.com\n";
-#   print "\t--skip-meta-download use the previously downloaded XML from GNOS\n";
-
 GetOptions("gnos-url=s" => \$gnos_url, "xml-file=s" => \$xml_file, "cluster-json=s" => \$cluster_json, "working-dir=s" => \$working_dir, "sample=s" => \$specific_sample, "test" => \$test, "ignore-lane-count" => \$ignore_lane_cnt, "force-run" => \$force_run, "threads=i" => \$threads, "skip-meta-download" => \$skip_down, "report=s" => \$report_name, "settings=s" => \$seqware_setting, "upload-results" => \$upload_results);
 
 my $usage = "USAGE: $0 --xml-file <data.xml>";
@@ -129,7 +123,8 @@ my ($cluster_info, $running_samples);
 my $sample_info = read_sample_info();
 
 # SCHEDULE SAMPLES
-# now look at each sample, see if it's already schedule, launch if not and a cluster is available, and then exit
+# now look at each sample, see if it's already schedule, launch if not and a cluster is available, 
+# and then exit
 schedule_samples($sample_info);
 
 foreach my $bam ( sort keys %bams_seen ) {
@@ -462,6 +457,8 @@ sub readFiles {
   }
   return($ret);
 } # close sub
+
+
 
 sub getCustomVal {
   my ($dom2, $keys) = @_;
