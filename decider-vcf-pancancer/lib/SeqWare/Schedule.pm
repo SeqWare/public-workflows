@@ -241,237 +241,169 @@ sub schedule_donor {
 
     
     my @sample_ids = keys %{$donor_information};
+    my @samples;
+
+    # We need to track the tissue type
+    my (%tumor,%normal);
+
+    my $donor = {};
     foreach my $sample_id (@sample_ids) {        
         next if (defined $specific_sample and $specific_sample ne $sample_id);
         next if (defined $blacklist and grep( /^$sample_id$/, @{$blacklist}));
         if (not defined $whitelist or grep( /^$sample_id$/, @{$whitelist})) {
 
+	    say $report_file "\tSAMPLE OVERVIEW\n\tSPECIMEN/SAMPLE: $sample_id";
+
+	    my $alignments = $donor_information->{$sample_id};
+	    push @{$donor->{gnos_url}}, $gnos_url;
+	    $donor->{bam_count} = 0;
+	    my $aligns = {};
 	    
-
-        schedule_sample( $sample_id,
-                         $donor_information,
-                         $report_file,
-                         $gnos_url,
-                         $input_prefix,
-                         $force_run,
-                         $running_samples,
-                         $ignore_failed,
-                         $ignore_lane_count,
-                         $seqware_settings_file,
-                         $cluster_information,
-                         $working_dir,
-                         $threads,
-                         $skip_gtdownload,
-                         $skip_gtupload,
-                         $skip_scheduling,
-                         $upload_results,
-                         $output_prefix,
-                         $output_dir,
-                         $center_name,
-                         $run_workflow_version);
-        }
-    }
-}
-
-sub schedule_sample {
-    my ( $sample_id,
-         $donor_information, 
-         $report_file,
-         $gnos_url,
-         $input_prefix,
-         $force_run,
-         $running_samples, 
-         $ignore_failed,
-         $ignore_lane_count, 
-         $seqware_settings_file,
-         $cluster_information,
-         $working_dir,
-         $threads,
-         $skip_gtdownload,
-         $skip_gtupload,
-         $skip_scheduling,
-         $upload_results,
-         $output_prefix,
-         $output_dir,
-         $center_name,
-         $run_workflow_version) = @_;
-
-    say $report_file "\tSAMPLE OVERVIEW\n\tSPECIMEN/SAMPLE: $sample_id";
-
-    # We need to track the tissue type
-    my (%tumor,%normal);
-
-    my $alignments = $donor_information->{$sample_id};
-    my $sample = { gnos_url => $gnos_url,
-                   bam_count => 0};
-    my $aligns = {};
-
-    # Keep track of align labels already reported
-    # so we can skip reporting the ones we don't want
-    my %said;
-
-    my %alignments_by_donor;
-
-    foreach my $alignment_id (keys %{$alignments}) {
-
-	# Skip unaligned BAMs, not relevant to VC workflows
-	next if $alignment_id eq 'unaligned';
- 
-        my $aliquotes = $alignments->{$alignment_id};
-        foreach my $aliquot_id (keys %{$aliquotes}) {
-
-            my $libraries = $aliquotes->{$aliquot_id};
-            foreach my $library_id (keys %{$libraries}) {
-                my $library = $libraries->{$library_id};
-
-                my $current_bwa_workflow_version = $library->{workflow_version};
-                my @current_bwa_workflow_version = keys %$current_bwa_workflow_version;
-                $current_bwa_workflow_version = $current_bwa_workflow_version[0];
-
-                my @current_bwa_workflow_version = split /\./, $current_bwa_workflow_version;
-                my @run_bwa_workflow_versions = split /\./, $run_workflow_version;
-
-                # Should add to list of aligns if the BWA workflow has already been run 
-		# and the first two version numbers are equal to the 
-		# desired BWA workflow version. 
-		if (
-		     defined $current_bwa_workflow_version
-		     and $current_bwa_workflow_version[0] == $run_bwa_workflow_versions[0] 
-		     and $current_bwa_workflow_version[1] == $run_bwa_workflow_versions[1] 
-                    ) {
-                         $aligns->{$alignment_id} = 1;
-                }
-
-		# Skip older versions of BWA alignments
-		next unless $aligns->{$alignment_id};
-
-
-		#
-		# If we got here, we have a useable alignment
-		#
-
-		# Is it tumor or normal?
-		my ($use_control) = keys %{$library->{use_control}};
-		my ($sample) = keys %{$library->{submitter_sample_id}};
-		my ($donor) = keys %{$library->{submitter_participant_id}};
-
-		say "$donor\t$sample_id\t$use_control";
+	    foreach my $alignment_id (keys %{$alignments}) {
 		
-		if ($use_control and $use_control eq 'N/A') {
-		    push @{$normal{$donor}->{$sample}}, $alignment_id;
-		}
-		elsif ($use_control) {
-		    push @{$tumor{$donor}->{$sample}}, $alignment_id;
-		}
-		else {
-		    say STDERR "This is an unknown tissue type!";
-		}
-		# We can't use this!
-		next unless keys %tumor or keys %normal;
-
-		# Control sanity check
-		if (keys %normal > 1) {
-		    say "There is more than one normal sample.  Is that possible?";
-		}
+		# Skip unaligned BAMs, not relevant to VC workflows
+		next if $alignment_id eq 'unaligned';
 		
-
-		say $report_file "\t\tALIGNMENT: $alignment_id" unless $said{$alignment_id}++;
-		say $report_file "\t\t\tANALYZED SAMPLE/ALIQUOT: $aliquot_id" unless $said{$aliquot_id}++;
-		say $report_file "\t\t\t\tLIBRARY: $library_id";
-
-                my $files = $library->{files};
-                my @local_bams;
-                foreach my $file (keys %{$files}) {
-                    my $local_path = $files->{$file}{local_path};
-		    push @local_bams, $local_path if ($local_path =~ /bam$/);
-                }
-                my @analysis_ids = keys %{$library->{analysis_ids}};
-                my $analysis_ids = join ',', @analysis_ids;
-
-                say $report_file "\t\t\t\t\tBAMS: ".join ',', @local_bams;
-                say $report_file "\t\t\t\t\tANALYSIS IDS: $analysis_ids\n";
-
-		my $lanes = $library->{total_lanes};
-		
-		my $total_lanes = 0;
-		foreach my $lane (keys %{$lanes}) {
-		    $total_lanes = $lane if ($lane > $total_lanes);
-		}
-		$sample->{total_lanes} = $total_lanes;
-		
-		foreach my $file (keys %{$files}) {
-		    my $local_path = $files->{$file}{local_path};
-		    if ($local_path =~ /bam$/) {
-			$sample->{file}{$file} = $local_path;
-			my $local_file_path = $input_prefix.$local_path;
-			$sample->{local_bams}{$local_file_path} = 1;
-			$sample->{bam_count} ++;
-		    }
+		my $aliquotes = $alignments->{$alignment_id};
+		foreach my $aliquot_id (keys %{$aliquotes}) {
 		    
-    
-                    my @local_bams = keys %{$sample->{local_bams}};
-     
-                    $sample->{local_bams_string} = join ',', sort @local_bams;
-    
-                    foreach my $analysis_id (sort @analysis_ids) {
-                        $sample->{analysis_url}{"$gnos_url/cghub/metadata/analysisFull/$analysis_id"} = 1;
-                        $sample->{download_url}{"$gnos_url/cghub/data/analysis/download/$analysis_id"} = 1;
-                    }
-
-                    my @download_urls = keys %{$sample->{download_url}};
-                    $sample->{gnos_input_file_urls} = join ',', sort @download_urls;
-       
-                    my @analysis_urls = keys %{$sample->{analysis_url}};
-                    $sample->{analysis_url_string} = join ',', @analysis_urls;   
-    
-                }
-
-            }
-        }
+		    my $libraries = $aliquotes->{$aliquot_id};
+		    foreach my $library_id (keys %{$libraries}) {
+			my $library = $libraries->{$library_id};
+			
+			my $current_bwa_workflow_version = $library->{workflow_version};
+			my @current_bwa_workflow_version = keys %$current_bwa_workflow_version;
+			$current_bwa_workflow_version = $current_bwa_workflow_version[0];
+			
+			my @current_bwa_workflow_version = split /\./, $current_bwa_workflow_version;
+			my @run_bwa_workflow_versions = split /\./, $run_workflow_version;
+			
+			# Should add to list of aligns if the BWA workflow has already been run 
+			# and the first two version numbers are equal to the 
+			# desired BWA workflow version. 
+			if (
+			    defined $current_bwa_workflow_version
+			    and $current_bwa_workflow_version[0] == $run_bwa_workflow_versions[0] 
+			    and $current_bwa_workflow_version[1] == $run_bwa_workflow_versions[1] 
+			    ) {
+			    $aligns->{$alignment_id} = 1;
+			}
+			
+			# Skip older versions of BWA alignments
+			next unless $aligns->{$alignment_id};
+			
+			#
+			# If we got here, we have a useable alignment
+			#
+			
+			# Is it tumor or normal?
+			my ($use_control) = keys %{$library->{use_control}};
+			
+			if ($use_control and $use_control eq 'N/A') {
+			    $normal{$alignment_id}++;
+			}
+			elsif ($use_control) {
+			    $tumor{$alignment_id}++;
+			}
+			else {
+			    say STDERR "This is an unknown tissue type!";
+			}
+			# We can't use this!
+			next unless keys %tumor or keys %normal;
+			
+			my $sample_type = $normal{$alignment_id} ? 'NORMAL' : $tumor{$alignment_id} ? 'TUMOR' : 'UNKNOWN';
+			say $report_file "\t\tALIGNMENT: $alignment_id ($sample_type)";
+			say $report_file "\t\t\tANALYZED SAMPLE/ALIQUOT: $aliquot_id";
+			say $report_file "\t\t\t\tLIBRARY: $library_id";
+			
+			my $files = $library->{files};
+			my @local_bams;
+			foreach my $file (keys %{$files}) {
+			    my $local_path = $files->{$file}{local_path};
+			    push @local_bams, $local_path if ($local_path =~ /bam$/);
+			}
+			my @analysis_ids = keys %{$library->{analysis_ids}};
+			my $analysis_ids = join ',', @analysis_ids;
+			
+			say $report_file "\t\t\t\t\tBAMS: ".join ',', @local_bams;
+			say $report_file "\t\t\t\t\tANALYSIS IDS: $analysis_ids\n";
+			
+			foreach my $file (keys %{$files}) {
+			    my $local_path = $files->{$file}{local_path};
+			    if ($local_path =~ /bam$/) {
+				$donor->{file}->{$file} = $local_path;
+				my $local_file_path = $input_prefix.$local_path;
+				$donor->{local_bams}{$local_file_path} = 1;
+				$donor->{bam_count} ++;
+			    }
+			    
+			    
+			    my @local_bams = keys %{$donor->{local_bams}};
+			    
+			    $donor->{local_bams_string} = join ',', sort @local_bams;
+			    
+			    foreach my $analysis_id (sort @analysis_ids) {
+				$donor->{analysis_url}->{"$gnos_url/cghub/metadata/analysisFull/$analysis_id"} = 1;
+				$donor->{download_url}->{"$gnos_url/cghub/data/analysis/download/$analysis_id"} = 1;
+			    }
+			    
+			    push @{$donor->{sample_id}},$sample_id;
+			}			
+		    }
+		}
+	    }
+	}
     }
 
-    say $report_file "\tSAMPLE WORKLFOW ACTION OVERVIEW";
-    say $report_file "\t\tLANES SPECIFIED FOR SAMPLE: $sample->{total_lanes}";
-    say $report_file "\t\tALIGNED BAMS FOUND: $sample->{bam_count}";
+    $donor->{gnos_url} = join(',',@{$donor->{gnos_url}});
 
+    my @download_urls = sort keys %{$donor->{download_url}};
+    $donor->{gnos_input_file_urls} = join(',',@download_urls);
+    my @analysis_urls = sort keys %{$donor->{analysis_url}};
+    $donor->{analysis_url_string} = join(',',@analysis_urls);    
+
+
+    say $report_file "\tDONOR WORKLFOW ACTION OVERVIEW";
+    say $report_file "\t\tALIGNED BAMS FOUND: $donor->{bam_count}";
+    
     # Make sure we have both tumor(s) and control
     my $unpaired_specimens = not (keys %normal and keys %tumor);
-#    say Dumper \%normal;
-#    say Dumper \%tumor;
-
-    $sample->{sample_id} = $sample_id;
+	    
+    say "We have a complete set for $donor_id!" unless $unpaired_specimens;
+    say Dumper $donor;
 
     # Schedule the workflow as long we have tumor and normal BAMs
-    unless ( $unpaired_specimens) {
-	schedule_workflow( $sample, 
-			   $seqware_settings_file, 
-			   $report_file,
-			   $cluster_information,
-			   $working_dir,
-			   $threads,
-			   $gnos_url,
-			   $skip_gtdownload,
-			   $skip_gtupload,
-			   $skip_scheduling,
-			   $upload_results,
-			   $output_prefix,
-			   $output_dir,
-			   $force_run,
-			   $running_samples,
-			   $sample_id,
-			   $center_name,
-			   $run_workflow_version )
-	    if should_be_scheduled( $aligns, 
-				    $force_run, 
-				    $report_file, 
-				    $sample, 
-				    $running_samples, 
-				    $ignore_failed, 
-				    $ignore_lane_count,
-				    $skip_scheduling);
-    }
-
+#    unless ( $unpaired_specimens) {
+#	schedule_workflow( $sample, 
+#			   $seqware_settings_file, 
+#			   $report_file,
+#			   $cluster_information,
+#			   $working_dir,
+#			   $threads,
+#			   $gnos_url,
+#			   $skip_gtdownload,
+#			   $skip_gtupload,
+#			   $skip_scheduling,
+#			   $upload_results,
+#			   $output_prefix,
+#			   $output_dir,
+#			   $force_run,
+#			   $running_samples,
+#			   $sample_id,
+#			   $center_name,
+#			   $run_workflow_version )
+#	    if should_be_scheduled( $aligns, 
+#				    $force_run, 
+#				    $report_file, 
+#				    $sample, 
+#				    $running_samples, 
+#				    $ignore_failed, 
+#				    $ignore_lane_count,
+#				    $skip_scheduling);
+#   }
+    say "END DONOR!";
 }
+
 
 sub should_be_scheduled {
     my ($aligns, $force_run, $report_file, $sample, $running_samples, $ignore_failed, $ignore_lane_count, $skip_scheduling) = @_;
