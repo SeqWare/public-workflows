@@ -247,21 +247,22 @@ sub schedule_donor {
     my (%tumor,%normal);
 
     my $donor = {};
+    my %aliquot;
     foreach my $sample_id (@sample_ids) {        
         next if (defined $specific_sample and $specific_sample ne $sample_id);
         next if (defined $blacklist and grep( /^$sample_id$/, @{$blacklist}));
         if (not defined $whitelist or grep( /^$sample_id$/, @{$whitelist})) {
-
-	    say $report_file "\tSAMPLE OVERVIEW\n\tSPECIMEN/SAMPLE: $sample_id";
 
 	    my $alignments = $donor_information->{$sample_id};
 	    push @{$donor->{gnos_url}}, $gnos_url;
 	    $donor->{bam_count} = 0;
 	    my $aligns = {};
 	    
+	    my %said;
+
 	    foreach my $alignment_id (keys %{$alignments}) {
 		
-		# Skip unaligned BAMs, not relevant to VC workflows
+                # Skip unaligned BAMs, not relevant to VC workflows
 		next if $alignment_id eq 'unaligned';
 		
 		my $aliquotes = $alignments->{$alignment_id};
@@ -296,6 +297,8 @@ sub schedule_donor {
 			# If we got here, we have a useable alignment
 			#
 			
+			$aliquot{$alignment_id} = $aliquot_id;
+
 			# Is it tumor or normal?
 			my ($use_control) = keys %{$library->{use_control}};
 			
@@ -312,7 +315,10 @@ sub schedule_donor {
 			next unless keys %tumor or keys %normal;
 			
 			my $sample_type = $normal{$alignment_id} ? 'NORMAL' : $tumor{$alignment_id} ? 'TUMOR' : 'UNKNOWN';
-			say $report_file "\t\tALIGNMENT: $alignment_id ($sample_type)";
+			
+			say $report_file "\tSAMPLE OVERVIEW\n\tSPECIMEN/SAMPLE: $sample_id ($sample_type)" unless $said{$sample_id}++;
+			
+			say $report_file "\t\tALIGNMENT: $alignment_id ";
 			say $report_file "\t\t\tANALYZED SAMPLE/ALIQUOT: $aliquot_id";
 			say $report_file "\t\t\t\tLIBRARY: $library_id";
 			
@@ -362,15 +368,54 @@ sub schedule_donor {
     my @analysis_urls = sort keys %{$donor->{analysis_url}};
     $donor->{analysis_url_string} = join(',',@analysis_urls);    
 
-
     say $report_file "\tDONOR WORKLFOW ACTION OVERVIEW";
     say $report_file "\t\tALIGNED BAMS FOUND: $donor->{bam_count}";
     
+    # Multiple alignments for the same specimen?  
+    say "Normal before: ", Dumper \%normal;
+    say "Tumor before: ", Dumper \%tumor;
+
+    my %aln_date;
+    for my $aln (keys %normal, keys %tumor) {
+	my ($timestamp) = reverse split /\s+/, $aln;
+	$aln_date{$aln} = $timestamp;
+    }
+
+    my %aln_to_use;
+    for my $aln (keys %normal, keys %tumor) {
+	my $aliquot   = $aliquot{$aln};
+	my $timestamp = $aln_date{$aln};
+	my $alignment = $aln_to_use{$aliquot};
+
+	if (!$alignment) {
+	    $aln_to_use{$aliquot} = $aln;
+	}
+	else {
+	    my ($eldest) = reverse sort ($timestamp,$aln_date{$alignment});
+	    if ($timestamp eq $eldest) {
+		$aln_to_use{$aliquot} = $aln;
+	    }
+	}
+    }
+    my %aln_to_keep;
+    for my $aliquot (keys %aln_to_use) {
+	$aln_to_keep{$aln_to_use{$aliquot}}++;
+    }
+    for my $aln (keys %normal,%tumor) {
+	my $hash = $normal{$aln} ? \%normal : \%tumor;
+	unless ($aln_to_keep{$aln}) {
+	    delete $hash->{$aln};
+	}
+    }
+    say "Normal after: ", Dumper \%normal;
+    say "Tumor after: ", Dumper \%tumor;
+
+
     # Make sure we have both tumor(s) and control
     my $unpaired_specimens = not (keys %normal and keys %tumor);
 	    
     say "We have a complete set for $donor_id!" unless $unpaired_specimens;
-    say Dumper $donor;
+#    say Dumper $donor;
 
     # Schedule the workflow as long we have tumor and normal BAMs
 #    unless ( $unpaired_specimens) {
