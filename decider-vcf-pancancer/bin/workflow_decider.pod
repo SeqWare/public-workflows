@@ -4,7 +4,7 @@ Version 0.0.1
 
 =head1 AUTHOR(S)
 
-Brian O'Connor, Adam Wright
+Brian O'Connor, Adam Wright, Sheldon McKay
 
 =over
 
@@ -24,7 +24,7 @@ A tool for identifying samples ready for alignment, scheduling on clusters, and 
 
 =head1 NAME
 
-Workflow Decider - SeqWare
+Variant Walling Workflow Decider - SeqWare
 
 =head1 REQUIRED
 
@@ -105,17 +105,34 @@ This flag is used to specify the amount of time lwp download should wait for an 
 
 A flag indicating that previously failed runs for this specimen should be ignored and the specimen scheduled again
 
-=item --schedule-whitelist[=][ ]<filename>
+=item --schedule-sample-whitelist[=][ ]<filename>
 
-This flag indicates the file to be used, that contains a list of sample_ids to be analyzed. This file should be placed in the whitelist folder and should have one sample id per line. 
+This flag indicates the file that contains a list of sample ids to be analyzed.
+This file should be placed in the whitelist folder and should have one sample id per line.
 
-=item --schedule-blacklist[=][ ]<filename>
+=item --schedule-donor-whitelist[=][ ]<filename>
 
-This flag indicates the samples to not run. The file should be placed in the blacklist folder and should have on sample id per line. 
+This flag indicates a file that contains a list of donor ids to be analyzed. 
+This file should be placed in the whitelist folder and should have one donor id per line.
+
+=item --schedule-sample-blacklist[=][ ]<filename>
+
+This flag indicates samples that should not be run.
+The file should be placed in the blacklist folder and should have on sample id per line. 
+
+=item --schedule-donor-blacklist[=][ ]<filename>
+
+This flag indicates donors that should not be run.
+The file should be placed in the blacklist folder and should have on donor id per line.
 
 =item --schedule-sample[=][ ]<aliquot_id>
 
 For only running one particular sample based on its uuid
+
+
+=item --schedule-donor[=][ ]<aliquot_id>
+
+For running one particular donor based on its uuid
 
 =item --schedule-ignore-lane-count
 
