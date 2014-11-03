@@ -16,29 +16,29 @@ use Data::Dumper;
 
 sub schedule_samples {
     my ($class, $report_file,
-                $sample_information, 
-                $cluster_information, 
-                $running_samples, 
-                $skip_scheduling,
-                $specific_sample,
-	        $specific_donor,
-                $specific_center,
-                $ignore_lane_count,
-                $seqware_settings_file,
-                $output_dir,
-                $output_prefix,
-                $force_run,
-                $threads,
-                $skip_gtdownload,
-                $skip_gtupload,
-                $upload_results,
-                $input_prefix, 
-                $gnos_url,
-                $ignore_failed, 
-                $working_dir,
-                $run_workflow_version,
-                $whitelist,
-                $blacklist) = @_;
+	$sample_information, 
+	$cluster_information, 
+	$running_samples, 
+	$skip_scheduling,
+	$specific_sample,
+	$specific_donor,
+	$specific_center,
+	$ignore_lane_count,
+	$seqware_settings_file,
+	$output_dir,
+	$output_prefix,
+	$force_run,
+	$threads,
+	$skip_gtdownload,
+	$skip_gtupload,
+	$upload_results,
+	$input_prefix, 
+	$gnos_url,
+	$ignore_failed, 
+	$working_dir,
+	$run_workflow_version,
+	$whitelist,
+	$blacklist) = @_;
 
     say $report_file "SAMPLE SCHEDULING INFORMATION\n";
 
@@ -46,18 +46,18 @@ sub schedule_samples {
     foreach my $center_name (keys %{$sample_information}) {
         next if (defined $specific_center && $specific_center ne $center_name);
         say $report_file "SCHEDULING: $center_name";
-
         foreach my $donor_id (keys %{$sample_information->{$center_name}}) {
 
-	    next if defined $specific_donor and $specific_donor ne $donor_id;
+            next if defined $specific_donor and $specific_donor ne $donor_id;
 
-	    my @blacklist = @{$blacklist->{donor}} if $blacklist and $blacklist->{donor};
-	    next if defined $blacklist and grep {/^$donor_id$/} @blacklist;
+            my @blacklist = @{$blacklist->{donor}} if $blacklist and $blacklist->{donor};
+            next if defined $blacklist and grep {/^$donor_id$/} @blacklist;
 
-	    my @whitelist = @{$whitelist->{donor}} if $whitelist and $whitelist->{donor};
-	    if (not defined $whitelist or grep {/^$donor_id$/} @whitelist) {
-	    
+            my @whitelist = @{$whitelist->{donor}} if $whitelist and $whitelist->{donor};
+            if (not defined $whitelist or grep {/^$donor_id$/} @whitelist) {
+
 		my $donor_information = $sample_information->{$center_name}{$donor_id};
+		
 		schedule_donor($report_file,
 			       $donor_id, 
 			       $donor_information,
@@ -107,8 +107,6 @@ sub schedule_workflow {
          $center_name,
          $run_workflow_version ) = @_;
 
-
-   
     my $cluster = (keys %{$cluster_information})[0];
     my $cluster_found = (defined($cluster) and $cluster ne '' )? 1: 0;
 
@@ -251,189 +249,222 @@ sub schedule_donor {
          $blacklist ) = @_;
 
     say $report_file "DONOR/PARTICIPANT: $donor_id\n";
+
+    
     my @sample_ids = keys %{$donor_information};
-    foreach my $sample_id (@sample_ids) {        
-	next if defined $specific_sample and $specific_sample ne $sample_id;
+    my @samples;
 
-	my @blacklist = @{$blacklist->{sample}} if $blacklist and $blacklist->{sample};
-	next if defined $blacklist and grep {/^$sample_id$/} @blacklist;
+    # We need to track the tissue type
+    my (%tumor,%normal);
 
-	my @whitelist = @{$whitelist->{sample}} if $whitelist and $whitelist->{sample};
+    my $donor = {};
+    my %aliquot;
+    foreach my $sample_id (@sample_ids) {      
+  
+        next if defined $specific_sample and $specific_sample ne $sample_id;
+
+        my @blacklist = @{$blacklist->{sample}} if $blacklist and $blacklist->{sample};
+        next if defined $blacklist and grep {/^$sample_id$/} @blacklist;
+
+        my @whitelist = @{$whitelist->{sample}} if $whitelist and $whitelist->{sample};
         if (not defined $whitelist or grep {/^$sample_id$/} @whitelist) {
-            schedule_sample( $sample_id,
-                         $donor_information,
-                         $report_file,
-                         $gnos_url,
-                         $input_prefix,
-                         $force_run,
-                         $running_samples,
-                         $ignore_failed,
-                         $ignore_lane_count,
-                         $seqware_settings_file,
-                         $cluster_information,
-                         $working_dir,
-                         $threads,
-                         $skip_gtdownload,
-                         $skip_gtupload,
-                         $skip_scheduling,
-                         $upload_results,
-                         $output_prefix,
-                         $output_dir,
-                         $center_name,
-                         $run_workflow_version);
-        }
-    }
-}
 
-sub schedule_sample {
-    my ( $sample_id,
-         $donor_information, 
-         $report_file,
-         $gnos_url,
-         $input_prefix,
-         $force_run,
-         $running_samples, 
-         $ignore_failed,
-         $ignore_lane_count, 
-         $seqware_settings_file,
-         $cluster_information,
-         $working_dir,
-         $threads,
-         $skip_gtdownload,
-         $skip_gtupload,
-         $skip_scheduling,
-         $upload_results,
-         $output_prefix,
-         $output_dir,
-         $center_name,
-         $run_workflow_version) = @_;
+	    my $alignments = $donor_information->{$sample_id};
+	    push @{$donor->{gnos_url}}, $gnos_url;
+	    $donor->{bam_count} = 0;
+	    my $aligns = {};
+	    
+	    my %said;
 
-    say $report_file "\tSAMPLE OVERVIEW\n\tSPECIMEN/SAMPLE: $sample_id";
+	    foreach my $alignment_id (keys %{$alignments}) {
+		
+                # Skip unaligned BAMs, not relevant to VC workflows
+		next if $alignment_id eq 'unaligned';
+		
+		my $aliquotes = $alignments->{$alignment_id};
+		foreach my $aliquot_id (keys %{$aliquotes}) {
+		    
+		    my $libraries = $aliquotes->{$aliquot_id};
+		    foreach my $library_id (keys %{$libraries}) {
+			my $library = $libraries->{$library_id};
+			
+			my $current_bwa_workflow_version = $library->{workflow_version};
+			my @current_bwa_workflow_version = keys %$current_bwa_workflow_version;
+			$current_bwa_workflow_version = $current_bwa_workflow_version[0];
+			
+			my @current_bwa_workflow_version = split /\./, $current_bwa_workflow_version;
+			my @run_bwa_workflow_versions = split /\./, $run_workflow_version;
+			
+			# Should add to list of aligns if the BWA workflow has already been run 
+			# and the first two version numbers are equal to the 
+			# desired BWA workflow version. 
+			if (
+			    defined $current_bwa_workflow_version
+			    and $current_bwa_workflow_version[0] == $run_bwa_workflow_versions[0] 
+			    and $current_bwa_workflow_version[1] == $run_bwa_workflow_versions[1] 
+			    ) {
+			    $aligns->{$alignment_id} = 1;
+			}
+			
+			# Skip older versions of BWA alignments
+			next unless $aligns->{$alignment_id};
+			
+			#
+			# If we got here, we have a useable alignment
+			#
+			
+			$aliquot{$alignment_id} = $aliquot_id;
 
-    my $alignments = $donor_information->{$sample_id};
-    my $sample = { gnos_url => $gnos_url,
-                   bam_count => 0};
-    my $aligns = {};
-
-    foreach my $alignment_id (keys %{$alignments}) {
-        say $report_file "\t\tALIGNMENT: $alignment_id";
- 
-        my $aliquotes = $alignments->{$alignment_id};
-        foreach my $aliquot_id (keys %{$aliquotes}) {
-            say $report_file "\t\t\tANALYZED SAMPLE/ALIQUOT: $aliquot_id";
-
-            my $libraries = $aliquotes->{$aliquot_id};
-            foreach my $library_id (keys %{$libraries}) {
-                say $report_file "\t\t\t\tLIBRARY: $library_id";
-                my $library = $libraries->{$library_id};
-                my $current_workflow_version = $library->{workflow_version};
-                my @current_workflow_versions = keys $current_workflow_version;
-                $current_workflow_version = $current_workflow_versions[0];
-
-                my @current_workflow_version = split /\./, $current_workflow_version;
-                my @run_workflow_versions = split /\./, $run_workflow_version;
-
-
-                #should add to list of aligns if unaliged or the workflow has already been run with a workflow where the first two version numbers are greater than or equal to the desired workflow version. 
-                if ( ($alignment_id eq 'unaligned') 
-                   or (
-                        (defined $current_workflow_version)
-                    and ( 
-                          ($current_workflow_versions[0] > $run_workflow_versions[0]) 
-                        or (
-                          ($current_workflow_versions[0] == $run_workflow_versions[0]) 
-                           and ($current_workflow_versions[1] >= $run_workflow_versions[1])
-                           )
-                        )
-                      )
-                    ) {
-                         $aligns->{$alignment_id} = 1;
-                }
-
-                my $files = $library->{files};
-                my @local_bams;
-                foreach my $file (keys %{$files}) {
-                    my $local_path = $files->{$file}{local_path};
-                       push @local_bams, $local_path if ($local_path =~ /bam$/);
-                }
-                my @analysis_ids = keys %{$library->{analysis_ids}};
-                my $analysis_ids = join ',', @analysis_ids;
-
-                say $report_file "\t\t\t\t\tBAMS: ".join ',', @local_bams;
-                say $report_file "\t\t\t\t\tANALYSIS IDS: $analysis_ids\n";
-
-                if ( $alignment_id eq 'unaligned' ) {
-
-                    my $lanes = $library->{total_lanes};
-                    my $total_lanes = 0;
-                    foreach my $lane (keys %{$lanes}) {
-                        $total_lanes = $lane if ($lane > $total_lanes);
-                    }
-                    $sample->{total_lanes} = $total_lanes;
-    
-                    foreach my $file (keys %{$files}) {
-                        my $local_path = $files->{$file}{local_path};
-                        if ($local_path =~ /bam$/) {
-                            $sample->{file}{$file} = $local_path;
-                            my $local_file_path = $input_prefix.$local_path;
-                            $sample->{local_bams}{$local_file_path} = 1;
-                            $sample->{bam_count} ++;
-                        }
-                    }
-    
-                    my @local_bams = keys %{$sample->{local_bams}};
-     
-                    $sample->{local_bams_string} = join ',', sort @local_bams;
-    
-                    foreach my $analysis_id (sort @analysis_ids) {
-                        $sample->{analysis_url}{"$gnos_url/cghub/metadata/analysisFull/$analysis_id"} = 1;
-                        $sample->{download_url}{"$gnos_url/cghub/data/analysis/download/$analysis_id"} = 1;
-                    }
-
-                    my @download_urls = keys %{$sample->{download_url}};
-                    $sample->{gnos_input_file_urls} = join ',', sort @download_urls;
-       
-                    my @analysis_urls = keys %{$sample->{analysis_url}};
-                    $sample->{analysis_url_string} = join ',', @analysis_urls;   
-    
-                }
-
-            }
-        }
+			# Is it tumor or normal?
+			my ($use_control) = keys %{$library->{use_control}};
+			
+			if ($use_control and $use_control eq 'N/A') {
+			    $normal{$alignment_id}++;
+			}
+			elsif ($use_control) {
+			    $tumor{$alignment_id}++;
+			}
+			else {
+			    say STDERR "This is an unknown tissue type!";
+			}
+			# We can't use this!
+			next unless keys %tumor or keys %normal;
+			
+			my $sample_type = $normal{$alignment_id} ? 'NORMAL' : $tumor{$alignment_id} ? 'TUMOR' : 'UNKNOWN';
+			
+			say $report_file "\tSAMPLE OVERVIEW\n\tSPECIMEN/SAMPLE: $sample_id ($sample_type)" unless $said{$sample_id}++;
+			
+			say $report_file "\t\tALIGNMENT: $alignment_id ";
+			say $report_file "\t\t\tANALYZED SAMPLE/ALIQUOT: $aliquot_id";
+			say $report_file "\t\t\t\tLIBRARY: $library_id";
+			
+			my $files = $library->{files};
+			my @local_bams;
+			foreach my $file (keys %{$files}) {
+			    my $local_path = $files->{$file}{local_path};
+			    push @local_bams, $local_path if ($local_path =~ /bam$/);
+			}
+			my @analysis_ids = keys %{$library->{analysis_ids}};
+			my $analysis_ids = join ',', @analysis_ids;
+			
+			say $report_file "\t\t\t\t\tBAMS: ".join ',', @local_bams;
+			say $report_file "\t\t\t\t\tANALYSIS IDS: $analysis_ids\n";
+			
+			foreach my $file (keys %{$files}) {
+			    my $local_path = $files->{$file}{local_path};
+			    if ($local_path =~ /bam$/) {
+				$donor->{file}->{$file} = $local_path;
+				my $local_file_path = $input_prefix.$local_path;
+				$donor->{local_bams}{$local_file_path} = 1;
+				$donor->{bam_count} ++;
+			    }
+			    
+			    
+			    my @local_bams = keys %{$donor->{local_bams}};
+			    
+			    $donor->{local_bams_string} = join ',', sort @local_bams;
+			    
+			    foreach my $analysis_id (sort @analysis_ids) {
+				$donor->{analysis_url}->{"$gnos_url/cghub/metadata/analysisFull/$analysis_id"} = 1;
+				$donor->{download_url}->{"$gnos_url/cghub/data/analysis/download/$analysis_id"} = 1;
+			    }
+			    
+			    push @{$donor->{sample_id}},$sample_id;
+			}			
+		    }
+		}
+	    }
+	}
     }
 
-    say $report_file "\tSAMPLE WORKLFOW ACTION OVERVIEW";
-    say $report_file "\t\tLANES SPECIFIED FOR SAMPLE: $sample->{total_lanes}";
-    say $report_file "\t\tUNALIGNED BAMS FOUND: $sample->{bam_count}";
-    $sample->{sample_id} = $sample_id;
+    $donor->{gnos_url} = join(',',@{$donor->{gnos_url}});
 
-    schedule_workflow( $sample, 
-                       $seqware_settings_file, 
-                       $report_file,
-                       $cluster_information,
-                       $working_dir,
-                       $threads,
-                       $gnos_url,
-                       $skip_gtdownload,
-                       $skip_gtupload,
-                       $skip_scheduling,
-                       $upload_results,
-                       $output_prefix,
-                       $output_dir,
-                       $force_run,
-                       $running_samples,
-                       $sample_id,
-                       $center_name,
-                       $run_workflow_version )
-       if should_be_scheduled( $aligns, 
-                               $force_run, 
-                               $report_file, 
-                               $sample, 
-                               $running_samples, 
-                               $ignore_failed, 
-                               $ignore_lane_count,
-                               $skip_scheduling);
+    my @download_urls = sort keys %{$donor->{download_url}};
+    $donor->{gnos_input_file_urls} = join(',',@download_urls);
+    my @analysis_urls = sort keys %{$donor->{analysis_url}};
+    $donor->{analysis_url_string} = join(',',@analysis_urls);    
+
+    say $report_file "\tDONOR WORKLFOW ACTION OVERVIEW";
+    say $report_file "\t\tALIGNED BAMS FOUND: $donor->{bam_count}";
+    
+    # Multiple alignments for the same specimen?  
+    say "Normal before: ", Dumper \%normal;
+    say "Tumor before: ", Dumper \%tumor;
+
+    my %aln_date;
+    for my $aln (keys %normal, keys %tumor) {
+	my ($timestamp) = reverse split /\s+/, $aln;
+	$aln_date{$aln} = $timestamp;
+    }
+
+    my %aln_to_use;
+    for my $aln (keys %normal, keys %tumor) {
+	my $aliquot   = $aliquot{$aln};
+	my $timestamp = $aln_date{$aln};
+	my $alignment = $aln_to_use{$aliquot};
+
+	if (!$alignment) {
+	    $aln_to_use{$aliquot} = $aln;
+	}
+	else {
+	    my ($eldest) = reverse sort ($timestamp,$aln_date{$alignment});
+	    if ($timestamp eq $eldest) {
+		$aln_to_use{$aliquot} = $aln;
+	    }
+	}
+    }
+    my %aln_to_keep;
+    for my $aliquot (keys %aln_to_use) {
+	$aln_to_keep{$aln_to_use{$aliquot}}++;
+    }
+    for my $aln (keys %normal,%tumor) {
+	my $hash = $normal{$aln} ? \%normal : \%tumor;
+	unless ($aln_to_keep{$aln}) {
+	    delete $hash->{$aln};
+	}
+    }
+    say "Normal after: ", Dumper \%normal;
+    say "Tumor after: ", Dumper \%tumor;
+
+
+    # Make sure we have both tumor(s) and control
+    my $unpaired_specimens = not (keys %normal and keys %tumor);
+	    
+    say "We have a complete set for $donor_id!" unless $unpaired_specimens;
+#    say Dumper $donor;
+
+    # Schedule the workflow as long we have tumor and normal BAMs
+#    unless ( $unpaired_specimens) {
+#	schedule_workflow( $sample, 
+#			   $seqware_settings_file, 
+#			   $report_file,
+#			   $cluster_information,
+#			   $working_dir,
+#			   $threads,
+#			   $gnos_url,
+#			   $skip_gtdownload,
+#			   $skip_gtupload,
+#			   $skip_scheduling,
+#			   $upload_results,
+#			   $output_prefix,
+#			   $output_dir,
+#			   $force_run,
+#			   $running_samples,
+#			   $sample_id,
+#			   $center_name,
+#			   $run_workflow_version )
+#	    if should_be_scheduled( $aligns, 
+#				    $force_run, 
+#				    $report_file, 
+#				    $sample, 
+#				    $running_samples, 
+#				    $ignore_failed, 
+#				    $ignore_lane_count,
+#				    $skip_scheduling);
+#   }
+    say "END DONOR!";
 }
+
 
 sub should_be_scheduled {
     my ($aligns, $force_run, $report_file, $sample, $running_samples, $ignore_failed, $ignore_lane_count, $skip_scheduling) = @_;
@@ -444,12 +475,12 @@ sub should_be_scheduled {
     }
 
     if (unaligned($aligns, $report_file) and not scheduled($report_file, $sample, $running_samples, $force_run, $ignore_failed, $ignore_lane_count) ) { 
-        say $report_file "\t\tCONCLUSION: SCHEDULING WORKFLOW FOR THIS SAMPLE!\n";
-        return 1;
+        say $report_file "\t\tCONCLUSION: SKIPPING THERE ARE STILL UNALIGNED BAMS!\n";
+        return 0;
     }
 
-    say $report_file "\t\tCONCLUSION: WILL NOT SCHEDULE THIS SAMPLE FOR ALIGNMENT!"; 
-    return 0;
+    say $report_file "\t\tCONCLUSION: SCHEDULING FOR VCF";
+    return 1;
 }
 
 sub unaligned {
