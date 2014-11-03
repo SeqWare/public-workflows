@@ -30,11 +30,14 @@ open my $report_file, '>', "$Bin/../".$ARGV{'--report'};
 say 'Removing cached ini and settings samples';
 `rm $Bin/../$ARGV{'--working-dir'}/samples/ -rf`;
 
-my ($whitelist, $blacklist);
-$whitelist = get_whitelist($ARGV{'--schedule-whitelist'})
-                                       if ($ARGV{'--schedule-whitelist'});
-$blacklist = get_blacklist($ARGV{'--schedule-blacklist'})
-                                       if ($ARGV{'--schedule-blacklist'});
+my $whitelist = {};
+my $blacklist = {};
+get_list($ARGV{'--schedule-sample-whitelist'}, 'white', 'sample', \$whitelist);
+get_list($ARGV{'--schedule-donor-whitelist'},  'white', 'donor',  \$whitelist);
+get_list($ARGV{'--schedule-sample-blacklist'}, 'black', 'sample', \$blacklist);
+get_list($ARGV{'--schedule-donor-blacklist'},  'black', 'donor',  \$blacklist);
+
+
 say 'Getting SeqWare Cluster Information';
 my ($cluster_information, $running_sample_ids, $failed_samples, $completed_samples)
           = SeqWare::Cluster->cluster_seqware_information( $report_file,
@@ -47,7 +50,6 @@ my ($cluster_information, $running_sample_ids, $failed_samples, $completed_sampl
 
 
 say 'Reading in GNOS Sample Information';
-
 my $sample_information = GNOS::SampleInformation->get( $ARGV{'--working-dir'},
                                               $ARGV{'--gnos-url'},
                                               $ARGV{'--use-live-cached'},
@@ -61,6 +63,7 @@ SeqWare::Schedule->schedule_samples( $report_file,
                                      $running_sample_ids,
                                      $ARGV{'--workflow-skip-scheduling'},
                                      $ARGV{'--schedule-sample'}, 
+                                     $ARGV{'--schedule-donor'},
                                      $ARGV{'--schedule-center'},
                                      $ARGV{'--schdeule-ignore-lane-count'},
                                      $ARGV{'--seqware-settings'},
@@ -85,34 +88,22 @@ close $report_file;
 say 'Finished!!';
 
 
-sub get_whitelist {
-   my ($whitelist_path) = @_;
+sub get_list {
+    my $path  = shift or return undef;
+    my $color = shift;
+    my $type  = shift;
+    my $list  = shift;
 
-   my $file = "$Bin/../whitelist/$whitelist_path";
-   die "Whitelist does not exist: $file" if (not -e $file);
-
-   open my $whitelist, '<', $file;
-
-   my @whitelist_raw = <$whitelist>;
-   my @whitelist = grep(s/\s*$//g, @whitelist_raw);
-
-   close $whitelist;
-
-   return \@whitelist;
+    my $file = "$Bin/../$color/$path";
+    die "$color\list does not exist: $file" if (not -e $file);
+    
+    open my $list_file, '<', $file;
+    
+    my @list_raw = <$list_file>;
+    my @list = grep(s/\s*$//g, @list_raw);
+    
+    close $list_file;
+    
+    $list->{$type} = \@list;
 }
 
-sub get_blacklist {
-   my ($blacklist_path) = @_;
-
-   my $file = "$Bin/../blacklist/$blacklist_path";
-   die "Blacklist does not exist: $file" if (not -e $file);
-
-   open my $blacklist, '<', $file;
-
-   my @blacklist_raw = <$blacklist>;
-   my @blacklist = grep(s/\s*$//g, @blacklist_raw);
-   
-   close $blacklist;    
-
-   return \@blacklist;
-}
