@@ -13,7 +13,6 @@ use Getopt::Euclid;
 
 use Config::Simple;
 
-use lib '../lib';
 use SeqWare::Cluster;
 use SeqWare::Schedule;
 use GNOS::SampleInformation;
@@ -28,7 +27,7 @@ my %ARGV = %{Decider::Config->get(\%ARGV)};
 
 open my $report_file, '>', "$Bin/../".$ARGV{'--report'};
 
-say 'Removing cached ini and settings samples hello';
+say 'Removing cached ini and settings samples';
 `rm $Bin/../$ARGV{'--working-dir'}/samples/ -rf`;
 
 my $whitelist = {};
@@ -55,6 +54,7 @@ my $sample_information = GNOS::SampleInformation->get( $ARGV{'--working-dir'},
                                               $ARGV{'--use-cached-analysis'},
                                               $ARGV{'--lwp-download-timeout'});
 
+
 say 'Scheduling Samples';
 SeqWare::Schedule->schedule_samples( $report_file,
                                      $sample_information,
@@ -78,23 +78,21 @@ SeqWare::Schedule->schedule_samples( $report_file,
                                      $ARGV{'--schedule-ignore-failed'},
                                      $ARGV{'--working-dir'},
                                      $ARGV{'--workflow-version'},
-				     $ARGV{'--tabix-url'}
+				     $ARGV{'--tabix-url'},
                                      $whitelist,
                                      $blacklist
                                       );
-
 close $report_file;
 
 say 'Finished!!';
 
-
 # Grab contents of white/black list file
 sub get_list {
-    my $path  = shift or return undef;
+    my $path  = shift or return;
     my $color = shift;
     my $type  = shift;
     my $list  = shift;
-
+    
     my $file = "$Bin/../${color}list/$path";
     die "${color}list does not exist: $file" if (not -e $file);
     
@@ -107,4 +105,6 @@ sub get_list {
     
     $list->{$type} = \@list;
 }
+
+
 

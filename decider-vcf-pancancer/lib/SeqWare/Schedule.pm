@@ -37,9 +37,10 @@ sub schedule_samples {
 	$ignore_failed, 
 	$working_dir,
 	$run_workflow_version,
+	$tabix_url,
 	$whitelist,
 	$blacklist,
-	$tabix_url) = @_;
+	) = @_;
 
     say $report_file "SAMPLE SCHEDULING INFORMATION\n";
 
@@ -55,7 +56,7 @@ sub schedule_samples {
 
 	    # Only do specified donor if applicable
             next if defined $specific_donor and $specific_donor ne $donor_id;
-
+	    
 	    # Skip any blacklisted donors
             next if @blacklist > 0 and grep {/^$donor_id$/} @blacklist;
 
@@ -298,6 +299,7 @@ sub schedule_donor {
 
     # We need to track the tissue type
     my (%tumor,%normal);
+    my $aligns = {};
 
     my $donor = {};
     my %aliquot;
@@ -319,7 +321,6 @@ sub schedule_donor {
 	    my $alignments = $donor_information->{$sample_id};
 	    push @{$donor->{gnos_url}}, $gnos_url;
 	    $donor->{bam_count} = 0;
-	    my $aligns = {};
 	    
 	    my %said;
 
@@ -435,37 +436,50 @@ sub schedule_donor {
     say $report_file "\tDONOR WORKLFOW ACTION OVERVIEW";
     say $report_file "\t\tALIGNED BAMS FOUND: $donor->{bam_count}";
     
+
+    # We want the most recent alignment for a given aliquot if there are > 1
+    # First, relate time stampe to alignment IDs
     my %aln_date;
     for my $aln (keys %normal, keys %tumor) {
 	my ($timestamp) = reverse split /\s+/, $aln;
 	$aln_date{$aln} = $timestamp;
     }
 
-    my %aln_to_use;
+    # Next, grab the youngest alignment for each aliquot
+    my %youngest_aln_aliquot;
     for my $aln (keys %normal, keys %tumor) {
 	my $aliquot   = $aliquot{$aln};
 	my $timestamp = $aln_date{$aln};
-	my $alignment = $aln_to_use{$aliquot};
+	my $alignment = $youngest_aln_aliquot{$aliquot};
 
-	if (!$alignment) {
-	    $aln_to_use{$aliquot} = $aln;
+	if (not $alignment) {
+	    $youngest_aln_aliquot{$aliquot} = $aln;
 	}
 	else {
-	    my ($eldest) = reverse sort ($timestamp,$aln_date{$alignment});
-	    if ($timestamp eq $eldest) {
-		$aln_to_use{$aliquot} = $aln;
+	    my ($youngest) = reverse sort ($timestamp,$aln_date{$alignment});
+	    if ($timestamp eq $youngest) {
+		$youngest_aln_aliquot{$aliquot} = $aln;
 	    }
 	}
     }
-    my %aln_to_keep;
-    for my $aliquot (keys %aln_to_use) {
-	$aln_to_keep{$aln_to_use{$aliquot}}++;
+
+    # Then relate back to the alignmend IDs in the tumor and normal hashes
+    # Change keys from aliquot ID to alignment ID
+    my %youngest_aln;
+    for my $aliquot (keys %youngest_aln_aliquot) {
+	$youngest_aln{$youngest_aln_aliquot{$aliquot}}++;
     }
-    for my $aln (keys %normal,%tumor) {
-	my $hash = $normal{$aln} ? \%normal : \%tumor;
-	unless ($aln_to_keep{$aln}) {
-	    delete $hash->{$aln};
+
+    # Then remove older alignments from the tumor and normal sets
+    for my $aln (keys %normal) {
+	unless ($youngest_aln{$aln}) {
+	    delete $normal{$aln};
 	}
+    }
+    for my $aln (keys %tumor) {
+        unless ($youngest_aln{$aln}) {
+            delete $tumor{$aln};
+        }
     }
 
     # Make sure we have both tumor(s) and control
@@ -479,9 +493,7 @@ sub schedule_donor {
 	return 1;
     }
 
-    say "$donor_id ready for Variant calling";
-
-    print Dumper $aligns;
+    say "Donor $donor_id ready for Variant calling";
 
     # Schedule the workflow as long we have tumor and normal BAMs
 #    unless ( $unpaired_specimens) {
