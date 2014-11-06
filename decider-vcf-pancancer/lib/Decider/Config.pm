@@ -53,6 +53,9 @@ sub get {
     
     $ARGV{'--lwp-download-timeout'} //= $decider_config{'general.lwp-download-timeout'};
      die 'LWP download timeout needs to be defined' unless $ARGV{'--lwp-download-timeout'};
+
+    $ARGV{'--tabix-url'} //= $decider_config{'general.tabix-url'};
+    die 'Tabix url needs to be defined' unless $ARGV{'--tabix-url'};
     
     ### Schedule
     
@@ -74,7 +77,7 @@ sub get {
         if ($decider_config{'scheduling.force-run'} eq 'true');
     
     ### Workflow
-    
+
     $ARGV{'--workflow-skip-scheduling'} = 1
         if ($decider_config{'workflow.skip-scheduling'} eq 'true');
     
@@ -93,6 +96,8 @@ sub get {
     $ARGV{'--workflow-output-prefix'} //= $decider_config {'workflow.output-prefix'};
     
     $ARGV{'--workflow-input-prefix'} //= $decider_config {'workflow.input-prefix'};
+
+    $ARGV{'--cores-addressable'} //= $decider_config{'workflow.cores-addressable'};
 
     return \%ARGV;
 }

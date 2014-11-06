@@ -85,6 +85,14 @@ The report file name that the results will be placed in by the decider
 
 A flag indicating that previously download xml files for each analysis file should not be downloaded again
 
+=item --tabix-url[=][ ]<tabix_url>
+
+The URL of the tabix server
+
+=item --pem-file[=][ ]<path_to_pem_file>
+
+Path to the Amazon EC2 key pair file
+
 =back
 
 =item --lwp-download-timeout[=][ ]<wait_time>
@@ -150,6 +158,10 @@ Schedule workflows even if they were previously completed
 
 =for Euclid
    thread_count.default: 8
+
+=item --cores-addressable[=][ ]<number of cores>
+
+The number of cores that can be used for the analysis
 
 =item --workflow-skip-scheduling
 

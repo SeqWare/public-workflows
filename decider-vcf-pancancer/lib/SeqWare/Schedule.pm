@@ -28,6 +28,7 @@ sub schedule_samples {
 	$output_dir,
 	$output_prefix,
 	$force_run,
+	$threads,
 	$skip_gtdownload,
 	$skip_gtupload,
 	$upload_results,
@@ -37,7 +38,8 @@ sub schedule_samples {
 	$working_dir,
 	$run_workflow_version,
 	$whitelist,
-	$blacklist) = @_;
+	$blacklist,
+	$tabix_url) = @_;
 
     say $report_file "SAMPLE SCHEDULING INFORMATION\n";
 
@@ -74,6 +76,7 @@ sub schedule_samples {
 			       $output_dir,
 			       $output_prefix,
 			       $force_run,
+			       $threads,
 			       $skip_gtdownload,
 			       $skip_gtupload,
 			       $upload_results,
@@ -84,7 +87,9 @@ sub schedule_samples {
 			       $center_name, 
 			       $run_workflow_version,
 			       $whitelist,
-			       $blacklist);
+			       $blacklist,
+			       $tabix_url
+		    );
 	    }
 	}
     }
@@ -104,10 +109,14 @@ sub schedule_workflow {
          $output_prefix,
          $output_dir,
          $force_run,
+	 $threads,
          $running_sample_id,
          $sample_id,
          $center_name,
-         $run_workflow_version ) = @_;
+         $run_workflow_version,
+	 $tabix_url) = @_;
+
+    die Dumper \@_;
 
     my $cluster = (keys %{$cluster_information})[0];
     my $cluster_found = (defined($cluster) and $cluster ne '' )? 1: 0;
@@ -278,7 +287,8 @@ sub schedule_donor {
          $center_name,
          $run_workflow_version,
          $whitelist,
-         $blacklist ) = @_;
+         $blacklist,
+	 $tabix_url) = @_;
 
     say $report_file "DONOR/PARTICIPANT: $donor_id\n";
 
@@ -469,8 +479,9 @@ sub schedule_donor {
 	return 1;
     }
 
-    say "$donor_id ready for Variant calling" unless ($unpaired_specimens or $missing_sample);
-#    say Dumper $donor;
+    say "$donor_id ready for Variant calling";
+
+    print Dumper $aligns;
 
     # Schedule the workflow as long we have tumor and normal BAMs
 #    unless ( $unpaired_specimens) {
@@ -479,7 +490,6 @@ sub schedule_donor {
 #			   $report_file,
 #			   $cluster_information,
 #			   $working_dir,
-#			   $threads,
 #			   $gnos_url,
 #			   $skip_gtdownload,
 #			   $skip_gtupload,
@@ -488,33 +498,35 @@ sub schedule_donor {
 #			   $output_prefix,
 #			   $output_dir,
 #			   $force_run,
+#			   $threads,
 #			   $running_samples,
 #			   $sample_id,
 #			   $center_name,
-#			   $run_workflow_version )
+#			   $run_workflow_version,
+#			   $tabix_url)
 #	    if should_be_scheduled( $aligns, 
 #				    $force_run, 
 #				    $report_file, 
 #				    $sample, 
 #				    $running_samples, 
 #				    $ignore_failed, 
-#				    $ignore_lane_count,
 #				    $skip_scheduling);
-#   }
+#  }
 }
 
 
 sub should_be_scheduled {
-    my ($aligns, $force_run, $report_file, $sample, $running_samples, $ignore_failed, $ignore_lane_count, $skip_scheduling) = @_;
+    my ($aligns, 
+	$force_run, 
+	$report_file, 
+	$sample, 
+	$running_samples, 
+	$ignore_failed, 
+	$skip_scheduling) = @_;
 
     if ($skip_scheduling) {
         say $report_file "\t\tCONCLUSION: SKIPPING SCHEDULING";
         return 1;
-    }
-
-    if (unaligned($aligns, $report_file) and not scheduled($report_file, $sample, $running_samples, $force_run, $ignore_failed, $ignore_lane_count) ) { 
-        say $report_file "\t\tCONCLUSION: SKIPPING THERE ARE STILL UNALIGNED BAMS!\n";
-        return 0;
     }
 
     say $report_file "\t\tCONCLUSION: SCHEDULING FOR VCF";
@@ -545,7 +557,11 @@ sub scheduled {
         and not exists($running_samples->{$analysis_url_str})) or $force_run) {
         say $report_file "\t\tNOT PREVIOUSLY SCHEDULED OR RUN FORCED!";
     } 
-    elsif (( (exists($running_samples->{$sample_id}{failed}) and (scalar keys %{$running_samples->{$sample_id}} == 1)) or ( exists($running_samples->{$analysis_url_str}{failed}) and (scalar keys %{$running_samples->{$analysis_url_str}} == 1))) and $ignore_failed) {
+    elsif (( (exists($running_samples->{$sample_id}{failed}) 
+	     and (scalar keys %{$running_samples->{$sample_id}} == 1)) 
+	     or  ( exists($running_samples->{$analysis_url_str}{failed})
+	     and (scalar keys %{$running_samples->{$analysis_url_str}} == 1))) 
+             and $ignore_failed) {
         say $report_file "\t\tPREVIOUSLY FAILED BUT RUN FORCED VIA IGNORE FAILED OPTION!";
     } 
     else {
@@ -555,7 +571,8 @@ sub scheduled {
     }
 
     if ($sample->{total_lanes} == $sample->{bam_count} || $ignore_lane_count || $force_run) {
-        say $report_file "\t\tLANE COUNT MATCHES OR IGNORED OR RUN FORCED: ignore_lane_count: $ignore_lane_count total lanes: $sample->{total_lanes} bam count: $sample->{bams_count}\n";
+        say $report_file "\t\tLANE COUNT MATCHES OR IGNORED OR RUN FORCED: ignore_lane_count: ",
+	"$ignore_lane_count total lanes: $sample->{total_lanes} bam count: $sample->{bams_count}\n";
     } 
     else {
         say $report_file "\t\tLANE COUNT MISMATCH!";

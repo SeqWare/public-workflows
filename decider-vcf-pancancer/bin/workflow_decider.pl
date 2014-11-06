@@ -69,6 +69,7 @@ SeqWare::Schedule->schedule_samples( $report_file,
                                      $ARGV{'--workflow-output-dir'},
                                      $ARGV{'--workflow-output-prefix'},
                                      $ARGV{'--schedule-force-run'},
+				     $ARGV{'--cores-addressable'},
                                      $ARGV{'--workflow-skip-gtdownload'}, 
                                      $ARGV{'--workflow-skip-gtupload'},
                                      $ARGV{'--workflow-upload-results'}, 
@@ -77,6 +78,7 @@ SeqWare::Schedule->schedule_samples( $report_file,
                                      $ARGV{'--schedule-ignore-failed'},
                                      $ARGV{'--working-dir'},
                                      $ARGV{'--workflow-version'},
+				     $ARGV{'--tabix-url'}
                                      $whitelist,
                                      $blacklist
                                       );
