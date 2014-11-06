@@ -16,6 +16,7 @@ sub get {
     my %ARGV = %{$_[1]};
 
     my $cfg = new Config::Simple();
+
     $cfg->read("$Bin/../$ARGV{'--decider-config'}");
     
     my %decider_config = $cfg->vars();
@@ -58,10 +59,14 @@ sub get {
     $ARGV{'--schedule-ignore-failed'} = 1 
         if ($decider_config{'scheduling.ignore-failed'} eq 'true');
     
-    $ARGV{'--schedule-whitelist'} //= $decider_config{'scheduling.whitelist'};
+    $ARGV{'--schedule-whitelist-sample'} //= $decider_config{'scheduling.whitelist-sample'};
     
-    $ARGV{'--schedule-blacklist'} //= $decider_config{'scheduling.blacklist'};
+    $ARGV{'--schedule-blacklist-sample'} //= $decider_config{'scheduling.blacklist-sample'};
     
+    $ARGV{'--schedule-whitelist-donor'} //= $decider_config{'scheduling.whitelist-donor'};
+    
+    $ARGV{'--schedule-blacklist-donor'} //= $decider_config{'scheduling.blacklist-donor'};
+
     $ARGV{'--schedule-ignore-lane-count'} = 1 
         if ($decider_config{'scheduling.ignore-lane-count'} eq 'true');
     
@@ -91,6 +96,7 @@ sub get {
     
     $ARGV{'--workflow-input-prefix'} //= $decider_config {'workflow.input-prefix'};
 
+    say Dumper \%ARGV;
     return \%ARGV;
 }
 

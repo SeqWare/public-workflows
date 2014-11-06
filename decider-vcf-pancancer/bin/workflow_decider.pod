@@ -105,22 +105,22 @@ This flag is used to specify the amount of time lwp download should wait for an 
 
 A flag indicating that previously failed runs for this specimen should be ignored and the specimen scheduled again
 
-=item --schedule-sample-whitelist[=][ ]<filename>
+=item --schedule-whitelist-sample[=][ ]<filename>
 
 This flag indicates the file that contains a list of sample ids to be analyzed.
 This file should be placed in the whitelist folder and should have one sample id per line.
 
-=item --schedule-donor-whitelist[=][ ]<filename>
+=item --schedule-whitelist-donor[=][ ]<filename>
 
 This flag indicates a file that contains a list of donor ids to be analyzed. 
 This file should be placed in the whitelist folder and should have one donor id per line.
 
-=item --schedule-sample-blacklist[=][ ]<filename>
+=item --schedule-blacklist-sample[=][ ]<filename>
 
 This flag indicates samples that should not be run.
 The file should be placed in the blacklist folder and should have on sample id per line. 
 
-=item --schedule-donor-blacklist[=][ ]<filename>
+=item --schedule-blacklist-donor[=][ ]<filename>
 
 This flag indicates donors that should not be run.
 The file should be placed in the blacklist folder and should have on donor id per line.

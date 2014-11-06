@@ -276,22 +276,28 @@ sub download_analysis {
     my $browser = LWP::UserAgent->new();
     $browser->timeout($lwp_download_timeout);
     my $response = $browser->get($url);
+
     # x-died flag has to do with aborted chunk downloads
-    # in HTTPS.  
-    if ($response->is_success && ! $response->{'x-died'}) {
+    # in HTTPS.
+    my $dead = $response->header('x-died');
+
+    if ($response->is_success and not $dead) {
         open(my $FH, ">:encoding(UTF-8)", $out);
         write_file($FH, $response->decoded_content);
         close $FH;
     } 
     else {
-        say $response->status_line;
+        say $response->status_line unless $response->status_line eq '200 OK';
 
-	if ($response->{'x-died'}) {
-	    say "XML chunk error: ", $response->{'x-died'}, " Falling back to wget...";
+	if ($dead) {
+	    my ($analysis) = $url =~ m!/([^/]+)$!;
+	    say STDERR "$analysis: Bad content:\n$dead"; 
+	    say STDERR "Falling back to wget...";
 	}
 
         $response = system("wget -q -O $out $url");
         if ($response != 0) {
+	    say STDERR "wget failed; falling back to lwp-download...";
             $response = system("lwp-download $url $out");
             return 0 if ($response != 0 );
         }

@@ -13,6 +13,7 @@ use Getopt::Euclid;
 
 use Config::Simple;
 
+use lib '../lib';
 use SeqWare::Cluster;
 use SeqWare::Schedule;
 use GNOS::SampleInformation;
@@ -22,21 +23,24 @@ use Decider::Config;
 
 use Data::Dumper;
 
+say "HELLO";
+
 # add information from config file into %ARGV parameters.
 my %ARGV = %{Decider::Config->get(\%ARGV)};
 
 open my $report_file, '>', "$Bin/../".$ARGV{'--report'};
 
-say 'Removing cached ini and settings samples';
+say 'Removing cached ini and settings samples hello';
 `rm $Bin/../$ARGV{'--working-dir'}/samples/ -rf`;
 
 my $whitelist = {};
 my $blacklist = {};
-get_list($ARGV{'--schedule-sample-whitelist'}, 'white', 'sample', \$whitelist);
-get_list($ARGV{'--schedule-donor-whitelist'},  'white', 'donor',  \$whitelist);
-get_list($ARGV{'--schedule-sample-blacklist'}, 'black', 'sample', \$blacklist);
-get_list($ARGV{'--schedule-donor-blacklist'},  'black', 'donor',  \$blacklist);
-
+get_list($ARGV{'--schedule-whitelist-sample'}, 'white', 'sample', $whitelist);
+get_list($ARGV{'--schedule-whitelist-donor'},  'white', 'donor',  $whitelist);
+get_list($ARGV{'--schedule-blacklist-sample'}, 'black', 'sample', $blacklist);
+get_list($ARGV{'--schedule-blacklist-donor'},  'black', 'donor',  $blacklist);
+say Dumper \%ARGV;
+say "ARG $ARGV{'--schedule-whitelist-donor'}";
 
 say 'Getting SeqWare Cluster Information';
 my ($cluster_information, $running_sample_ids, $failed_samples, $completed_samples)
@@ -63,8 +67,8 @@ SeqWare::Schedule->schedule_samples( $report_file,
                                      $running_sample_ids,
                                      $ARGV{'--workflow-skip-scheduling'},
                                      $ARGV{'--schedule-sample'}, 
-                                     $ARGV{'--schedule-donor'},
                                      $ARGV{'--schedule-center'},
+				     $ARGV{'--schedule-donor'},
                                      $ARGV{'--schdeule-ignore-lane-count'},
                                      $ARGV{'--seqware-settings'},
                                      $ARGV{'--workflow-output-dir'},
@@ -94,9 +98,11 @@ sub get_list {
     my $type  = shift;
     my $list  = shift;
 
-    my $file = "$Bin/../$color/$path";
-    die "$color\list does not exist: $file" if (not -e $file);
+    my $file = "$Bin/../${color}list/$path";
+    die "${color}list does not exist: $file" if (not -e $file);
     
+    say "LIST ",ref $list;
+
     open my $list_file, '<', $file;
     
     my @list_raw = <$list_file>;

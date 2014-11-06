@@ -46,18 +46,22 @@ sub schedule_samples {
     foreach my $center_name (keys %{$sample_information}) {
         next if (defined $specific_center && $specific_center ne $center_name);
         say $report_file "SCHEDULING: $center_name";
+
+	my @blacklist = @{$blacklist->{donor}} if $blacklist and $blacklist->{donor};
+	my @whitelist = @{$whitelist->{donor}} if $whitelist and $whitelist->{donor};
+
         foreach my $donor_id (keys %{$sample_information->{$center_name}}) {
 
             next if defined $specific_donor and $specific_donor ne $donor_id;
 
-            my @blacklist = @{$blacklist->{donor}} if $blacklist and $blacklist->{donor};
-            next if defined $blacklist and grep {/^$donor_id$/} @blacklist;
+            next if @blacklist > 0 and grep {/^$donor_id$/} @blacklist;
 
-            my @whitelist = @{$whitelist->{donor}} if $whitelist and $whitelist->{donor};
-            if (not defined $whitelist or grep {/^$donor_id$/} @whitelist) {
+	    say $donor_id, (Dumper \@whitelist);
+            if (@whitelist == 0 or grep {/^$donor_id$/} @whitelist) {
 
 		my $donor_information = $sample_information->{$center_name}{$donor_id};
-		
+		say "DONOR $donor_id 2";
+
 		schedule_donor($report_file,
 			       $donor_id, 
 			       $donor_information,
@@ -259,15 +263,17 @@ sub schedule_donor {
 
     my $donor = {};
     my %aliquot;
+
+    my @blacklist = @{$blacklist->{sample}} if $blacklist and $blacklist->{sample};
+    my @whitelist = @{$whitelist->{sample}} if $whitelist and $whitelist->{sample};
+    
     foreach my $sample_id (@sample_ids) {      
   
         next if defined $specific_sample and $specific_sample ne $sample_id;
 
-        my @blacklist = @{$blacklist->{sample}} if $blacklist and $blacklist->{sample};
-        next if defined $blacklist and grep {/^$sample_id$/} @blacklist;
+        next if @blacklist > 0 and grep {/^$sample_id$/} @blacklist;
 
-        my @whitelist = @{$whitelist->{sample}} if $whitelist and $whitelist->{sample};
-        if (not defined $whitelist or grep {/^$sample_id$/} @whitelist) {
+        if (@whitelist == 0 or grep {/^$sample_id$/} @whitelist) {
 
 	    my $alignments = $donor_information->{$sample_id};
 	    push @{$donor->{gnos_url}}, $gnos_url;
