@@ -75,8 +75,6 @@ sub get {
     
     ### Workflow
     
-    $ARGV{'--workflow-bwa-threads'} //= $decider_config {'workflow.bwa-threads'};
-    
     $ARGV{'--workflow-skip-scheduling'} = 1
         if ($decider_config{'workflow.skip-scheduling'} eq 'true');
     
@@ -96,7 +94,6 @@ sub get {
     
     $ARGV{'--workflow-input-prefix'} //= $decider_config {'workflow.input-prefix'};
 
-    say Dumper \%ARGV;
     return \%ARGV;
 }
 

@@ -23,8 +23,6 @@ use Decider::Config;
 
 use Data::Dumper;
 
-say "HELLO";
-
 # add information from config file into %ARGV parameters.
 my %ARGV = %{Decider::Config->get(\%ARGV)};
 
@@ -39,8 +37,6 @@ get_list($ARGV{'--schedule-whitelist-sample'}, 'white', 'sample', $whitelist);
 get_list($ARGV{'--schedule-whitelist-donor'},  'white', 'donor',  $whitelist);
 get_list($ARGV{'--schedule-blacklist-sample'}, 'black', 'sample', $blacklist);
 get_list($ARGV{'--schedule-blacklist-donor'},  'black', 'donor',  $blacklist);
-say Dumper \%ARGV;
-say "ARG $ARGV{'--schedule-whitelist-donor'}";
 
 say 'Getting SeqWare Cluster Information';
 my ($cluster_information, $running_sample_ids, $failed_samples, $completed_samples)
@@ -51,7 +47,6 @@ my ($cluster_information, $running_sample_ids, $failed_samples, $completed_sampl
 
 
 #my $failed_db = Decider::Database->failed_connect();
-
 
 say 'Reading in GNOS Sample Information';
 my $sample_information = GNOS::SampleInformation->get( $ARGV{'--working-dir'},
@@ -74,7 +69,6 @@ SeqWare::Schedule->schedule_samples( $report_file,
                                      $ARGV{'--workflow-output-dir'},
                                      $ARGV{'--workflow-output-prefix'},
                                      $ARGV{'--schedule-force-run'},
-                                     $ARGV{'--workflow-bwa-threads'},
                                      $ARGV{'--workflow-skip-gtdownload'}, 
                                      $ARGV{'--workflow-skip-gtupload'},
                                      $ARGV{'--workflow-upload-results'}, 
@@ -92,6 +86,7 @@ close $report_file;
 say 'Finished!!';
 
 
+# Grab contents of white/black list file
 sub get_list {
     my $path  = shift or return undef;
     my $color = shift;
@@ -101,8 +96,6 @@ sub get_list {
     my $file = "$Bin/../${color}list/$path";
     die "${color}list does not exist: $file" if (not -e $file);
     
-    say "LIST ",ref $list;
-
     open my $list_file, '<', $file;
     
     my @list_raw = <$list_file>;

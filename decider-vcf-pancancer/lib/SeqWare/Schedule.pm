@@ -28,7 +28,6 @@ sub schedule_samples {
 	$output_dir,
 	$output_prefix,
 	$force_run,
-	$threads,
 	$skip_gtdownload,
 	$skip_gtupload,
 	$upload_results,
@@ -52,11 +51,13 @@ sub schedule_samples {
 
         foreach my $donor_id (keys %{$sample_information->{$center_name}}) {
 
+	    # Only do specified donor if applicable
             next if defined $specific_donor and $specific_donor ne $donor_id;
 
+	    # Skip any blacklisted donors
             next if @blacklist > 0 and grep {/^$donor_id$/} @blacklist;
 
-	    say $donor_id, (Dumper \@whitelist);
+	    # Skip and non-whitelisted donors if applicable
             if (@whitelist == 0 or grep {/^$donor_id$/} @whitelist) {
 
 		my $donor_information = $sample_information->{$center_name}{$donor_id};
@@ -73,7 +74,6 @@ sub schedule_samples {
 			       $output_dir,
 			       $output_prefix,
 			       $force_run,
-			       $threads,
 			       $skip_gtdownload,
 			       $skip_gtupload,
 			       $upload_results,
@@ -96,7 +96,6 @@ sub schedule_workflow {
          $report_file,
          $cluster_information,
          $working_dir,
-         $threads,
          $gnos_url,
          $skip_gtdownload,
          $skip_gtupload,
@@ -126,12 +125,42 @@ sub schedule_workflow {
     if ($cluster_found or $skip_scheduling) {
         system("mkdir -p $Bin/../$working_dir/samples/$center_name/$sample_id");
 
-        create_settings_file($seqware_settings_file, $url, $username, $password, $working_dir, $center_name, $sample_id);
+        create_settings_file(
+	    $seqware_settings_file, 
+	    $url, 
+	    $username, 
+	    $password, 
+	    $working_dir, 
+	    $center_name, 
+	    $sample_id
+	    );
 
-        create_workflow_ini($run_workflow_version, $sample, $gnos_url, $threads, $skip_gtdownload, $skip_gtupload, $upload_results, $output_prefix, $output_dir, $working_dir, $center_name, $sample_id);
+        create_workflow_ini(
+	    $run_workflow_version, 
+	    $sample, 
+	    $gnos_url, 
+	    $skip_gtdownload, 
+	    $skip_gtupload,
+	    $upload_results,
+	    $output_prefix,
+	    $output_dir,
+	    $working_dir,
+	    $center_name,
+	    $sample_id
+	    );
     }
 
-    submit_workflow($working_dir, $workflow_accession, $host, $skip_scheduling, $cluster_found, $report_file, $url, $center_name, $sample_id);
+    submit_workflow(
+	$working_dir,
+	$workflow_accession,
+	$host,
+	$skip_scheduling,
+	$cluster_found,
+	$report_file,
+	$url,
+	$center_name,
+	$sample_id
+	);
 
     delete $cluster_information->{$cluster} if ($cluster_found);
 }
@@ -429,8 +458,6 @@ sub schedule_donor {
 	}
     }
 
-    say Dumper \%specimens, \%aligned_specimens;
-
     # Make sure we have both tumor(s) and control
     my $unpaired_specimens = not (keys %normal and keys %tumor);
     
@@ -438,11 +465,11 @@ sub schedule_donor {
     my $missing_sample = (keys %specimens) != (keys %aligned_specimens);
 
     if ($missing_sample or $unpaired_specimens) {
-	say STDERR "No good, a sample was missed";
+	say STDERR "Not all samples have been aligned for this donor; skipping...";
 	return 1;
     }
 
-    say "We have a complete set for $donor_id!" unless ($unpaired_specimens or $missing_sample);
+    say "$donor_id ready for Variant calling" unless ($unpaired_specimens or $missing_sample);
 #    say Dumper $donor;
 
     # Schedule the workflow as long we have tumor and normal BAMs
@@ -474,7 +501,6 @@ sub schedule_donor {
 #				    $ignore_lane_count,
 #				    $skip_scheduling);
 #   }
-    say "END DONOR!";
 }
 
 

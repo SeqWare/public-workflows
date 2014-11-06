@@ -148,10 +148,6 @@ Schedule workflows even if they were previously completed
 
 =over
 
-=item --workflow-bwa-threads[=][ ]<thread_count>
-
-Number of threads to use for BWA
-
 =for Euclid
    thread_count.default: 8
 
