@@ -36,14 +36,13 @@ sub get {
     my $data = $xs->XMLin("$Bin/../$working_dir/xml/data.xml");
 
     my $results = $data->{Result};
-   
+
     say $parse_log '';
- 
+
     my $i = 0;
     foreach my $result_id (keys %{$results}) {
         my $result = $results->{$result_id};
         my $analysis_full_url = $result->{analysis_full_uri};
-	say $analysis_full_url;
 
         my $analysis_id = $i;
         if ( $analysis_full_url =~ /^(.*)\/([^\/]+)$/ ) {
@@ -62,7 +61,7 @@ sub get {
         my $status = 0;
         my $attempts = 0;
 
-        while ($status == 0 and $attempts < 100) {
+        while ($status == 0 and $attempts < 10) {
             $status = download_analysis($analysis_full_url, $analysis_xml_path, $use_cached_analysis, $lwp_download_timeout);
             $attempts++;
         }         
@@ -220,7 +219,8 @@ sub get {
             $alignment = "$alignment - $analysis_id - $workflow_name - $workflow_version - $upload_date";
         }
 
-        foreach my $attribute (keys %{$library}) {
+
+	foreach my $attribute (keys %{$library}) {
             my $library_value = $library->{$attribute};
             $participants->{$center_name}{$donor_id}{$sample_id}{$alignment}{$aliquot_id}{$library_name}{$attribute}{$library_value} = 1;
         }
@@ -234,6 +234,7 @@ sub get {
     close $parse_log;
 
     return $participants;
+   
 }
 
 sub files {
@@ -252,7 +253,7 @@ sub files {
 
         $files{$file_name}{size} =  $file->{filesize};
         $files{$file_name}{checksum} = $file->{checksum};
-        $files{$file_name}{local_path} = "$analysis_id/$file_name";
+        $files{$file_name}{local_path} = $file_name;
 
         say $parse_log "\tFILE: $file_name SIZE: ".$files{$file_name}{size}." CHECKSUM: ".$files{$file_name}{checksum}{content};
         say $parse_log "\tLOCAL FILE PATH: $analysis_id/$file_name";
@@ -277,32 +278,32 @@ sub download_analysis {
     my $response = $browser->get($url);
 
     # x-died flag has to do with aborted chunk downloads
-    # in HTTPS.  
+    # in HTTPS.
     my $dead = $response->header('x-died');
 
     if ($response->is_success and not $dead) {
         open(my $FH, ">:encoding(UTF-8)", $out);
         write_file($FH, $response->decoded_content);
-	close $FH;
-    }
+        close $FH;
+    } 
     else {
         say $response->status_line unless $response->status_line eq '200 OK';
 
 	if ($dead) {
-            my ($analysis) = $url =~ m!/([^/]+)$!;
-            say STDERR "$analysis: Bad content:\n$dead";
+	    my ($analysis) = $url =~ m!/([^/]+)$!;
+	    say STDERR "$analysis: Bad content:\n$dead"; 
 	    say STDERR "Falling back to wget...";
-        }
+	}
 
         $response = system("wget -q -O $out $url");
         if ($response != 0) {
-            say STDERR "wget failed; falling back to lwp-download...";
-	    $response = system("lwp-download $url $out");
+	    say STDERR "wget failed; falling back to lwp-download...";
+            $response = system("lwp-download $url $out");
             return 0 if ($response != 0 );
         }
     }
     if (-e $out and eval { $xs->XMLin($out) }) {
-	return 1;
+         return 1;
     }
 
     return 0;

@@ -23,6 +23,10 @@ All workflows basically rely on two merged bam (control and tumor sample) files 
 
 To keep the seqware bundle small, it contains only some dependencies. Most dependencies are within a tarball in the GNOS repository. Some additional software needs to be installed before running the workflow.
 
+### System Installs
+
+    sudo apt-get -y install procmail 
+
 ## Building the Workflow
 
 Use 
