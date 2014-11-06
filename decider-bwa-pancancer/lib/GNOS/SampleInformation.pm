@@ -62,7 +62,7 @@ sub get {
         my $status = 0;
         my $attempts = 0;
 
-        while ($status == 0 and $attempts < 10) {
+        while ($status == 0 and $attempts < 100) {
             $status = download_analysis($analysis_full_url, $analysis_xml_path, $use_cached_analysis, $lwp_download_timeout);
             $attempts++;
         }         
