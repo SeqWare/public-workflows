@@ -60,7 +60,6 @@ sub schedule_samples {
             if (@whitelist == 0 or grep {/^$donor_id$/} @whitelist) {
 
 		my $donor_information = $sample_information->{$center_name}{$donor_id};
-		say "DONOR $donor_id 2";
 
 		schedule_donor($report_file,
 			       $donor_id, 
@@ -266,9 +265,12 @@ sub schedule_donor {
 
     my @blacklist = @{$blacklist->{sample}} if $blacklist and $blacklist->{sample};
     my @whitelist = @{$whitelist->{sample}} if $whitelist and $whitelist->{sample};
+
+    my (%specimens,%aligned_specimens);
     
     foreach my $sample_id (@sample_ids) {      
-  
+	$specimens{$sample_id}++;
+
         next if defined $specific_sample and $specific_sample ne $sample_id;
 
         next if @blacklist > 0 and grep {/^$sample_id$/} @blacklist;
@@ -283,7 +285,7 @@ sub schedule_donor {
 	    my %said;
 
 	    foreach my $alignment_id (keys %{$alignments}) {
-		
+
                 # Skip unaligned BAMs, not relevant to VC workflows
 		next if $alignment_id eq 'unaligned';
 		
@@ -293,7 +295,7 @@ sub schedule_donor {
 		    my $libraries = $aliquotes->{$aliquot_id};
 		    foreach my $library_id (keys %{$libraries}) {
 			my $library = $libraries->{$library_id};
-			
+
 			my $current_bwa_workflow_version = $library->{workflow_version};
 			my @current_bwa_workflow_version = keys %$current_bwa_workflow_version;
 			$current_bwa_workflow_version = $current_bwa_workflow_version[0];
@@ -318,7 +320,8 @@ sub schedule_donor {
 			#
 			# If we got here, we have a useable alignment
 			#
-			
+			$aligned_specimens{$sample_id}++;
+
 			$aliquot{$alignment_id} = $aliquot_id;
 
 			# Is it tumor or normal?
@@ -393,10 +396,6 @@ sub schedule_donor {
     say $report_file "\tDONOR WORKLFOW ACTION OVERVIEW";
     say $report_file "\t\tALIGNED BAMS FOUND: $donor->{bam_count}";
     
-    # Multiple alignments for the same specimen?  
-    say "Normal before: ", Dumper \%normal;
-    say "Tumor before: ", Dumper \%tumor;
-
     my %aln_date;
     for my $aln (keys %normal, keys %tumor) {
 	my ($timestamp) = reverse split /\s+/, $aln;
@@ -429,14 +428,21 @@ sub schedule_donor {
 	    delete $hash->{$aln};
 	}
     }
-    say "Normal after: ", Dumper \%normal;
-    say "Tumor after: ", Dumper \%tumor;
 
+    say Dumper \%specimens, \%aligned_specimens;
 
     # Make sure we have both tumor(s) and control
     my $unpaired_specimens = not (keys %normal and keys %tumor);
-	    
-    say "We have a complete set for $donor_id!" unless $unpaired_specimens;
+    
+    # Make sure all samples for this donor are accounted for
+    my $missing_sample = (keys %specimens) != (keys %aligned_specimens);
+
+    if ($missing_sample or $unpaired_specimens) {
+	say STDERR "No good, a sample was missed";
+	return 1;
+    }
+
+    say "We have a complete set for $donor_id!" unless ($unpaired_specimens or $missing_sample);
 #    say Dumper $donor;
 
     # Schedule the workflow as long we have tumor and normal BAMs
