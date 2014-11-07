@@ -14,8 +14,15 @@ use Carp::Always;
 
 use Data::Dumper;
 
+sub new {
+    my $class = shift;
+    my $self = bless {}, $class;
+    return $self;
+}
+
 sub schedule_samples {
-    my ($class, $report_file,
+    my $self = shift;
+    my ($report_file,
 	$sample_information, 
 	$cluster_information, 
 	$running_samples, 
@@ -65,31 +72,31 @@ sub schedule_samples {
 
 		my $donor_information = $sample_information->{$center_name}{$donor_id};
 
-		schedule_donor($report_file,
-			       $donor_id, 
-			       $donor_information,
-			       $cluster_information, 
-			       $running_samples, 
-			       $skip_scheduling,
-			       $specific_sample,
-			       $ignore_lane_count,
-			       $seqware_settings_file,
-			       $output_dir,
-			       $output_prefix,
-			       $force_run,
-			       $threads,
-			       $skip_gtdownload,
-			       $skip_gtupload,
-			       $upload_results,
-			       $input_prefix, 
-			       $gnos_url,
-			       $ignore_failed, 
-			       $working_dir, 
-			       $center_name, 
-			       $run_workflow_version,
-			       $whitelist,
-			       $blacklist,
-			       $tabix_url
+		$self->schedule_donor($report_file,
+				      $donor_id, 
+				      $donor_information,
+				      $cluster_information, 
+				      $running_samples, 
+				      $skip_scheduling,
+				      $specific_sample,
+				      $ignore_lane_count,
+				      $seqware_settings_file,
+				      $output_dir,
+				      $output_prefix,
+				      $force_run,
+				      $threads,
+				      $skip_gtdownload,
+				      $skip_gtupload,
+				      $upload_results,
+				      $input_prefix, 
+				      $gnos_url,
+				      $ignore_failed, 
+				      $working_dir, 
+				      $center_name, 
+				      $run_workflow_version,
+				      $whitelist,
+				      $blacklist,
+				      $tabix_url
 		    );
 	    }
 	}
@@ -97,6 +104,8 @@ sub schedule_samples {
 }
 
 sub schedule_workflow {
+    die Dumper \@_;
+    my $self = shift;
     my ( $sample, 
          $seqware_settings_file, 
          $report_file,
@@ -116,8 +125,6 @@ sub schedule_workflow {
          $center_name,
          $run_workflow_version,
 	 $tabix_url) = @_;
-
-    die Dumper \@_;
 
     my $cluster = (keys %{$cluster_information})[0];
     my $cluster_found = (defined($cluster) and $cluster ne '' )? 1: 0;
@@ -176,6 +183,7 @@ sub schedule_workflow {
 }
 
 sub create_settings_file {
+    my $self = shift;
     my ($seqware_settings_file, $url, $username, $password, $working_dir, $center_name, $sample_id) = @_;
 
     my $settings = new Config::Simple("$Bin/../conf/ini/$seqware_settings_file");
@@ -192,6 +200,7 @@ sub create_settings_file {
 }
 
 sub create_workflow_ini {
+    my $self = shift;
     my ($workflow_version, $sample, $gnos_url, $threads, $skip_gtdownload, $skip_gtupload, $upload_results, $output_prefix, $output_dir, $working_dir, $center_name, $sample_id) = @_;
 
     my $ini_path = "$Bin/../conf/ini/workflow-$workflow_version.ini";
@@ -222,6 +231,7 @@ sub create_workflow_ini {
 
 
 sub submit_workflow {
+    my $self = shift;
     my ($working_dir, $workflow_accession, $host, $skip_scheduling, $cluster_found, $report_file, $url, $center_name, $sample_id) = @_;
 
     my $dir = getcwd();
@@ -265,6 +275,7 @@ sub submit_workflow {
 }
 
 sub schedule_donor {
+    my $self = shift;
     my ( $report_file,
          $donor_id,
          $donor_information,
@@ -320,7 +331,6 @@ sub schedule_donor {
 
 	    my $alignments = $donor_information->{$sample_id};
 	    push @{$donor->{gnos_url}}, $gnos_url;
-	    $donor->{bam_count} = 0;
 	    
 	    my %said;
 
@@ -493,6 +503,9 @@ sub schedule_donor {
 	return 1;
     }
 
+    my $kept = (keys %tumor) + (keys %normal);
+    say $report_file "\t\tALIGNED BAMS RETAINED FOR VARIANT CALLING: $kept\n";
+
     say "Donor $donor_id ready for Variant calling";
 
     # Schedule the workflow as long we have tumor and normal BAMs
@@ -528,6 +541,7 @@ sub schedule_donor {
 
 
 sub should_be_scheduled {
+    my $self = shift;
     my ($aligns, 
 	$force_run, 
 	$report_file, 
@@ -546,6 +560,7 @@ sub should_be_scheduled {
 }
 
 sub unaligned {
+    my $self = shift;
     my ($aligns, $report_file) = @_;
 
     if  ( (scalar keys %{$aligns} == 1 and defined $aligns->{unaligned}) ) {
@@ -558,7 +573,13 @@ sub unaligned {
 }
 
 sub scheduled {
-    my ($report_file, $sample, $running_samples, $force_run, $ignore_failed, $ignore_lane_count ) = @_; 
+    my $self = shift;
+    my ($report_file, 
+	$sample, 
+	$running_samples, 
+	$force_run, 
+	$ignore_failed, 
+	$ignore_lane_count ) = @_; 
 
     my $analysis_url_str = join ',', sort keys %{$sample->{analysis_url}};
     $sample->{analysis_url} = $analysis_url_str;
