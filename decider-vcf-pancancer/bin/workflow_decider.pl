@@ -14,7 +14,7 @@ use Getopt::Euclid;
 use Config::Simple;
 
 use SeqWare::Cluster;
-use SeqWare::Schedule;
+use SeqWare::Schedule::EBI;
 use GNOS::SampleInformation;
 
 use Decider::Database;
@@ -56,32 +56,33 @@ my $sample_information = GNOS::SampleInformation->get( $ARGV{'--working-dir'},
 
 
 say 'Scheduling Samples';
-SeqWare::Schedule->schedule_samples( $report_file,
-                                     $sample_information,
-                                     $cluster_information,
-                                     $running_sample_ids,
-                                     $ARGV{'--workflow-skip-scheduling'},
-                                     $ARGV{'--schedule-sample'}, 
-                                     $ARGV{'--schedule-center'},
-				     $ARGV{'--schedule-donor'},
-                                     $ARGV{'--schdeule-ignore-lane-count'},
-                                     $ARGV{'--seqware-settings'},
-                                     $ARGV{'--workflow-output-dir'},
-                                     $ARGV{'--workflow-output-prefix'},
-                                     $ARGV{'--schedule-force-run'},
-				     $ARGV{'--cores-addressable'},
-                                     $ARGV{'--workflow-skip-gtdownload'}, 
-                                     $ARGV{'--workflow-skip-gtupload'},
-                                     $ARGV{'--workflow-upload-results'}, 
-                                     $ARGV{'--workflow-input-prefix'},
-                                     $ARGV{'--gnos-url'},
-                                     $ARGV{'--schedule-ignore-failed'},
-                                     $ARGV{'--working-dir'},
-                                     $ARGV{'--workflow-version'},
-				     $ARGV{'--tabix-url'},
-                                     $whitelist,
-                                     $blacklist
-                                      );
+my $scheduler = SeqWare::Schedule::EBI->new();
+$scheduler->schedule_samples( $report_file,
+			      $sample_information,
+			      $cluster_information,
+			      $running_sample_ids,
+			      $ARGV{'--workflow-skip-scheduling'},
+			      $ARGV{'--schedule-sample'}, 
+			      $ARGV{'--schedule-center'},
+			      $ARGV{'--schedule-donor'},
+			      $ARGV{'--schdeule-ignore-lane-count'},
+			      $ARGV{'--seqware-settings'},
+			      $ARGV{'--workflow-output-dir'},
+			      $ARGV{'--workflow-output-prefix'},
+			      $ARGV{'--schedule-force-run'},
+			      $ARGV{'--cores-addressable'},
+			      $ARGV{'--workflow-skip-gtdownload'}, 
+			      $ARGV{'--workflow-skip-gtupload'},
+			      $ARGV{'--workflow-upload-results'}, 
+			      $ARGV{'--workflow-input-prefix'},
+			      $ARGV{'--gnos-url'},
+			      $ARGV{'--schedule-ignore-failed'},
+			      $ARGV{'--working-dir'},
+			      $ARGV{'--workflow-version'},
+			      $ARGV{'--tabix-url'},
+			      $whitelist,
+			      $blacklist
+    );
 close $report_file;
 
 say 'Finished!!';
