@@ -25,14 +25,15 @@ To keep the seqware bundle small, it contains only some dependencies. Most depen
 
 ### System Installs
 
-    sudo apt-get -y install procmail 
+    sudo apt-get update
     sudo apt-get -y install tabix        # for bgzip
     sudo apt-get -y install procmail    # for lockfile
     sudo apt-get -y install zip
     sudo apt-get -y install subversion
     sudo apt-get -y install make cpanminus
-    sudo cpanm Math::CDF
-    sudo cpanm XML::XPath
+    sudo cpanm Math::CDF # no package for ubuntu 12.04?
+    # sudo cpanm XML::XPath
+    sudo apt-get -y install libxml-xpath-perl
     sudo apt-get -y install python-dev
     sudo apt-get -y install python-pip
     sudo pip install pysam
