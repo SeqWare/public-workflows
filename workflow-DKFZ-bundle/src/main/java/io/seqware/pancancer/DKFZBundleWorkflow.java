@@ -75,7 +75,6 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
   boolean doSNVCalling = false;
   boolean doIndelCalling = false;
   boolean doCopyNumberEstimation = false;
-  boolean skipDownloads = false;
   boolean useDellyOnDisk = false;
 
   /**
@@ -164,7 +163,6 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
       gtdownloadMd5Time = loadProperty("gtdownloadMd5time", gtdownloadMd5Time);
       gtdownloadMem = loadProperty("gtdownloadMemG", gtdownloadMem);
       smallJobMemM = loadProperty("smallJobMemM", smallJobMemM);
-      skipDownloads = loadBooleanProperty("skipDownloads");
 
       System.out.println("" + doCleanup + " " + doSNVCalling + " " + doIndelCalling + " " + doCopyNumberEstimation);
 
@@ -406,7 +404,7 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
       if (doCopyNumberEstimation) {
         logger.info("Copy number estimation will be done.");
         Job jobCopyNumberEstimation = createRoddyJob("RoddyCNE", pid, "copyNumberEstimation", downloadJobDependencies);
-                //createGNOSUploadJob("GNOSUpload VCF Copy Number Estimation", new File(directoryCNEResults, "snvs_" + pid + ".vcf.gz"), jobCopyNumberEstimationFinal);
+        //createGNOSUploadJob("GNOSUpload VCF Copy Number Estimation", new File(directoryCNEResults, "snvs_" + pid + ".vcf.gz"), jobCopyNumberEstimationFinal);
         //TODO Create additional files upload job.
         //Upload all vcfs + tabix files
         //Upload a tarball
