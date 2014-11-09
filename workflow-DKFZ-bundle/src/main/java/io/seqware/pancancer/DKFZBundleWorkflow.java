@@ -322,6 +322,7 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
   }
 
   private Job createDependenciesDownloadJob(String fileURL, Job parent) {
+    // TODO: would be nice to download this just once and skip in future runs if that download directory exists
     CreateDownloadJobResult jcr = createDefaultGNOSDownloadJob(parent, fileURL, gnosDownloadDirGeneric);
     String lockfile = getLockfileNameForGNOSDownload(gnosDownloadDirGeneric, jcr.elementID);
     String extractedDirectory = jcr.outputDirectory + "/bundledFiles";
