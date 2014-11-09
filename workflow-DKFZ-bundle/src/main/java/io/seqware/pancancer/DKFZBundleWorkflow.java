@@ -208,7 +208,7 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
     String fullConfiguration = "dkfzPancancerBase" + (debugmode ? ".dbg" : "") + "@" + analysisConfigurationID;
     // TODO: this needs to be parameterized I think if we can't bundle Roddy
     job.getCommand()
-      .addArgument("cd " + this.getWorkflowBaseDir() + "bin/RoddyBundlePancancer") 
+      .addArgument("cd " + this.getWorkflowBaseDir() + "/bin/RoddyBundlePancancer") 
       .addArgument(String.format(" && bash roddy.sh %s %s %s --useconfig=applicationPropertiesAllLocal.ini --waitforjobs", runMode, fullConfiguration, pid));
     if (debugmode) {
       job.getCommand().addArgument(" --verbositylevel=5 ");
