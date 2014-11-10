@@ -14,7 +14,7 @@ use Getopt::Euclid;
 use Config::Simple;
 
 use SeqWare::Cluster;
-use SeqWare::Schedule::EBI;
+use SeqWare::Schedule::Sanger;
 use GNOS::SampleInformation;
 
 use Decider::Database;
@@ -56,7 +56,7 @@ my $sample_information = GNOS::SampleInformation->get( $ARGV{'--working-dir'},
 
 
 say 'Scheduling Samples';
-my $scheduler = SeqWare::Schedule::EBI->new();
+my $scheduler = SeqWare::Schedule::Sanger->new();
 $scheduler->schedule_samples( $report_file,
 			      $sample_information,
 			      $cluster_information,
