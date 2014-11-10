@@ -8,7 +8,7 @@ use autodie qw(:all);
 use FindBin qw($Bin);
 
 use Config::Simple;
-use Capture::Tiny ':all';
+#use Capture::Tiny ':all';
 use Cwd;
 use Carp::Always;
 
@@ -106,11 +106,8 @@ sub schedule_samples {
 }
 
 sub schedule_workflow {
-    die Dumper \@_;
     my $self = shift;
     my ( $donor,
-	 $normal,
-	 $tumor,
          $seqware_settings_file, 
          $report_file,
          $cluster_information,
@@ -130,6 +127,7 @@ sub schedule_workflow {
 	 $pem_file
 	) = @_;
 
+
     my $cluster = (keys %{$cluster_information})[0];
     my $cluster_found = (defined($cluster) and $cluster ne '' )? 1: 0;
 
@@ -140,9 +138,8 @@ sub schedule_workflow {
     my $workflow_accession = $cluster_information->{$cluster}{workflow_accession};
     my $workflow_version = $cluster_information->{$cluster}{workflow_version};
     my $host = $cluster_information->{$cluster}{host};
-    
-    say Dumper $donor;
-    my $donor_id = 'sheldon';
+
+    my $donor_id = $donor->{donor_id};
 
     if ($cluster_found or $skip_scheduling) {
         system("mkdir -p $Bin/../$working_dir/samples/$center_name/$donor_id");
@@ -154,14 +151,14 @@ sub schedule_workflow {
 	    $username, 
 	    $password, 
 	    $working_dir, 
-	    $center_name, 
-	    $donor_id
+	    $center_name
 	    );
 
         $self->create_workflow_ini(
 	    $donor,
 	    $run_workflow_version, 
 	    $gnos_url, 
+	    $threads,
 	    $skip_gtdownload, 
 	    $skip_gtupload,
 	    $upload_results,
@@ -169,7 +166,8 @@ sub schedule_workflow {
 	    $output_dir,
 	    $working_dir,
 	    $center_name,
-	    $donor_id
+	    $tabix_url,
+	    $pem_file
 	    );
     }
 
@@ -306,7 +304,6 @@ sub schedule_donor {
 		    my $libraries = $aliquots->{$aliquot_id};
 		    foreach my $library_id (keys %{$libraries}) {
 			my $library = $libraries->{$library_id};
-			say Dumper $library;
 
 			my $current_bwa_workflow_version = $library->{workflow_version};
 			my @current_bwa_workflow_version = keys %$current_bwa_workflow_version;
@@ -364,7 +361,9 @@ sub schedule_donor {
 			foreach my $file (keys %{$files}) {
 			    my $local_path = $files->{$file}{local_path};
 			    push @local_bams, $local_path if ($local_path =~ /bam$/);
+			    $donor->{bam_ids}->{$alignment_id} = $local_path;
 			}
+
 			my @analysis_ids = keys %{$library->{analysis_ids}};
 			my $analysis_ids = join ',', @analysis_ids;
 			
@@ -414,7 +413,7 @@ sub schedule_donor {
     
 
     # We want the most recent alignment for a given aliquot if there are > 1
-    # First, relate time stampe to alignment IDs
+    # First, relate time stamp to alignment IDs
     my %aln_date;
     for my $aln (keys %normal, keys %tumor) {
 	my ($timestamp) = reverse split /\s+/, $aln;
