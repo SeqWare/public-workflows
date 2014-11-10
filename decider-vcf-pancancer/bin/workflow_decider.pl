@@ -80,6 +80,7 @@ $scheduler->schedule_samples( $report_file,
 			      $ARGV{'--working-dir'},
 			      $ARGV{'--workflow-version'},
 			      $ARGV{'--tabix-url'},
+			      $ARGV{'--pem-file'},
 			      $whitelist,
 			      $blacklist
     );
