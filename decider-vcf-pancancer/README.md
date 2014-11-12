@@ -31,5 +31,10 @@ Each list is a text file with one donor or sample ID/line
 ## Testing
 There is a shell script 'sanger_decider_test.sh' that will run the decoder through its paces.
 
-$ bash sanger_decider_test.sh
+# To test on itri GNOS repo
+bash sanger_workflow_test_itri.sh
+
+# To test on osdc GNOS repo
+bash sanger_workflow_test_osdc.sh
+
 
