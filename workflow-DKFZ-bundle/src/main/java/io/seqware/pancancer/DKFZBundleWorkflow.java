@@ -1,6 +1,8 @@
 package io.seqware.pancancer;
 
 import java.io.File;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import net.sourceforge.seqware.pipeline.workflowV2.*;
 import net.sourceforge.seqware.pipeline.workflowV2.model.*;
 import java.util.*;
@@ -17,13 +19,22 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
 
   Logger logger = Logger.getLogger(DKFZBundleWorkflow.class.getName());
 
-    // comma-seperated for multiple bam inputs
+  // datetime all upload files will be named with
+  DateFormat df = new SimpleDateFormat("yyyyMMdd");
+  String dateString = df.format(Calendar.getInstance().getTime());
+
+  private String workflowName = "dkfz_1-0-0";
+  
+  // comma-seperated for multiple bam inputs
   // used to download with gtdownload
   ArrayList<String> inputMetadataURLs = new ArrayList<String>();
 
   String gnosInputMetadataURLs = null;
   String gnosUploadFileURL = null;
 
+  String inputFileTumorSpecimenUuid = null;
+  String inputFileControlSpecimenUuid = null;
+  
   // Input parameters and files
   String pid;
 
@@ -125,6 +136,9 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
 
       gnosDownloadDirGeneric = new File(directoryBaseOutput, "gnos_download");
       directoryBundledFiles = new File(directoryBaseOutput, "bundledFiles");
+      
+      inputFileTumorSpecimenUuid = getProperty("input_file_tumor_specimen_uuid");
+      inputFileControlSpecimenUuid = getProperty("input_file_control_specimen_uuid");
 
       processDirectoryPID = new File(new File(directoryBaseOutput, outputdir), pid);
       directoryAlignmentFiles = new File(processDirectoryPID, "alignment");
@@ -209,7 +223,7 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
     // TODO: this needs to be parameterized I think if we can't bundle Roddy
     job.getCommand()
       .addArgument("cd " + this.getWorkflowBaseDir() + "/bin/RoddyBundlePancancer") 
-      .addArgument(String.format(" && bash roddy.sh %s %s %s --useconfig=applicationProperties.ini --waitforjobs", runMode, fullConfiguration, pid));
+      .addArgument(String.format(" && bash roddy.sh %s %s %s --useconfig=applicationPropertiesAllLocal.ini --waitforjobs", runMode, fullConfiguration, pid));
     if (debugmode) {
       job.getCommand().addArgument(" --verbositylevel=5 ");
     }
@@ -385,11 +399,30 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
         downloadJobDependencies.add(createDirs);
       }
 
+      // source, index, md5sum, destination vcf, destination index, destination md5sum
+      ArrayList<ArrayList<String>> vcfFiles = new ArrayList<ArrayList<String>>();
+      
+      
       if (doSNVCalling) {
         logger.info("SNV Calling will be done.");
         jobSNVCalling = createRoddyJob("RoddySNVCalling", pid, "snvCalling", downloadJobDependencies);
 //                createGNOSUploadJob("GNOSUpload Raw VCF SNVCalling", new File(directorySNVCallingResults, "snvs_" + pid + "_raw.vcf.gz"), jobSNVCalling);
 //                createGNOSUploadJob("GNOSUpload VCF SNVCalling", new File(directorySNVCallingResults, "snvs_" + pid + ".vcf.gz"), jobSNVCalling);
+        ArrayList<String> curr = new ArrayList<String>();
+        // files
+        curr.add(new File(directorySNVCallingResults, "snvs_" + pid + ".vcf.gz").getAbsolutePath());
+        curr.add(new File(directorySNVCallingResults, "snvs_" + pid + ".vcf.gz.tbi").getAbsolutePath());
+        curr.add(new File(directorySNVCallingResults, "snvs_" + pid + ".vcf.gz.md5").getAbsolutePath());
+        // output names
+        // pid is the name of the sample
+        curr.add(inputFileTumorSpecimenUuid + "." + this.workflowName + "." + this.dateString + ".somatic.snv_mnv.vcf.gz");
+        curr.add(inputFileTumorSpecimenUuid + "." + this.workflowName + "." + this.dateString + ".somatic.snv_mnv.vcf.gz.tbi");
+        curr.add(inputFileTumorSpecimenUuid + "." + this.workflowName + "." + this.dateString + ".somatic.snv_mnv.vcf.gz.md5");
+
+        // LEFT OFF WITH: need to check if I need the md5 sum of the tbi files too
+        // need to add Keiran's upload wrapper script and the updated VCF uploader
+        
+
       }
 
       if (doIndelCalling) {
