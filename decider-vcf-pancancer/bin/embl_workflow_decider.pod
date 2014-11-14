@@ -1,0 +1,200 @@
+=head1 VERSION
+
+Version 0.0.1
+
+=head1 AUTHOR(S)
+
+Brian O'Connor, Adam Wright, Sheldon McKay
+
+=over
+
+=item --usage
+
+=item --help
+
+=item --man
+
+Print the usual program information
+
+=back
+
+=head1 DESCRIPTION
+
+A tool for identifying samples ready for alignment, scheduling on clusters, and monitoring for completion.
+
+=head1 NAME
+
+Variant Walling Workflow Decider - SeqWare
+
+=head1 REQUIRED
+
+=item --decider-config[=][ ]<decider_path>
+
+The path to the file containing the default settings for the decider. If another option is chosen via command line option the command line setting will take presidence. 
+
+=over
+
+=head1 OPTIONS
+
+=over
+
+=head2 MAIN
+
+=over
+
+=item --seqware-clusters[=][ ]<file>
+
+JSON file that describes the clusters available to schedule workflows to. As a reference there is a cluster.json
+file in the conf folder.
+
+=for Euclid:
+        file.type: readable
+        repeatable 
+
+=item --workflow-version[=][ ]<workflow_version>
+
+Specify the BWA workflow version you would like to run (eg. 2.6.0)
+
+=back
+
+=head2 GENERAL
+
+=over
+
+=item --gnos-url[=][ ]<gnos_url>
+
+URL for a GNOS server, e.g. https://gtrepo-ebi.annailabs.com
+
+=item --working-dir[=][ ]<working_directory>
+
+A place for temporary ini and settings files
+
+=item --use-cached-analysis
+
+Use the previously downloaded list of files from GNOS that are marked in the live state (only useful for testing).
+
+=item --seqware-settings[=][ ]<seqware_settings>
+
+The template seqware settings file
+
+=item --report[=][ ]<report_file>
+
+The report file name that the results will be placed in by the decider
+
+=item --use-live-cached
+
+A flag indicating that previously download xml files for each analysis file should not be downloaded again
+
+=item --tabix-url[=][ ]<tabix_url>
+
+The URL of the tabix server
+
+=item --pem-file[=][ ]<path_to_pem_file>
+
+Path to the Amazon EC2 key pair file
+
+=back
+
+=item --lwp-download-timeout[=][ ]<wait_time>
+
+This flag is used to specify the amount of time lwp download should wait for an xml file. If zero is specified it will skip lwp download and attempt other methods. 
+
+=for Euclid
+   wait_time.type: integer
+
+=back
+
+
+=head2 SCHEDULE
+
+=over 
+
+=item --schedule-ignore-failed 
+
+A flag indicating that previously failed runs for this specimen should be ignored and the specimen scheduled again
+
+=item --schedule-whitelist-sample[=][ ]<filename>
+
+This flag indicates the file that contains a list of sample ids to be analyzed.
+This file should be placed in the whitelist folder and should have one sample id per line.
+
+=item --schedule-whitelist-donor[=][ ]<filename>
+
+This flag indicates a file that contains a list of donor ids to be analyzed. 
+This file should be placed in the whitelist folder and should have one donor id per line.
+
+=item --schedule-blacklist-sample[=][ ]<filename>
+
+This flag indicates samples that should not be run.
+The file should be placed in the blacklist folder and should have on sample id per line. 
+
+=item --schedule-blacklist-donor[=][ ]<filename>
+
+This flag indicates donors that should not be run.
+The file should be placed in the blacklist folder and should have on donor id per line.
+
+=item --schedule-sample[=][ ]<aliquot_id>
+
+For only running one particular sample based on its uuid
+
+
+=item --schedule-donor[=][ ]<aliquot_id>
+
+For running one particular donor based on its uuid
+
+=item --schedule-ignore-lane-count
+
+Skip the check that the GNOS XML contains a count of lanes for this sample and the bams count matches
+
+=item --schedule-force-run
+
+Schedule workflows even if they were previously completed
+
+=back
+
+=head2 WORKFLOW
+
+=over
+
+=for Euclid
+   thread_count.default: 8
+
+=item --cores-addressable[=][ ]<number of cores>
+
+The number of cores that can be used for the analysis
+
+=item --workflow-skip-scheduling
+
+Indicates no workflow should be scheduled, just summary of what would have been run.
+
+=item --workflow-upload-results
+
+A flag indicating the resulting BAM files and metadata should be uploaded to GNOS, default is to not upload!!!
+
+=item --workflow-skip-gtdownload
+
+A flag indicating that input files should be just the bam input paths and not from GNOS
+
+=item --workflow-skip-gtupload
+
+A flag indicating that upload should not take place but output files should be placed in output_prefix/output_dir
+
+=item --workflow-output-prefix[=][ ]<output_prefix>
+
+If --skip-gtupload is set, use this to specify the prefix of where output files are written
+
+=for Euclid
+    output_prefix.default: './'
+
+=item --workflow-output-dir[=][ ]<output_directory>
+
+if --skip-gtupload is set, use this to specify the dir of where output files are written
+
+=for Euclid
+   output_directory.default: 'seqware-results/'
+
+=item --workflow-input-prefix[=][ ]<prefix>
+
+if --skip-gtdownload is set, this is the input bam file prefix
+
+=back

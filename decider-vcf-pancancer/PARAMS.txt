@@ -1,0 +1,13 @@
+coresAddressable=
+tabixSrvUri=
+tumourAnalysisId=
+tumourBam=
+tumorAliquotId=
+controlAnalysisId=
+controlBam=
+pemFile=
+gnosServer=
+assembly=
+species=
+seqType=
+gender=
