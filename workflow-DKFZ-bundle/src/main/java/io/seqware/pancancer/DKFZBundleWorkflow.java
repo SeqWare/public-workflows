@@ -22,8 +22,6 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
   // datetime all upload files will be named with
   DateFormat df = new SimpleDateFormat("yyyyMMdd");
   String dateString = df.format(Calendar.getInstance().getTime());
-
-  private String workflowName = "dkfz_1-0-0";
   
   // comma-seperated for multiple bam inputs
   // used to download with gtdownload
@@ -87,6 +85,15 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
   boolean doIndelCalling = false;
   boolean doCopyNumberEstimation = false;
   boolean useDellyOnDisk = false;
+  
+  // workflow related
+  private String workflowName = "dkfz_1-0-0";
+  private String workflowSourceURL = null;
+  private String workflowURL = null;
+  private String workflowFullName = null;
+  private String workflowVersion = null;
+  private String seqwareVersion = null;
+  
 
   /**
    * Safely load a property from seqwares workflow environment.
@@ -177,6 +184,14 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
       gtdownloadMd5Time = loadProperty("gtdownloadMd5time", gtdownloadMd5Time);
       gtdownloadMem = loadProperty("gtdownloadMemG", gtdownloadMem);
       smallJobMemM = loadProperty("smallJobMemM", smallJobMemM);
+      
+      // workflow related
+      workflowName = loadProperty("workflow_name", "dkfz_unkown");
+      workflowSourceURL = loadProperty("workflow_src_url", "");
+      workflowURL = loadProperty("workflow_url", "");
+      workflowFullName = loadProperty("workflow_full_name", "DKFZ-Variant-Calling");
+      workflowVersion = loadProperty("workflow_version", "unkown");
+      seqwareVersion = loadProperty("seqware_version", "unkown");
 
       System.out.println("" + doCleanup + " " + doSNVCalling + " " + doIndelCalling + " " + doCopyNumberEstimation);
 
@@ -186,10 +201,6 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
     }
 
     return this.getFiles();
-  }
-
-  @Override
-  public void setupDirectory() {
   }
 
   /**
@@ -215,6 +226,7 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
    */
   private Job createRoddyJob(String name, String pid, String analysisConfigurationID, List<Job> parentJobs, String runMode) {
     Job job = this.getWorkflow().createBashJob(name);
+    // FIXME: why does this need 16G?  Seems excessive for a simple wrapper script?
     job.setMaxMemory("16384");
     for (Job parentJob : parentJobs) {
       job.addParent(parentJob);
@@ -347,12 +359,6 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
     return jcr.job;
   }
 
-  private Job createGNOSUploadJob(String name, File file, Job parent) {
-    Job job = createDefaultGNOSJob(name, parent);
-    addUploadJobArgs(job, file);
-    return job;
-  }
-
   @Override
   public void buildWorkflow() {
     try {
@@ -384,7 +390,7 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
       }
 
       // Create job variables
-      Job jobSNVCalling;
+      Job jobSNVCalling = null;
       Job jobIndelCalling = null;
       Job jobCopyNumberEstimationFinal = null;
       List<Job> downloadJobDependencies = new LinkedList<Job>();
@@ -399,53 +405,89 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
         downloadJobDependencies.add(createDirs);
       }
 
+      // arrays for use with upload client
       // source, index, md5sum, destination vcf, destination index, destination md5sum
-      ArrayList<ArrayList<String>> vcfFiles = new ArrayList<ArrayList<String>>();
+      ArrayList<String> vcfFiles = new ArrayList<String>();
+      ArrayList<String> vcfOutputFiles = new ArrayList<String>();
+      ArrayList<String> vcfIndexFiles = new ArrayList<String>();
+      ArrayList<String> vcfOutputIndexFiles = new ArrayList<String>();
+      ArrayList<String> vcfOutputMd5Files = new ArrayList<String>();
+      ArrayList<String> vcfIndexOutputMd5Files = new ArrayList<String>();
+      ArrayList<String> tarFiles = new ArrayList<String>();
+      ArrayList<String> tarOutputFiles = new ArrayList<String>();
+      ArrayList<String> tarMd5Files = new ArrayList<String>();
+      ArrayList<String> tarOutputMd5Files = new ArrayList<String>();
       
+      // ArrayList of parent jobs
+      ArrayList<Job> varCalls = new ArrayList<Job>();
       
       if (doSNVCalling) {
         logger.info("SNV Calling will be done.");
         jobSNVCalling = createRoddyJob("RoddySNVCalling", pid, "snvCalling", downloadJobDependencies);
-//                createGNOSUploadJob("GNOSUpload Raw VCF SNVCalling", new File(directorySNVCallingResults, "snvs_" + pid + "_raw.vcf.gz"), jobSNVCalling);
-//                createGNOSUploadJob("GNOSUpload VCF SNVCalling", new File(directorySNVCallingResults, "snvs_" + pid + ".vcf.gz"), jobSNVCalling);
-        ArrayList<String> curr = new ArrayList<String>();
+        varCalls.add(jobSNVCalling);
         // files
-        curr.add(new File(directorySNVCallingResults, "snvs_" + pid + ".vcf.gz").getAbsolutePath());
-        curr.add(new File(directorySNVCallingResults, "snvs_" + pid + ".vcf.gz.tbi").getAbsolutePath());
-        curr.add(new File(directorySNVCallingResults, "snvs_" + pid + ".vcf.gz.md5").getAbsolutePath());
+        vcfFiles.add(new File(directorySNVCallingResults, "snvs_" + pid + ".vcf.gz").getAbsolutePath());
+        vcfIndexFiles.add(new File(directorySNVCallingResults, "snvs_" + pid + ".vcf.gz.tbi").getAbsolutePath());
         // output names
-        // pid is the name of the sample
-        curr.add(inputFileTumorSpecimenUuid + "." + this.workflowName + "." + this.dateString + ".somatic.snv_mnv.vcf.gz");
-        curr.add(inputFileTumorSpecimenUuid + "." + this.workflowName + "." + this.dateString + ".somatic.snv_mnv.vcf.gz.tbi");
-        curr.add(inputFileTumorSpecimenUuid + "." + this.workflowName + "." + this.dateString + ".somatic.snv_mnv.vcf.gz.md5");
+        vcfOutputFiles.add(inputFileTumorSpecimenUuid + "." + this.workflowName + "." + this.dateString + ".somatic.snv_mnv.vcf.gz");
+        vcfOutputIndexFiles.add(inputFileTumorSpecimenUuid + "." + this.workflowName + "." + this.dateString + ".somatic.snv_mnv.vcf.gz.tbi");
+        vcfOutputMd5Files.add(inputFileTumorSpecimenUuid + "." + this.workflowName + "." + this.dateString + ".somatic.snv_mnv.vcf.gz.md5");
+        vcfIndexOutputMd5Files.add(inputFileTumorSpecimenUuid + "." + this.workflowName + "." + this.dateString + ".somatic.snv_mnv.vcf.gz.tbi.md5");
 
-        // LEFT OFF WITH: need to check if I need the md5 sum of the tbi files too
-        // need to add Keiran's upload wrapper script and the updated VCF uploader
-        
+        // TODO: add raw files to tarball
 
       }
 
       if (doIndelCalling) {
         logger.info("Indel Calling will be done.");
         jobIndelCalling = createRoddyJob("RoddyIndelCalling", pid, "indelCalling", downloadJobDependencies);
-//                createGNOSUploadJob("GNOSUpload Raw VCF IndelCalling", new File(directoryIndelCallingResults, "indels_" + pid + "_raw.vcf.gz"), jobIndelCalling);
-//                createGNOSUploadJob("GNOSUpload VCF IndelCalling", new File(directoryIndelCallingResults, "indels_" + pid + ".vcf.gz"), jobIndelCalling);
+        varCalls.add(jobIndelCalling);
+        // files
+        vcfFiles.add(new File(directoryIndelCallingResults, "indels_" + pid + ".vcf.raw.gz").getAbsolutePath());
+        vcfIndexFiles.add(new File(directoryIndelCallingResults, "indels_" + pid + ".vcf.raw.gz.tbi").getAbsolutePath());
+        // output names
+        vcfOutputFiles.add(inputFileTumorSpecimenUuid + "." + this.workflowName + "." + this.dateString + ".somatic.indel.vcf.gz");
+        vcfOutputIndexFiles.add(inputFileTumorSpecimenUuid + "." + this.workflowName + "." + this.dateString + ".somatic.indel.vcf.gz.tbi");
+        vcfOutputMd5Files.add(inputFileTumorSpecimenUuid + "." + this.workflowName + "." + this.dateString + ".somatic.indel.vcf.gz.md5");
+        vcfIndexOutputMd5Files.add(inputFileTumorSpecimenUuid + "." + this.workflowName + "." + this.dateString + ".somatic.indel.vcf.gz.tbi.md5");
+                
       }
 
       if (jobDownloadDellyBedPe != null) {
         downloadJobDependencies.add(jobDownloadDellyBedPe);
       }
 
+      Job jobCopyNumberEstimation = null;
       if (doCopyNumberEstimation) {
         logger.info("Copy number estimation will be done.");
-        Job jobCopyNumberEstimation = createRoddyJob("RoddyCNE", pid, "copyNumberEstimation", downloadJobDependencies);
+        jobCopyNumberEstimation = createRoddyJob("RoddyCNE", pid, "copyNumberEstimation", downloadJobDependencies);
+        varCalls.add(jobCopyNumberEstimation);
         //createGNOSUploadJob("GNOSUpload VCF Copy Number Estimation", new File(directoryCNEResults, "snvs_" + pid + ".vcf.gz"), jobCopyNumberEstimationFinal);
+                // files
+        vcfFiles.add(new File(directoryIndelCallingResults, "indels_" + pid + ".vcf.raw.gz").getAbsolutePath());
+        vcfIndexFiles.add(new File(directoryIndelCallingResults, "indels_" + pid + ".vcf.raw.gz.tbi").getAbsolutePath());
+        // output names
+        vcfOutputFiles.add(inputFileTumorSpecimenUuid + "." + this.workflowName + "." + this.dateString + ".somatic.indel.vcf.gz");
+        vcfOutputIndexFiles.add(inputFileTumorSpecimenUuid + "." + this.workflowName + "." + this.dateString + ".somatic.indel.vcf.gz.tbi");
+        vcfOutputMd5Files.add(inputFileTumorSpecimenUuid + "." + this.workflowName + "." + this.dateString + ".somatic.indel.vcf.gz.md5");
+        vcfIndexOutputMd5Files.add(inputFileTumorSpecimenUuid + "." + this.workflowName + "." + this.dateString + ".somatic.indel.vcf.gz.tbi.md5");
+        
         //TODO Create additional files upload job.
         //Upload all vcfs + tabix files
         //Upload a tarball
+        
       }
-
-            // CLEANUP DOWNLOADED INPUT BAM FILES (And intermediate files?)
+      
+      // now upload
+      Job uploadJob = null;
+      if (useGtUpload) { 
+        uploadJob = createUploadJob(varCalls, vcfFiles, vcfOutputFiles, vcfIndexFiles, vcfOutputIndexFiles, vcfOutputMd5Files, vcfIndexOutputMd5Files, tarFiles, tarOutputFiles, tarMd5Files, tarOutputMd5Files);
+      }
+      // TODO: need to add conditional cleanup based on the above job as parent or not depending
+      
+// LEFT OFF WITH: need to 
+      
+       // CLEANUP DOWNLOADED INPUT BAM FILES (And intermediate files?)
 		   /* if (doCleanup) {
        Job cleanup = this.getWorkflow().createBashJob("clean up");
        cleanup.getCommand().addArgument("rm -fr /" + outputPrefix + "/" + outputdir + " ;")
@@ -467,25 +509,67 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
     }
   }
 
-  private Job addUploadJobArgs(Job job, File file) {
-    String path = file.getParent();
-    String md5File = file.getAbsolutePath() + ".md5";
-    logger.log(Level.INFO, "Switching to path {0}", path);
-
-    job.getCommand().addArgument(String.format(" cd %s && md5sum %s | awk '{printf $1}' > %s ;", path, file, md5File));
+  // TODO: tar files aren't used yet
+  private Job createUploadJob(ArrayList<Job> parents, ArrayList<String> vcfFiles, ArrayList<String> vcfOutputFiles, ArrayList<String> vcfIndexFiles, ArrayList<String> vcfOutputIndexFiles, ArrayList<String> vcfOutputMd5Files, ArrayList<String> vcfIndexOutputMd5Files, ArrayList<String> tarFiles, ArrayList<String> tarOutputFiles, ArrayList<String> tarMd5Files, ArrayList<String> tarOutputMd5Files) {
+   
+    String outputPath = this.processDirectoryPID.getAbsolutePath()+"/uploads";
+    
+    // make output dir
+    Job mkdir = this.getWorkflow().createBashJob("upload_mkdir");
+    mkdir.getCommand().addArgument("mkdir -p "+outputPath);
+    for (Job parent : parents) {
+      mkdir.addParent(parent);
+    }
+    
+    //make md5sum files and link to output
+    ArrayList<Job> md5sums = new ArrayList<Job>();
+    for (int i = 0; i<vcfFiles.size(); i++) {
+      Job currMd5 = this.getWorkflow().createBashJob("md5sum");
+      currMd5.getCommand().addArgument("ln -s " + vcfFiles.get(i) + " " + outputPath + "/" + vcfOutputFiles.get(i) + " && ")
+              .addArgument("md5sum " + vcfFiles.get(i) + " | awk '{print $1}' > " + outputPath + "/" + vcfOutputMd5Files.get(i) + " && ")
+              .addArgument("ln -s " + vcfIndexFiles.get(i) + " " + outputPath + "/" + vcfOutputIndexFiles.get(i) + " && ")
+              .addArgument("md5sum " + vcfIndexFiles.get(i) + " | awk '{print $1}' > " + outputPath + "/" + vcfIndexOutputMd5Files.get(i) + " && ");
+      currMd5.addParent(mkdir);
+      md5sums.add(currMd5);
+    }
+    
+    // now perform the actual upload
+    Job job = this.getWorkflow().createBashJob("upload");
     job.getCommand()
       .addArgument("perl " + this.getWorkflowBaseDir() + "/scripts/gnos_upload_data.pl")
-      .addArgument("--bam " + directorySNVCallingResults + "/" + file)
+      .addArgument("--metadata-urls " + gnosInputMetadataURLs)
+      .addArgument("--vcfs " + join(outputPath + "/", "", vcfOutputFiles, ","))
+      .addArgument("--vcf-md5sum-files " + join(outputPath + "/", "", vcfOutputMd5Files, ","))
+      .addArgument("--vcf-idxs " + join(outputPath + "/", "", vcfOutputIndexFiles, ","))
+      .addArgument("--vcf-idxs-md5sum-files " + join(outputPath + "/", "", vcfIndexOutputMd5Files, ","))
       .addArgument("--key " + gnosKey)
       .addArgument("--outdir " + gnosUploadDir.getAbsolutePath())
-      .addArgument("--metadata-urls " + gnosInputMetadataURLs)
       .addArgument("--upload-url " + gnosUploadFileURL)
-      .addArgument("--bam-md5sum-file " + md5File);
+      .addArgument("--workflow-src-url " + workflowSourceURL)
+      .addArgument("--workflow-url " + workflowURL)
+      .addArgument("--workflow-name " + workflowFullName)
+      .addArgument("--workflow-version " + workflowVersion)
+      .addArgument("--seqware-version " + seqwareVersion);
     if (debugmode) {
       job.getCommand().addArgument("--test");
     }
+    
+    // link to the parent jobs
+    for (Job md5job : md5sums) {
+      job.addParent(md5job);
+    }
 
     return (job);
+  }
+  
+  private String join(String prefix, String suffix, ArrayList<String> list, String delimiter) {
+    String delim = "";
+    StringBuffer sb = new StringBuffer();
+    for (String i : list) {
+      sb.append(delim).append(prefix).append(i).append(suffix);
+      delim = delimiter;
+    }
+    return(sb.toString());
   }
 
 }
