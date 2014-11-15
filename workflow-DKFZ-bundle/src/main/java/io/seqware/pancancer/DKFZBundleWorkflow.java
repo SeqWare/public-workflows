@@ -22,7 +22,7 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
   // datetime all upload files will be named with
   DateFormat df = new SimpleDateFormat("yyyyMMdd");
   String dateString = df.format(Calendar.getInstance().getTime());
-  
+
   // comma-seperated for multiple bam inputs
   // used to download with gtdownload
   ArrayList<String> inputMetadataURLs = new ArrayList<String>();
@@ -32,7 +32,7 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
 
   String inputFileTumorSpecimenUuid = null;
   String inputFileControlSpecimenUuid = null;
-  
+
   // Input parameters and files
   String pid;
 
@@ -85,7 +85,7 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
   boolean doIndelCalling = false;
   boolean doCopyNumberEstimation = false;
   boolean useDellyOnDisk = false;
-  
+
   // workflow related
   private String workflowName = "dkfz_1-0-0";
   private String workflowSourceURL = null;
@@ -94,6 +94,11 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
   private String workflowVersion = null;
   private String seqwareVersion = null;
   
+  // memory for Roddy wrapper job (originally 
+  private String roddyJobMb = "5120"; // roddy_job_mb
+  
+  // the GNOS download directories to cleanup
+  private ArrayList<String> dirsToCleanup = new ArrayList<String>();
 
   /**
    * Safely load a property from seqwares workflow environment.
@@ -143,7 +148,7 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
 
       gnosDownloadDirGeneric = new File(directoryBaseOutput, "gnos_download");
       directoryBundledFiles = new File(directoryBaseOutput, "bundledFiles");
-      
+
       inputFileTumorSpecimenUuid = getProperty("input_file_tumor_specimen_uuid");
       inputFileControlSpecimenUuid = getProperty("input_file_control_specimen_uuid");
 
@@ -184,7 +189,7 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
       gtdownloadMd5Time = loadProperty("gtdownloadMd5time", gtdownloadMd5Time);
       gtdownloadMem = loadProperty("gtdownloadMemG", gtdownloadMem);
       smallJobMemM = loadProperty("smallJobMemM", smallJobMemM);
-      
+
       // workflow related
       workflowName = loadProperty("workflow_name", "dkfz_unkown");
       workflowSourceURL = loadProperty("workflow_src_url", "");
@@ -192,12 +197,15 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
       workflowFullName = loadProperty("workflow_full_name", "DKFZ-Variant-Calling");
       workflowVersion = loadProperty("workflow_version", "unkown");
       seqwareVersion = loadProperty("seqware_version", "unkown");
+      
+      // memory
+      roddyJobMb = loadProperty("roddy_job_mb", "5120");
 
       System.out.println("" + doCleanup + " " + doSNVCalling + " " + doIndelCalling + " " + doCopyNumberEstimation);
 
     } catch (Exception e) {
       Logger.getLogger(DKFZBundleWorkflow.class.getName()).log(Level.SEVERE, null, e);
-      //throw new RuntimeException("Problem parsing variable values: " + e.getMessage());
+      throw new RuntimeException("Problem parsing variable values: " + e.getMessage());
     }
 
     return this.getFiles();
@@ -226,15 +234,15 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
    */
   private Job createRoddyJob(String name, String pid, String analysisConfigurationID, List<Job> parentJobs, String runMode) {
     Job job = this.getWorkflow().createBashJob(name);
-    // FIXME: why does this need 16G?  Seems excessive for a simple wrapper script?
-    job.setMaxMemory("16384");
+    // FIXME: why does this need 16384M?  Seems excessive for a simple wrapper script?  
+    job.setMaxMemory(this.roddyJobMb);
     for (Job parentJob : parentJobs) {
       job.addParent(parentJob);
     }
     String fullConfiguration = "dkfzPancancerBase" + (debugmode ? ".dbg" : "") + "@" + analysisConfigurationID;
     // TODO: this needs to be parameterized I think if we can't bundle Roddy
     job.getCommand()
-      .addArgument("cd " + this.getWorkflowBaseDir() + "/bin/RoddyBundlePancancer") 
+      .addArgument("cd " + this.getWorkflowBaseDir() + "/bin/RoddyBundlePancancer")
       .addArgument(String.format(" && bash roddy.sh %s %s %s --useconfig=applicationPropertiesAllLocal.ini --waitforjobs", runMode, fullConfiguration, pid));
     if (debugmode) {
       job.getCommand().addArgument(" --verbositylevel=5 ");
@@ -329,7 +337,8 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
 
   private Job createGNOSBamDownloadJob(String fileURL, SampleType sampleType, Job parent) {
     CreateDownloadJobResult jcr = createDefaultGNOSDownloadJob(parent, fileURL, gnosDownloadDirGeneric);
-
+    // adding output dir to cleanup later
+    this.dirsToCleanup.add(jcr.outputDirectory.getAbsolutePath());
     String bamSrc = String.format("%s/*.bam", jcr.outputDirectory);
     String bamDst = String.format("%s/%s_%s_merged.mdup.bam", directoryAlignmentFiles, sampleType.name(), pid);
     String baiSrc = bamSrc + ".bai";
@@ -341,7 +350,8 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
 
   private Job createGNOSDellyDownloadJob(String fileURL, Job parent) {
     CreateDownloadJobResult jcr = createDefaultGNOSDownloadJob(parent, fileURL, gnosDownloadDirGeneric);
-
+    // adding output dir to cleanup later
+    this.dirsToCleanup.add(jcr.outputDirectory.getAbsolutePath());
     String dellySrc = String.format("%s/*.txt", jcr.outputDirectory);
     String dellyDst = String.format("%s/%s.DELLY.somaticFilter.highConf.bedpe.txt", directoryDellyFiles, pid);
     addSafeLinkCommand(jcr.job, dellySrc, dellyDst);
@@ -362,16 +372,22 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
   @Override
   public void buildWorkflow() {
     try {
-      boolean runAtLeastOneJob = true;//doSNVCalling && doIndelCalling & doCopyNumberEstimation;
+      
+      boolean runAtLeastOneJob = (doSNVCalling || doIndelCalling || doCopyNumberEstimation);
 
-            // the download jobs that either downloads or locates the file on the filesystem
+      // the download jobs that either downloads or locates the file on the filesystem
       // download the normal and tumor bamfile and the dependencies jar
       Job jobDownloadTumorBam = null;
       Job jobDownloadControlBam = null;
       Job jobDownloadDellyBedPe = null;
       Job jobDownloadWorkflowDependencies = null;
+      
+      // create dirs
       Job createDirs = this.getWorkflow().createBashJob("CreateDirs");
+      
       if (runAtLeastOneJob) {
+        
+        // creating directories
         List<File> processDirectories = Arrays.asList(gnosDownloadDirGeneric, directoryAlignmentFiles, directoryDellyFiles, directorySNVCallingResults, directoryIndelCallingResults, directoryCNEResults);
         StringBuilder createDirArgs = new StringBuilder();
         for (File processDirectory : processDirectories) {
@@ -379,6 +395,7 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
         }
         createDirs.getCommand().addArgument(createDirArgs.toString());
 
+        // downloading resource bundle + data files
         if (useGtDownload) {
           jobDownloadWorkflowDependencies = createDependenciesDownloadJob(inputFileDependenciesURL, createDirs);
           jobDownloadTumorBam = createGNOSBamDownloadJob(inputFileTumorURL, SampleType.tumor, createDirs);
@@ -417,15 +434,15 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
       ArrayList<String> tarOutputFiles = new ArrayList<String>();
       ArrayList<String> tarMd5Files = new ArrayList<String>();
       ArrayList<String> tarOutputMd5Files = new ArrayList<String>();
-      
+
       // ArrayList of parent jobs
       ArrayList<Job> varCalls = new ArrayList<Job>();
-      
+
       if (doSNVCalling) {
         logger.info("SNV Calling will be done.");
         jobSNVCalling = createRoddyJob("RoddySNVCalling", pid, "snvCalling", downloadJobDependencies);
         varCalls.add(jobSNVCalling);
-        // files
+        // files for upload
         vcfFiles.add(new File(directorySNVCallingResults, "snvs_" + pid + ".vcf.gz").getAbsolutePath());
         vcfIndexFiles.add(new File(directorySNVCallingResults, "snvs_" + pid + ".vcf.gz.tbi").getAbsolutePath());
         // output names
@@ -433,9 +450,7 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
         vcfOutputIndexFiles.add(inputFileTumorSpecimenUuid + "." + this.workflowName + "." + this.dateString + ".somatic.snv_mnv.vcf.gz.tbi");
         vcfOutputMd5Files.add(inputFileTumorSpecimenUuid + "." + this.workflowName + "." + this.dateString + ".somatic.snv_mnv.vcf.gz.md5");
         vcfIndexOutputMd5Files.add(inputFileTumorSpecimenUuid + "." + this.workflowName + "." + this.dateString + ".somatic.snv_mnv.vcf.gz.tbi.md5");
-
         // TODO: add raw files to tarball
-
       }
 
       if (doIndelCalling) {
@@ -450,7 +465,7 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
         vcfOutputIndexFiles.add(inputFileTumorSpecimenUuid + "." + this.workflowName + "." + this.dateString + ".somatic.indel.vcf.gz.tbi");
         vcfOutputMd5Files.add(inputFileTumorSpecimenUuid + "." + this.workflowName + "." + this.dateString + ".somatic.indel.vcf.gz.md5");
         vcfIndexOutputMd5Files.add(inputFileTumorSpecimenUuid + "." + this.workflowName + "." + this.dateString + ".somatic.indel.vcf.gz.tbi.md5");
-                
+
       }
 
       if (jobDownloadDellyBedPe != null) {
@@ -462,8 +477,7 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
         logger.info("Copy number estimation will be done.");
         jobCopyNumberEstimation = createRoddyJob("RoddyCNE", pid, "copyNumberEstimation", downloadJobDependencies);
         varCalls.add(jobCopyNumberEstimation);
-        //createGNOSUploadJob("GNOSUpload VCF Copy Number Estimation", new File(directoryCNEResults, "snvs_" + pid + ".vcf.gz"), jobCopyNumberEstimationFinal);
-                // files
+        // files
         vcfFiles.add(new File(directoryIndelCallingResults, "indels_" + pid + ".vcf.raw.gz").getAbsolutePath());
         vcfIndexFiles.add(new File(directoryIndelCallingResults, "indels_" + pid + ".vcf.raw.gz.tbi").getAbsolutePath());
         // output names
@@ -471,68 +485,66 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
         vcfOutputIndexFiles.add(inputFileTumorSpecimenUuid + "." + this.workflowName + "." + this.dateString + ".somatic.indel.vcf.gz.tbi");
         vcfOutputMd5Files.add(inputFileTumorSpecimenUuid + "." + this.workflowName + "." + this.dateString + ".somatic.indel.vcf.gz.md5");
         vcfIndexOutputMd5Files.add(inputFileTumorSpecimenUuid + "." + this.workflowName + "." + this.dateString + ".somatic.indel.vcf.gz.tbi.md5");
-        
         //TODO Create additional files upload job.
         //Upload all vcfs + tabix files
         //Upload a tarball
-        
       }
-      
+
       // now upload
       Job uploadJob = null;
-      if (useGtUpload) { 
+      if (useGtUpload && varCalls.size() > 0) {
         uploadJob = createUploadJob(varCalls, vcfFiles, vcfOutputFiles, vcfIndexFiles, vcfOutputIndexFiles, vcfOutputMd5Files, vcfIndexOutputMd5Files, tarFiles, tarOutputFiles, tarMd5Files, tarOutputMd5Files);
       }
-      // TODO: need to add conditional cleanup based on the above job as parent or not depending
-      
-// LEFT OFF WITH: need to 
-      
-       // CLEANUP DOWNLOADED INPUT BAM FILES (And intermediate files?)
-		   /* if (doCleanup) {
-       Job cleanup = this.getWorkflow().createBashJob("clean up");
-       cleanup.getCommand().addArgument("rm -fr /" + outputPrefix + "/" + outputdir + " ;")
-       .addArgument("rm -fr /" + outputPrefix + "/" + gnosDownloadDir + ";")
-       .addArgument("rm -fr /" + outputPrefix + "/" + gnosUploadDir + " ;");
 
-       cleanup.setMaxMemory(smallJobMemM);
+      // CLEANUP DOWNLOADED INPUT BAM FILES (And intermediate files?)
+      if (doCleanup && varCalls.size() > 0) {
+        Job cleanup = this.getWorkflow().createBashJob("cleanup");
+        for (String dir : this.dirsToCleanup) {
+          cleanup.getCommand().addArgument("rm -rf " + dir + ";");
+        }
+        // TODO: this just cleans up the GNOS download files which are really large.  In the future cleanup other dirs as well
+        cleanup.setMaxMemory(smallJobMemM);
 
-       //If no job was started, then the cleanup can be run without any dependency.
-       if(runAtLeastOneJob) {
-       if (doSNVCalling) cleanup.addParent(jobSNVCalling);
-       if (doIndelCalling) cleanup.addParent(jobIndelCalling);
-       if (doCopyNumberEstimation) cleanup.addParent(jobCopyNumberEstimationFinal);
-       }
-       }*/
+        //If no job was started, then the cleanup can be run without any dependency.
+        if (runAtLeastOneJob) {
+          for (Job varJob : varCalls) {
+            cleanup.addParent(varJob);
+          }
+        }
+        if (useGtUpload && varCalls.size() > 0) {
+          cleanup.addParent(uploadJob);
+        }
+      }
     } catch (Exception ex) {
       Logger.getLogger(DKFZBundleWorkflow.class.getName()).log(Level.SEVERE, "Problem running workflow", ex);
-      //throw new RuntimeException("Problem parsing variable values: " + e.getMessage());
+      throw new RuntimeException("Problem parsing variable values: " + ex.getMessage());
     }
   }
 
   // TODO: tar files aren't used yet
   private Job createUploadJob(ArrayList<Job> parents, ArrayList<String> vcfFiles, ArrayList<String> vcfOutputFiles, ArrayList<String> vcfIndexFiles, ArrayList<String> vcfOutputIndexFiles, ArrayList<String> vcfOutputMd5Files, ArrayList<String> vcfIndexOutputMd5Files, ArrayList<String> tarFiles, ArrayList<String> tarOutputFiles, ArrayList<String> tarMd5Files, ArrayList<String> tarOutputMd5Files) {
-   
-    String outputPath = this.processDirectoryPID.getAbsolutePath()+"/uploads";
-    
+
+    String outputPath = this.processDirectoryPID.getAbsolutePath() + "/uploads";
+
     // make output dir
     Job mkdir = this.getWorkflow().createBashJob("upload_mkdir");
-    mkdir.getCommand().addArgument("mkdir -p "+outputPath);
+    mkdir.getCommand().addArgument("mkdir -p " + outputPath);
     for (Job parent : parents) {
       mkdir.addParent(parent);
     }
-    
+
     //make md5sum files and link to output
     ArrayList<Job> md5sums = new ArrayList<Job>();
-    for (int i = 0; i<vcfFiles.size(); i++) {
+    for (int i = 0; i < vcfFiles.size(); i++) {
       Job currMd5 = this.getWorkflow().createBashJob("md5sum");
       currMd5.getCommand().addArgument("ln -s " + vcfFiles.get(i) + " " + outputPath + "/" + vcfOutputFiles.get(i) + " && ")
-              .addArgument("md5sum " + vcfFiles.get(i) + " | awk '{print $1}' > " + outputPath + "/" + vcfOutputMd5Files.get(i) + " && ")
-              .addArgument("ln -s " + vcfIndexFiles.get(i) + " " + outputPath + "/" + vcfOutputIndexFiles.get(i) + " && ")
-              .addArgument("md5sum " + vcfIndexFiles.get(i) + " | awk '{print $1}' > " + outputPath + "/" + vcfIndexOutputMd5Files.get(i) + " && ");
+        .addArgument("md5sum " + vcfFiles.get(i) + " | awk '{print $1}' > " + outputPath + "/" + vcfOutputMd5Files.get(i) + " && ")
+        .addArgument("ln -s " + vcfIndexFiles.get(i) + " " + outputPath + "/" + vcfOutputIndexFiles.get(i) + " && ")
+        .addArgument("md5sum " + vcfIndexFiles.get(i) + " | awk '{print $1}' > " + outputPath + "/" + vcfIndexOutputMd5Files.get(i) + " && ");
       currMd5.addParent(mkdir);
       md5sums.add(currMd5);
     }
-    
+
     // now perform the actual upload
     Job job = this.getWorkflow().createBashJob("upload");
     job.getCommand()
@@ -553,7 +565,7 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
     if (debugmode) {
       job.getCommand().addArgument("--test");
     }
-    
+
     // link to the parent jobs
     for (Job md5job : md5sums) {
       job.addParent(md5job);
@@ -561,7 +573,7 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
 
     return (job);
   }
-  
+
   private String join(String prefix, String suffix, ArrayList<String> list, String delimiter) {
     String delim = "";
     StringBuffer sb = new StringBuffer();
@@ -569,7 +581,7 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
       sb.append(delim).append(prefix).append(i).append(suffix);
       delim = delimiter;
     }
-    return(sb.toString());
+    return (sb.toString());
   }
 
 }
