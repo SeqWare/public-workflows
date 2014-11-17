@@ -123,7 +123,6 @@ sub get {
             foreach my $attribute (@$analysis_attributes) {
                 $attributes{$attribute->{TAG}} = $attribute->{VALUE};
             }
-
             $total_lanes = $attributes{total_lanes};
             $aliquot_uuid = $attributes{aliquot_id};
 

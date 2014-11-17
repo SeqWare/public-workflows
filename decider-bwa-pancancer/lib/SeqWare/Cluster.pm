@@ -80,7 +80,7 @@ sub seqware_information {
     $max_scheduled_workflows = $max_running 
           if ( $max_scheduled_workflows eq "" || $max_scheduled_workflows > $max_running);
 
-    say $report_file "EXAMINING CLUSER: $cluster_name";
+    say $report_file "EXAMINING CLUSTER: $cluster_name";
 
     my $workflow_information_xml = `wget --timeout=60 -t 2 -O - --http-user='$user' --http-password=$password -q $web/workflows/$workflow_accession`;
 
@@ -107,8 +107,11 @@ sub seqware_information {
         say $report_file  "\tTHERE ARE $running RUNNING WORKFLOWS WHICH IS LESS THAN MAX OF $max_running, ADDING TO LIST OF AVAILABLE CLUSTERS";
         for (my $i=0; $i<$max_scheduled_workflows; $i++) {
             my %cluster_metadata = %{$cluster_metadata};
+            my @run_version = split "\.", $run_workflow_version;
+            my @version = split "\.", $cluster_metadata{workflow_version};
+
             $cluster_info{"$cluster_name-$i"} = \%cluster_metadata
-                if ($run_workflow_version eq $cluster_metadata{workflow_version});
+                if ( ($run_version[0] == $version[0]) and ($run_version[1] == $version[1] ) );
         }
     } 
     else {

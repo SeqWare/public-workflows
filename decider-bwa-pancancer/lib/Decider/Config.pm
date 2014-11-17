@@ -16,6 +16,7 @@ sub get {
     my %ARGV = %{$_[1]};
 
     my $cfg = new Config::Simple();
+
     $cfg->read("$Bin/../$ARGV{'--decider-config'}");
     
     my %decider_config = $cfg->vars();
