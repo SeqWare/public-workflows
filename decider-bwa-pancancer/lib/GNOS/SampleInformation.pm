@@ -123,6 +123,8 @@ sub get {
             foreach my $attribute (@$analysis_attributes) {
                 $attributes{$attribute->{TAG}} = $attribute->{VALUE};
             }
+            next if ($attributes{workflow_output_bam_contents} eq 'unaligned');
+
             $total_lanes = $attributes{total_lanes};
             $aliquot_uuid = $attributes{aliquot_id};
 
