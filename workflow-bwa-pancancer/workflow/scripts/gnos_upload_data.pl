@@ -1,13 +1,40 @@
+#!/usr/bin/env perl
+
+use warnings;
 use strict;
-use Data::Dumper;
+
+use feature qw(say);
+use autodie;
+
 use Getopt::Long;
+
+use XML::LibXML;
 use XML::DOM;
 use XML::XPath;
 use XML::XPath::XMLParser;
+
 use JSON;
+
+use Config;
+$Config{useithreads} or die('Recompile Perl with threads to run this program.');
+use threads 'exit' => 'threads_only';
+use Storable 'dclone';
+
 use Data::UUID;
-use XML::LibXML;
+
 use Time::Piece;
+
+use Data::Dumper;
+
+# seconds to wait for a retry
+my $cooldown = 60;
+# 30 retries at 60 seconds each is 30 hours
+my $orig_retries = 30;
+# retries for md5sum, 4 hours
+my $md5_retries = 240;
+#example command
+
+
 
 #############################################################################################
 # DESCRIPTION                                                                               #
@@ -42,7 +69,6 @@ my $skip_validate = 0;
 my $seqware_version = "1.0.15";
 my $workflow_version = "2.6.1";
 my $workflow_name = "Workflow_Bundle_BWA";
-# hardcoded
 my $workflow_src_url = "https://github.com/SeqWare/public-workflows/tree/$workflow_version/workflow-bwa-pancancer";
 my $workflow_url = "https://s3.amazonaws.com/oicr.workflow.bundles/released-bundles/Workflow_Bundle_BWA_".$workflow_version."_SeqWare_$seqware_version.zip";
 my $changelog_url = "https://github.com/SeqWare/public-workflows/blob/$workflow_version/workflow-bwa-pancancer/CHANGELOG.md";
@@ -85,25 +111,62 @@ GetOptions(
      "analysis-center-override=s" => \$analysis_center,
      );
 
+
+
 # setup output dir
+
+my @bam_path = split '/', $bam;
+my $file_name = $bam_path[-1];
+my @file = split /\./, $file_name;
+my $file_prefix = $file[0];
+$output_dir .= "$file_prefix";
+$output_dir .= '-unmapped' if ($unmapped_reads_upload);
+my $uuid = '';
 my $ug = Data::UUID->new;
-my $uuid = lc($ug->create_str());
+
+if(-d "$output_dir") {
+    opendir( my $dh, $output_dir);
+    my @dirs = grep {-d "$output_dir/$_" && ! /^\.{1,2}$/} readdir($dh);
+    if (scalar @dirs == 1) {
+        $uuid = $dirs[0];
+    } 
+    else {   
+        $uuid = lc($ug->create_str());
+    }
+}
+else {
+    $uuid = lc($ug->create_str());
+}
 run("mkdir -p $output_dir/$uuid");
-$output_dir = $output_dir."/$uuid/";
+$output_dir = "$output_dir/$uuid";
+
 my $final_touch_file = "$output_dir/upload_complete.txt";
+
 # md5sum
 my $bam_check = `cat $md5_file`;
-my $bai_check = `cat $bam.bai.md5`;
 chomp $bam_check;
-chomp $bai_check;
-if ($force_copy) {
-  # rsync to destination
-  run("rsync -rauv `pwd`/$bam $output_dir/$bam_check.bam && rsync -rauv `pwd`/$md5_file $output_dir/$bam_check.bam.md5 && rsync -rauv `pwd`/$bam.bai $output_dir/$bam_check.bam.bai && rsync -rauv `pwd`/$bam.bai.md5 $output_dir/$bam_check.bam.bai.md5");
-} else {
-  # symlink for bam and md5sum file
-  run("ln -s `pwd`/$bam $output_dir/$bam_check.bam && ln -s `pwd`/$md5_file $output_dir/$bam_check.bam.md5 && ln -s `pwd`/$bam.bai $output_dir/$bam_check.bam.bai && ln -s `pwd`/$bam.bai.md5 $output_dir/$bam_check.bam.bai.md5");
-}
 
+my $bai_check = `cat $bam.bai.md5`;
+chomp $bai_check;
+
+
+# link / sync for bam and md5sum filea
+my $pwd = `pwd`;
+chomp $pwd;
+
+my %files = ($bam => "$bam_check.bam",
+             $md5_file => "$bam_check.bam.md5",
+             "$bam.bai" => "$bam_check.bam_bai",
+             "$bam.bai.md5" => "$bam_check.bam.bai.md5"
+            );
+
+my $link_method = ($force_copy)? 'rsync -rauv': 'ln -s';
+    
+foreach my $from (keys %files) {
+    my $to = $files{$from};
+    my $command = "$link_method $pwd/$from $output_dir/$to";
+    run($command) if (not (-e "$pwd/$output_dir/$to"));
+}
 
 ##############
 # MAIN STEPS #
@@ -127,169 +190,163 @@ if (upload_submission($sub_path)) { die "The upload of files did not work!  File
 ###############
 
 sub validate_submission {
-  my ($sub_path) = @_;
-  my $cmd = "cgsubmit --validate-only -s $upload_url -o validation.$bam_check.log -u $sub_path -vv";
-  print "VALIDATING: $cmd\n";
-  if (!$skip_validate) {
-    return(run($cmd));
-  }
+    my ($sub_path) = @_;
+
+    my $cmd = "cgsubmit --validate-only -s $upload_url -o validation.$bam_check.log -u $sub_path -vv";
+    say "VALIDATING: $cmd";
+
+    return run($cmd) unless($skip_validate);
 }
 
 sub upload_submission {
-  my ($sub_path) = @_;
-  my $cmd = "cgsubmit -s $upload_url -o metadata_upload.$bam_check.log -u $sub_path -vv -c $key";
-  print "UPLOADING METADATA: $cmd\n";
-  if (!$test) {
-    if (run($cmd)) { return(1); }
-  }
+    my ($sub_path) = @_;
 
-  # we need to hack the manifest.xml to drop any files that are inputs and I won't upload again
-  if (!$test) {
-    modify_manifest_file("$sub_path/manifest.xml", $sub_path);
-  }
+    my $cmd = "cgsubmit -s $upload_url -o metadata_upload.$bam_check.log -u $sub_path -vv -c $key";
+    say "UPLOADING METADATA: $cmd";
+    return 1 if ((not $test) and (run($cmd)));
 
-  $cmd = "cd $sub_path; gtupload -v -c $key -l ./upload.log -u ./manifest.xml; cd -";
-  print "UPLOADING DATA: $cmd\n";
-  if (!$test) {
-    if (run($cmd)) { return(1); }
-  }
+    # we need to hack the manifest.xml to drop any files that are inputs and I won't upload again
+    modify_manifest_file("$sub_path/manifest.xml", $sub_path) if( not $test);
 
-  # just touch this file to ensure monitoring tools know upload is complete
-  run("date +\%s > $final_touch_file");
+    $cmd = "cd $sub_path; gtupload -v -c $key -l ./upload.log -u ./manifest.xml; cd -";
+    say "UPLOADING DATA: $cmd";
+    return 1 if ( (not $test) and (run($cmd)) );
+
+    # just touch this file to ensure monitoring tools know upload is complete
+    run_upload("date +\%s > $final_touch_file", "metadata_upload.$bam_check.log");
 
 }
 
 sub modify_manifest_file {
-  my ($man, $sub_path) = @_;
-  open OUT, ">$man.new" or die;
-  open IN, "<$man" or die;
-  while(<IN>) {
-    chomp;
-    if (/filename="([^"]+)"/) {
-      if (-e "$sub_path/$1") {
-        print OUT "$_\n";
-      }
-    } else {
-      print OUT "$_\n";
+    my ($man, $sub_path) = @_;
+
+    open IN, '<', $man;
+    open OUT, '>', "$man.new";
+
+    while(<IN>) {
+        chomp;
+        if (/filename="([^"]+)"/) {
+           say OUT $_ if (-e "$sub_path/$1");    
+        } 
+        else {
+            say OUT $_;
+        }
     }
-  }
-  close IN;
-  close OUT;
-  system("mv $man.new $man");
+
+    close IN;
+    close OUT;
+ 
+    system("mv $man.new $man");
 }
 
 sub generate_submission {
-
-  my ($m) = @_;
-
-  # const
-  my $t = gmtime;
-  my $datetime = $t->datetime();
-  # populate refcenter from original BAM submission
-  # @RG CN:(.*)
-  my $refcenter = "OICR";
-  # @CO sample_id
-  my $sample_id = "";
-  # capture list
-  my $sample_uuids = {};
-  # current sample_uuid (which seems to actually be aliquot ID, this is sample ID from the BAM header)
-  my $sample_uuid = "";
-  # @RG SM or @CO aliquoit_id
-  my $aliquot_id = "";
-  # @RG LB:(.*)
-  my $library = "";
-  # @RG ID:(.*)
-  my $read_group_id = "";
-  # @RG PU:(.*)
-  my $platform_unit = "";
-  # @CO participant_id
-  my $participant_id = "";
-  # hardcoded
-  my $bam_file = "";
-  # hardcoded
-  my $bam_file_checksum = "";
-  # center name
-  my $center_name = "";
-
-  # these data are collected from all files
-  # aliquot_id|library_id|platform_unit|read_group_id|input_url
-  my $global_attr = {};
-
-  #print Dumper($m);
-
-  # input info
-  my $pi2 = {};
-
-  # this isn't going to work if there are multiple files/readgroups!
-  foreach my $file (keys %{$m}) {
+    my ($m) = @_;
+  
+    # const
+    my $t = gmtime;
+    my $datetime = $t->datetime();
     # populate refcenter from original BAM submission
     # @RG CN:(.*)
-    # FIXME: GNOS currently only allows: ^UCSC$|^NHGRI$|^CGHUB$|^The Cancer Genome Atlas Research Network$|^OICR$
-    $refcenter = $m->{$file}{'target'}[0]{'refcenter'};
-    $center_name = $m->{$file}{'center_name'};
-    $sample_uuid = $m->{$file}{'target'}[0]{'refname'};
-    $sample_uuids->{$m->{$file}{'target'}[0]{'refname'}} = 1;
+    my $refcenter = "OICR";
     # @CO sample_id
-    my @sample_ids = keys %{$m->{$file}{'analysis_attr'}{'sample_id'}};
-    # workaround for updated XML
-    if (scalar(@sample_ids) == 0) { @sample_ids = keys %{$m->{$file}{'analysis_attr'}{'submitter_specimen_id'}}; }
-    $sample_id = $sample_ids[0];
+    my $sample_id = "";
+    # capture list
+    my $sample_uuids = {};
+    # current sample_uuid (which seems to actually be aliquot ID, this is sample ID from the BAM header)
+    my $sample_uuid = "";
     # @RG SM or @CO aliquoit_id
-    my @aliquot_ids = keys %{$m->{$file}{'analysis_attr'}{'aliquot_id'}};
-    # workaround for updated XML
-    if (scalar(@aliquot_ids) == 0) { @aliquot_ids = keys %{$m->{$file}{'analysis_attr'}{'submitter_sample_id'}}; }
-    $aliquot_id = $aliquot_ids[0];
+    my $aliquot_id = "";
     # @RG LB:(.*)
-    $library = $m->{$file}{'run'}[0]{'data_block_name'};
+    my $library = "";
     # @RG ID:(.*)
-    $read_group_id = $m->{$file}{'run'}[0]{'read_group_label'};
+    my $read_group_id = "";
     # @RG PU:(.*)
-    $platform_unit = $m->{$file}{'run'}[0]{'refname'};
+    my $platform_unit = "";
     # @CO participant_id
-    my @participant_ids = keys %{$m->{$file}{'analysis_attr'}{'participant_id'}};
-    if (scalar(@participant_ids) == 0) { @participant_ids = keys %{$m->{$file}{'analysis_attr'}{'submitter_donor_id'}}; }
-    $participant_id = $participant_ids[0];
-    my $index = 0;
-    foreach my $bam_info (@{$m->{$file}{'run'}}) {
-      if ($bam_info->{data_block_name} ne '') {
-        #print Dumper($bam_info);
-        #print Dumper($m->{$file}{'file'}[$index]);
-        my $pi = {};
-        $pi->{'input_info'}{'donor_id'} = $participant_id;
-        $pi->{'input_info'}{'specimen_id'} = $sample_id;
-        $pi->{'input_info'}{'target_sample_refname'} = $sample_uuid;
-        $pi->{'input_info'}{'analyzed_sample'} = $aliquot_id;
-        $pi->{'input_info'}{'library'} = $library;
-        $pi->{'input_info'}{'platform_unit'} = $platform_unit;
-        $pi->{'read_group_id'} = $read_group_id;
-        $pi->{'input_info'}{'analysis_id'} = $m->{$file}{'analysis_id'};
-        $pi->{'input_info'}{'bam_file'} = $m->{$file}{'file'}[$index]{filename};
-        push @{$pi2->{'pipeline_input_info'}}, $pi;
-      }
-      $index++;
+    my $participant_id = "";
+    # hardcoded
+    my $bam_file = "";
+    # hardcoded
+    my $bam_file_checksum = "";
+    # center name
+    my $center_name = "";
+  
+    # these data are collected from all files
+    # aliquot_id|library_id|platform_unit|read_group_id|input_url
+    my $global_attr = {};
+  
+    # input info
+    my $pi2 = {};
+  
+    # this isn't going to work if there are multiple files/readgroups!
+    foreach my $file (keys %{$m}) {
+        # populate refcenter from original BAM submission
+        # @RG CN:(.*)
+        # FIXME: GNOS currently only allows: ^UCSC$|^NHGRI$|^CGHUB$|^The Cancer Genome Atlas Research Network$|^OICR$
+        $refcenter = $m->{$file}{'target'}[0]{'refcenter'};
+        $center_name = $m->{$file}{'center_name'};
+        $sample_uuid = $m->{$file}{'target'}[0]{'refname'};
+        $sample_uuids->{$m->{$file}{'target'}[0]{'refname'}} = 1;
+        # @CO sample_id
+        my @sample_ids = keys %{$m->{$file}{'analysis_attr'}{'sample_id'}};
+        # workaround for updated XML
+        if (scalar(@sample_ids) == 0) { @sample_ids = keys %{$m->{$file}{'analysis_attr'}{'submitter_specimen_id'}}; }
+        $sample_id = $sample_ids[0];
+        # @RG SM or @CO aliquoit_id
+        my @aliquot_ids = keys %{$m->{$file}{'analysis_attr'}{'aliquot_id'}};
+        # workaround for updated XML
+        if (scalar(@aliquot_ids) == 0) { @aliquot_ids = keys %{$m->{$file}{'analysis_attr'}{'submitter_sample_id'}}; }
+        $aliquot_id = $aliquot_ids[0];
+        # @RG LB:(.*)
+        $library = $m->{$file}{'run'}[0]{'data_block_name'};
+        # @RG ID:(.*)
+        $read_group_id = $m->{$file}{'run'}[0]{'read_group_label'};
+        # @RG PU:(.*)
+        $platform_unit = $m->{$file}{'run'}[0]{'refname'};
+        # @CO participant_id
+        my @participant_ids = keys %{$m->{$file}{'analysis_attr'}{'participant_id'}};
+        @participant_ids = keys %{$m->{$file}{'analysis_attr'}{'submitter_donor_id'}} if (scalar(@participant_ids) == 0); 
+        $participant_id = $participant_ids[0];
+        my $index = 0;
+        foreach my $bam_info (@{$m->{$file}{'run'}}) {
+            if ((eval {exists $bam_info->{data_block_name}}) and $bam_info->{data_block_name} ne '') {
+                #print Dumper($m->{$file}{'file'}[$index]);
+                my $pi = {};
+                $pi->{'input_info'}{'donor_id'} = $participant_id;
+                $pi->{'input_info'}{'specimen_id'} = $sample_id;
+                $pi->{'input_info'}{'target_sample_refname'} = $sample_uuid;
+                $pi->{'input_info'}{'analyzed_sample'} = $aliquot_id;
+                $pi->{'input_info'}{'library'} = $library;
+                $pi->{'input_info'}{'platform_unit'} = $platform_unit;
+                $pi->{'read_group_id'} = $read_group_id;
+                $pi->{'input_info'}{'analysis_id'} = $m->{$file}{'analysis_id'};
+                $pi->{'input_info'}{'bam_file'} = $m->{$file}{'file'}[$index]{filename};
+                push @{$pi2->{'pipeline_input_info'}}, $pi;
+            }
+            $index++;
+        }
+  
+        # now combine the analysis attr
+        foreach my $attName (keys %{$m->{$file}{analysis_attr}}) {
+            foreach my $attVal (keys %{$m->{$file}{analysis_attr}{$attName}}) {
+                $global_attr->{$attName}{$attVal} = 1;
+            }
+        }
     }
 
-    # now combine the analysis attr
-    foreach my $attName (keys %{$m->{$file}{analysis_attr}}) {
-      foreach my $attVal (keys %{$m->{$file}{analysis_attr}{$attName}}) {
-        $global_attr->{$attName}{$attVal} = 1;
-      }
+    my $str = to_json($pi2);
+    $global_attr->{"pipeline_input_info"}{$str} = 1;
+  
+    # FIXME: either custom needs to work or the reference needs to be listed in GNOS
+    #<!--CUSTOM DESCRIPTION="hs37d" REFERENCE_SOURCE="ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/README_human_reference_20110707"/-->
+  
+    my $description = "Specimen-level BAM from the reference alignment of specimen $sample_id from donor $participant_id. This uses the SeqWare BWA-MEM PanCancer Workflow version $workflow_version available at $workflow_url. This workflow can be created from source, see $workflow_src_url. For a complete change log see $changelog_url. Input BAMs are prepared and submitted to GNOS server according to the submission SOP documented at: https://wiki.oicr.on.ca/display/PANCANCER/PCAP+%28a.k.a.+PAWG%29+Sequence+Submission+SOP+-+v1.0. Please note the reference is hs37d, see ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/README_human_reference_20110707 for more information. Briefly this is the integrated reference sequence from the GRCh37 primary assembly (chromosomal plus unlocalized and unplaced contigs), the rCRS mitochondrial sequence (AC:NC_012920), Human herpesvirus 4 type 1 (AC:NC_007605) and the concatenated decoy sequences (hs37d5cs.fa.gz).";
+  
+    if ($unmapped_reads_upload) {
+      $description = "The BAM file includes unmapped reads extracted from specimen-level BAM with the reference alignment of specimen $sample_id from donor $participant_id. This uses the SeqWare BWA-MEM PanCancer Workflow version $workflow_version available at $workflow_url. This workflow can be created from source, see $workflow_src_url. For a complete change log see $changelog_url. Input BAMs are prepared and submitted to GNOS server according to the submission SOP documented at: https://wiki.oicr.on.ca/display/PANCANCER/PCAP+%28a.k.a.+PAWG%29+Sequence+Submission+SOP+-+v1.0.";
     }
-  }
-  my $str = to_json($pi2);
-  $global_attr->{"pipeline_input_info"}{$str} = 1;
-  #print Dumper($global_attr);
-
-  # FIXME: either custom needs to work or the reference needs to be listed in GNOS
-  #<!--CUSTOM DESCRIPTION="hs37d" REFERENCE_SOURCE="ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/README_human_reference_20110707"/-->
-
-  my $description = "Specimen-level BAM from the reference alignment of specimen $sample_id from donor $participant_id. This uses the SeqWare BWA-MEM PanCancer Workflow version $workflow_version available at $workflow_url. This workflow can be created from source, see $workflow_src_url. For a complete change log see $changelog_url. Input BAMs are prepared and submitted to GNOS server according to the submission SOP documented at: https://wiki.oicr.on.ca/display/PANCANCER/PCAP+%28a.k.a.+PAWG%29+Sequence+Submission+SOP+-+v1.0. Please note the reference is hs37d, see ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/README_human_reference_20110707 for more information. Briefly this is the integrated reference sequence from the GRCh37 primary assembly (chromosomal plus unlocalized and unplaced contigs), the rCRS mitochondrial sequence (AC:NC_012920), Human herpesvirus 4 type 1 (AC:NC_007605) and the concatenated decoy sequences (hs37d5cs.fa.gz).";
-
-  if ($unmapped_reads_upload) {
-    $description = "The BAM file includes unmapped reads extracted from specimen-level BAM with the reference alignment of specimen $sample_id from donor $participant_id. This uses the SeqWare BWA-MEM PanCancer Workflow version $workflow_version available at $workflow_url. This workflow can be created from source, see $workflow_src_url. For a complete change log see $changelog_url. Input BAMs are prepared and submitted to GNOS server according to the submission SOP documented at: https://wiki.oicr.on.ca/display/PANCANCER/PCAP+%28a.k.a.+PAWG%29+Sequence+Submission+SOP+-+v1.0.";
-  }
-
-  my $analysis_xml = <<END;
+  
+    my $analysis_xml = <<END;
   <ANALYSIS_SET xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.ncbi.nlm.nih.gov/viewvc/v1/trunk/sra/doc/SRA_1-5/SRA.analysis.xsd?view=co">
     <ANALYSIS center_name="$center_name" analysis_center="$analysis_center" analysis_date="$datetime">
       <TITLE>TCGA/ICGC PanCancer Specimen-Level Alignment for Specimen $sample_id from Participant $participant_id</TITLE>
@@ -304,7 +361,6 @@ sub generate_submission {
 END
             foreach my $url (keys %{$m}) {
               foreach my $run (@{$m->{$url}{'run'}}) {
-              #print Dumper($run);
                 if (defined($run->{'read_group_label'})) {
                    #print "READ GROUP LABREL: ".$run->{'read_group_label'}."\n";
                    my $dbn = $run->{'data_block_name'};
@@ -520,7 +576,6 @@ END
 ";
       }
     }
-
   # some metadata about this workflow
   # TODO: add runtime info in here too, possibly other info
   # see https://jira.oicr.on.ca/browse/PANCANCER-43
@@ -571,21 +626,18 @@ unless ($unmapped_reads_upload) {
           <VALUE>$pcap_version</VALUE>
         </ANALYSIS_ATTRIBUTE>
 ";
-
   # QC
   $analysis_xml .= "        <ANALYSIS_ATTRIBUTE>
           <TAG>qc_metrics</TAG>
           <VALUE>" . &getQcResult() . "</VALUE>
         </ANALYSIS_ATTRIBUTE>
 ";
-
   # Runtime
   $analysis_xml .= "        <ANALYSIS_ATTRIBUTE>
           <TAG>timing_metrics</TAG>
           <VALUE>" . &getRuntimeInfo() . "</VALUE>
         </ANALYSIS_ATTRIBUTE>
 ";
-
   # Markduplicates metrics
   $analysis_xml .= "        <ANALYSIS_ATTRIBUTE>
           <TAG>markduplicates_metrics</TAG>
@@ -598,8 +650,7 @@ unless ($unmapped_reads_upload) {
     </ANALYSIS>
   </ANALYSIS_SET>
 END
-
-  open OUT, ">$output_dir/analysis.xml" or die;
+  open OUT, '>', "$output_dir/analysis.xml";
   print OUT $analysis_xml;
   close OUT;
 
@@ -621,8 +672,8 @@ END
   </EXPERIMENT_SET>
 END
 
-  open OUT, ">$output_dir/experiment.xml" or die;
-  print OUT "$exp_xml\n";
+  open OUT, '>', "$output_dir/experiment.xml";
+  say OUT $exp_xml;
   close OUT;
 
   # make a uniq list of blocks
@@ -657,293 +708,380 @@ END
 }
 
 sub read_header {
-  my ($header) = @_;
-  my $hd = {};
-  open HEADER, "<$header" or die "Can't open header file $header\n";
-  while(<HEADER>) {
-    chomp;
-    my @a = split /\t+/;
-    my $type = $a[0];
-    if ($type =~ /^@/) {
-      $type =~ s/@//;
-      for(my $i=1; $i<scalar(@a); $i++) {
-        $a[$i] =~ /^([^:]+):(.+)$/;
-        $hd->{$type}{$1} = $2;
-      }
+    my ($header) = @_;
+  
+    my $hd = {};
+    open HEADER, '<', $header;
+    while(<HEADER>) {
+        chomp;
+        my @a = split /\t+/;
+        my $type = $a[0];
+        if ($type =~ /^@/) {
+            $type =~ s/@//;
+            for (my $i=1; $i<scalar(@a); $i++) {
+                $a[$i] =~ /^([^:]+):(.+)$/;
+                $hd->{$type}{$1} = $2;
+            }
+        }
     }
-  }
-  close HEADER;
-  return($hd);
+    close HEADER;
+
+    return $hd;
 }
 
 sub download_metadata {
-  my ($urls_str) = @_;
-  my $metad = {};
-  run("mkdir -p xml2");
-  my @urls = split /,/, $urls_str;
-  my $i = 0;
-  foreach my $url (@urls) {
-    $i++;
-    my $xml_path = download_url($url, "xml2/data_$i.xml");
-    $metad->{$url} = parse_metadata($xml_path);
-  }
-  return($metad);
+    my ($urls_str) = @_;
+  
+    my $metad = {};
+    run("mkdir -p xml2");
+    my @urls = split /,/, $urls_str;
+    my $i = 0;
+    foreach my $url (@urls) {
+      $i++;
+      my $xml_path = download_url($url, "xml2/data_$i.xml");
+      $metad->{$url} = parse_metadata($xml_path);
+    }
+    return $metad;
 }
 
 sub parse_metadata {
-  my ($xml_path) = @_;
-  my $doc = $parser->parsefile($xml_path);
-  my $m = {};
-  $m->{'analysis_id'} = getVal($doc, 'analysis_id');
-  $m->{'center_name'} = getVal($doc, 'center_name');
-  push @{$m->{'study_ref'}}, getValsMulti($doc, 'STUDY_REF', "refcenter,refname");
-  push @{$m->{'run'}}, getValsMulti($doc, 'RUN', "data_block_name,read_group_label,refname");
-  push @{$m->{'target'}}, getValsMulti($doc, 'TARGET', "refcenter,refname");
-  push @{$m->{'file'}}, getValsMulti($doc, 'FILE', "checksum,filename,filetype");
-  $m->{'analysis_attr'} = getAttrs($doc);
-  $m->{'experiment'} = getBlock($xml_path, "/ResultSet/Result/experiment_xml/EXPERIMENT_SET/EXPERIMENT");
-  $m->{'run_block'} = getBlock($xml_path, "/ResultSet/Result/run_xml/RUN_SET/RUN");
-  return($m);
+    my ($xml_path) = @_;
+
+    my $doc = $parser->parsefile($xml_path);
+    my $m = {};
+    $m->{'analysis_id'} = getVal($doc, 'analysis_id');
+    $m->{'center_name'} = getVal($doc, 'center_name');
+    push @{$m->{'study_ref'}}, getValsMulti($doc, 'STUDY_REF', "refcenter,refname");
+    push @{$m->{'run'}}, getValsMulti($doc, 'RUN', "data_block_name,read_group_label,refname");
+    push @{$m->{'target'}}, getValsMulti($doc, 'TARGET', "refcenter,refname");
+    push @{$m->{'file'}}, getValsMulti($doc, 'FILE', "checksum,filename,filetype");
+    $m->{'analysis_attr'} = getAttrs($doc);
+    $m->{'experiment'} = getBlock($xml_path, "/ResultSet/Result/experiment_xml/EXPERIMENT_SET/EXPERIMENT");
+    $m->{'run_block'} = getBlock($xml_path, "/ResultSet/Result/run_xml/RUN_SET/RUN");
+  
+    return $m;
 }
 
 sub getBlock {
-  my ($xml_file, $xpath) = @_;
-
-  my $block = "";
-  ## use XPath parser instead of using REGEX to extract desired XML fragment, to fix issue: https://jira.oicr.on.ca/browse/PANCANCER-42
-  my $xp = XML::XPath->new(filename => $xml_file) or die "Can't open file $xml_file\n";
-
-  my $nodeset = $xp->find($xpath);
-  foreach my $node ($nodeset->get_nodelist) {
-    $block .= XML::XPath::XMLParser::as_string($node) . "\n";
-  }
-
-  return $block;
+    my ($xml_file, $xpath) = @_;
+  
+    my $block = "";
+    ## use XPath parser instead of using REGEX to extract desired XML fragment, to fix issue: https://jira.oicr.on.ca/browse/PANCANCER-42
+    my $xp = XML::XPath->new(filename => $xml_file) or die "Can't open file $xml_file\n";
+  
+    my $nodeset = $xp->find($xpath);
+    foreach my $node ($nodeset->get_nodelist) {
+        $block .= XML::XPath::XMLParser::as_string($node) . "\n";
+    }
+  
+    return $block;
 }
 
 sub download_url {
-  my ($url, $path) = @_;
-  my $r = run("wget -q -O $path $url");
-  if ($r) {
-          $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME}=0;
-    $r = run("lwp-download $url $path");
+    my ($url, $path) = @_;
+
+    my $r = run("wget --no-clobber -q -O $path $url");
     if ($r) {
+        $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME}=0;
+        $r = run("lwp-download $url $path");
+        if ($r) {
             print "ERROR DOWNLOADING: $url\n";
             exit(1);
+        }
     }
-  }
-  return($path);
+
+    return $path;
 }
 
 sub getVal {
-  my ($node, $key) = @_;
-  #print "NODE: $node KEY: $key\n";
-  if ($node != undef) {
-    if (defined($node->getElementsByTagName($key))) {
-      if (defined($node->getElementsByTagName($key)->item(0))) {
-        if (defined($node->getElementsByTagName($key)->item(0)->getFirstChild)) {
-          if (defined($node->getElementsByTagName($key)->item(0)->getFirstChild->getNodeValue)) {
-           return($node->getElementsByTagName($key)->item(0)->getFirstChild->getNodeValue);
-          }
-        }
-      }
-    }
-  }
-  return(undef);
-}
-
-
-sub getAttrs {
-  my ($node) = @_;
-  my $r = {};
-  my $nodes = $node->getElementsByTagName('ANALYSIS_ATTRIBUTE');
-  for(my $i=0; $i<$nodes->getLength; $i++) {
-	  my $anode = $nodes->item($i);
-	  my $tag = getVal($anode, 'TAG');
-	  my $val = getVal($anode, 'VALUE');
-	  $r->{$tag}{$val}=1;
-  }
-  return($r);
-}
-
-sub getValsWorking {
-  my ($node, $key, $tag) = @_;
-  my @result;
-  my $nodes = $node->getElementsByTagName($key);
-  for(my $i=0; $i<$nodes->getLength; $i++) {
-	  my $anode = $nodes->item($i);
-	  my $tag = $anode->getAttribute($tag);
-          push @result, $tag;
-  }
-  return(@result);
-}
-
-sub getValsMulti {
-  my ($node, $key, $tags_str) = @_;
-  my @result;
-  my @tags = split /,/, $tags_str;
-  my $nodes = $node->getElementsByTagName($key);
-  for(my $i=0; $i<$nodes->getLength; $i++) {
-       my $data = {};
-       foreach my $tag (@tags) {
-         	  my $anode = $nodes->item($i);
-	          my $value = $anode->getAttribute($tag);
-		  if (defined($value) && $value ne '') { $data->{$tag} = $value; }
-       }
-       push @result, $data;
-  }
-  return(@result);
-}
-
-# doesn't work
-sub getVals {
-  my ($node, $key, $tag) = @_;
-  #print "NODE: $node KEY: $key\n";
-  my @r;
-  if ($node != undef) {
-    if (defined($node->getElementsByTagName($key))) {
-      if (defined($node->getElementsByTagName($key)->item(0))) {
-        if (defined($node->getElementsByTagName($key)->item(0)->getFirstChild)) {
-          if (defined($node->getElementsByTagName($key)->item(0)->getFirstChild->getNodeValue)) {
-            #return($node->getElementsByTagName($key)->item(0)->getFirstChild->getNodeValue);
-            foreach my $aNode ($node->getElementsByTagName($key)) {
-              # left off here
-              if (defined($tag)) {   } else { push @r, $aNode->getFirstChild->getNodeValue; }
+    my ($node, $key) = @_;
+  
+    #print "NODE: $node KEY: $key\n";
+    if (defined $node ) {
+      if (defined($node->getElementsByTagName($key))) {
+        if (defined($node->getElementsByTagName($key)->item(0))) {
+          if (defined($node->getElementsByTagName($key)->item(0)->getFirstChild)) {
+            if (defined($node->getElementsByTagName($key)->item(0)->getFirstChild->getNodeValue)) {
+             return($node->getElementsByTagName($key)->item(0)->getFirstChild->getNodeValue);
             }
           }
         }
       }
     }
-  }
-  return(@r);
+
+    return undef;
+}
+
+
+sub getAttrs {
+    my ($node) = @_;
+  
+    my $r = {};
+    my $nodes = $node->getElementsByTagName('ANALYSIS_ATTRIBUTE');
+    for(my $i=0; $i<$nodes->getLength; $i++) {
+  	  my $anode = $nodes->item($i);
+  	  my $tag = getVal($anode, 'TAG');
+  	  my $val = getVal($anode, 'VALUE');
+  	  $r->{$tag}{$val}=1;
+    }
+
+    return($r);
+}
+
+sub getValsWorking {
+    my ($node, $key, $tag) = @_;
+  
+    my @result;
+    my $nodes = $node->getElementsByTagName($key);
+    for(my $i=0; $i<$nodes->getLength; $i++) {
+  	  my $anode = $nodes->item($i);
+  	  my $tag = $anode->getAttribute($tag);
+            push @result, $tag;
+    }
+
+    return(@result);
+}
+
+sub getValsMulti {
+    my ($node, $key, $tags_str) = @_;
+  
+    my @result;
+    my @tags = split /,/, $tags_str;
+    my $nodes = $node->getElementsByTagName($key);
+    for(my $i=0; $i<$nodes->getLength; $i++) {
+         my $data = {};
+         foreach my $tag (@tags) {
+           	  my $anode = $nodes->item($i);
+  	          my $value = $anode->getAttribute($tag);
+  		  if (defined($value) && $value ne '') { $data->{$tag} = $value; }
+         }
+         push @result, $data;
+    }
+
+    return(@result);
+}
+
+# doesn't work
+sub getVals {
+    my ($node, $key, $tag) = @_;
+    #print "NODE: $node KEY: $key\n";
+    my @r;
+    if ($node != undef) {
+      if (defined($node->getElementsByTagName($key))) {
+        if (defined($node->getElementsByTagName($key)->item(0))) {
+          if (defined($node->getElementsByTagName($key)->item(0)->getFirstChild)) {
+            if (defined($node->getElementsByTagName($key)->item(0)->getFirstChild->getNodeValue)) {
+              #return($node->getElementsByTagName($key)->item(0)->getFirstChild->getNodeValue);
+              foreach my $aNode ($node->getElementsByTagName($key)) {
+                # left off here
+                if (defined($tag)) {   } else { push @r, $aNode->getFirstChild->getNodeValue; }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return(@r);
 }
 
 sub getRuntimeInfo {
-  # detect all the timing files by checking file name pattern, read QC data
-  # to pull back the read group and associate with timing
-
-  opendir(DIR, ".");
-
-  my @qc_result_files = grep { /^out_\d+\.bam\.stats\.txt/ } readdir(DIR);
-
-  close(DIR);
-
-  my $ret = { "timing_metrics" => [] };
-
-  foreach (@qc_result_files) {
-
-    # find the index number so we can match with timing info
-    $_ =~ /out_(\d+)\.bam\.stats\.txt/;
-    my $i = $1;
-
-    open (QC, "< $_");
-
-    my @header = split /\t/, <QC>;
-    my @data = split /\t/, <QC>;
-    chomp ((@header, @data));
-
-    close (QC);
-
-    my $qc_metrics = {};
-    $qc_metrics->{$_} = shift @data for (@header);
-
-    my $read_group = $qc_metrics->{readgroup};
-
-    # now go ahead and read that index file for timing
-    my $download_timing = read_timing("download_timing_$i.txt");
-    my $bwa_timing = read_timing("bwa_timing_$i.txt");
-    my $qc_timing = read_timing("qc_timing_$i.txt");
-    my $merge_timing = read_timing("merge_timing.txt");
-
-    # fill in the data structure
-    push @{ $ret->{timing_metrics} }, { "read_group_id" => $read_group, "metrics" => { "download_timing_seconds" => $download_timing, "bwa_timing_seconds" => $bwa_timing, "qc_timing_seconds" => $qc_timing, "merge_timing_seconds" => $merge_timing } };
-
-  }
-
-  # and return hash
-  return to_json $ret;
-
+    # detect all the timing files by checking file name pattern, read QC data
+    # to pull back the read group and associate with timing
+  
+    opendir DIR, ".";
+  
+    my @qc_result_files = grep { /^out_\d+\.bam\.stats\.txt/ } readdir(DIR);
+  
+    closedir(DIR);
+  
+    my $ret = { "timing_metrics" => [] };
+  
+    foreach (@qc_result_files) {
+    
+        # find the index number so we can match with timing info
+        $_ =~ /out_(\d+)\.bam\.stats\.txt/;
+        my $i = $1;
+    
+        open (QC, "< $_");
+    
+        my @header = split /\t/, <QC>;
+        my @data = split /\t/, <QC>;
+        chomp ((@header, @data));
+    
+        close (QC);
+    
+        my $qc_metrics = {};
+        $qc_metrics->{$_} = shift @data for (@header);
+    
+        my $read_group = $qc_metrics->{readgroup};
+    
+        # now go ahead and read that index file for timing
+        my $download_timing = read_timing("download_timing_$i.txt");
+        my $bwa_timing = read_timing("bwa_timing_$i.txt");
+        my $qc_timing = read_timing("qc_timing_$i.txt");
+        my $merge_timing = read_timing("merge_timing.txt");
+    
+        # fill in the data structure
+        push @{ $ret->{timing_metrics} }, { "read_group_id" => $read_group, 
+                                            "metrics" => { "download_timing_seconds" => $download_timing, 
+                                                           "bwa_timing_seconds" => $bwa_timing, 
+                                                           "qc_timing_seconds" => $qc_timing, 
+                                                            "merge_timing_seconds" => $merge_timing 
+                                                         } 
+                                          };
+    
+    }
+  
+    return to_json $ret;
 }
 
 sub read_timing {
-  my ($file) = @_;
-  open IN, "<$file" or return "not_collected"; # very quick workaround to deal with no download_timing file generated due to skip gtdownload option. Brian, please handle it as you see it appropriate
-  my $start = <IN>;
-  my $stop = <IN>;
-  chomp $start;
-  chomp $stop;
-  my $delta = $stop - $start;
-  close IN;
-  return($delta);
+    my ($file) = @_;
+
+    open IN, '<', $file or return "not_collected"; # very quick workaround to deal with no download_timing file generated due to skip gtdownload option. Brian, please handle it as you see it appropriate
+    my $start = <IN>;
+    my $stop = <IN>;
+    chomp $start;
+    chomp $stop;
+    my $delta = $stop - $start;
+    close IN;
+
+    return $delta;
 }
 
 sub getQcResult {
-  # detect all the QC report files by checking file name pattern
+    # detect all the QC report files by checking file name pattern
 
-  opendir(DIR, ".");
+    
+    opendir DIR, ".";
 
-  my @qc_result_files = grep { /^out_\d+\.bam\.stats\.txt/ } readdir(DIR);
+    my @qc_result_files = grep { /^out_\d+\.bam\.stats\.txt/ } readdir(DIR);
 
-  close(DIR);
+    closedir(DIR);
 
-  my $ret = { "qc_metrics" => [] };
+    my $ret = { "qc_metrics" => [] };
 
-  foreach (@qc_result_files) {
+    foreach (@qc_result_files) {
+        open QC, '<', $_;
 
-    open (QC, "< $_");
+        my @header = split /\t/, <QC>;
+        my @data = split /\t/, <QC>;
+        chomp ((@header, @data));
 
-    my @header = split /\t/, <QC>;
-    my @data = split /\t/, <QC>;
-    chomp ((@header, @data));
+        close (QC);
 
-    close (QC);
+        my $qc_metrics = {};
+        $qc_metrics->{$_} = shift @data for (@header);
 
-    my $qc_metrics = {};
-    $qc_metrics->{$_} = shift @data for (@header);
+        push @{ $ret->{qc_metrics} }, {"read_group_id" => $qc_metrics->{readgroup}, "metrics" => $qc_metrics};
+    }
 
-    push @{ $ret->{qc_metrics} }, {"read_group_id" => $qc_metrics->{readgroup}, "metrics" => $qc_metrics};
-  }
-
-  return to_json $ret;
+    return to_json $ret;
 }
 
 sub getMarkduplicatesMetrics {
-  my $dup_metrics = `cat $bam.metrics`;
-  my @rows = split /\n/, $dup_metrics;
+    my $dup_metrics = `cat $bam.metrics`;
+    my @rows = split /\n/, $dup_metrics;
 
-  my @header = ();
-  my @data = ();
-  my $data_row = 0;
-  foreach (@rows) {
-    last if (/^## HISTOGRAM/); # ignore everything with this and after
-    next if (/^#/ || /^\s*$/);
+    my @header = ();
+    my @data = ();
+    my $data_row = 0;
+    foreach (@rows) {
+        last if (/^## HISTOGRAM/); # ignore everything with this and after
+        next if (/^#/ || /^\s*$/);
 
-    $data_row++;
-    do {@header = split /\t/; next} if ($data_row == 1); # header line
+        $data_row++;
+        do {@header = split /\t/; next} if ($data_row == 1); # header line
 
-    push @data, $_;
-  }
+        push @data, $_;
+    }
 
-  my $ret = {"markduplicates_metrics" => [], "note" => "The metrics are produced by bammarkduplicates tool of the Biobambam package"};
-  foreach (@data) {
-    my $metrics = {};
-    my @fields = split /\t/;
+    my $ret = {"markduplicates_metrics" => [], "note" => "The metrics are produced by bammarkduplicates tool of the Biobambam package"};
+    foreach (@data) {
+        my $metrics = {};
+        my @fields = split /\t/;
 
-    $metrics->{lc($_)} = shift @fields for (@header);
-    delete $metrics->{'estimated_library_size'}; # this is irrelevant
+        $metrics->{lc($_)} = shift @fields for (@header);
+        delete $metrics->{'estimated_library_size'}; # this is irrelevant
 
-    push @{ $ret->{"markduplicates_metrics"} }, {"library" => $metrics->{'library'}, "metrics" => $metrics};
-  }
+        push @{ $ret->{"markduplicates_metrics"} }, {"library" => $metrics->{'library'}, "metrics" => $metrics};
+    }
 
-  return to_json $ret;
+    return to_json $ret;
 }
 
 sub run {
-  my ($cmd, $do_die) = @_;
-  print "CMD: $cmd\n";
-  my $result = system($cmd);
-  if ($do_die && $result) { die "ERROR: CMD '$cmd' returned non-zero status"; }
-  return($result);
+    my ($cmd, $do_die) = @_;
+
+    say "CMD: $cmd";
+    my $result = system($cmd);
+    if ($do_die && $result) { die "ERROR: CMD '$cmd' returned non-zero status"; }
+
+    return $result;
 }
+
+sub run_upload {
+    my ($command, $metadata_file) = @_;
+
+    say "CMD: $command";
+
+    my $thr = threads->create(\&launch_and_monitor, $command);
+    my $retries = $orig_retries;
+    while(1) {
+        sleep $cooldown;
+        if (not $thr->is_running()) {
+            if ((-e $metadata_file) and (`cat $metadata_file` =~ /OK/)) {
+                say 'DONE';
+                $thr->join() if ($thr->is_running());
+                exit;
+            }
+            else {
+                $retries--;
+                if ($retries > 0) {
+                    say 'KILLING THE THREAD!!';
+                    # kill and wait to exit
+                    $thr->kill('KILL')->join();
+                    $thr = threads->create(\&launch_and_monitor, $command);
+                    sleep $md5_retries;
+                }
+                else {
+                   exit 1;
+                }
+            }
+        }
+    }
+}
+
+sub launch_and_monitor {
+    my ($cmd) = @_;
+
+    my $my_object = threads->self;
+    my $my_tid = $my_object->tid;
+
+    local $SIG{KILL} = sub { say "GOT KILL FOR THREAD: $my_tid";
+                             threads->exit;
+                           };
+    # system doesn't work, can't kill it but the open below does allow the sub-process to be killed
+    #system($cmd);
+    my $pid = open my $in, '-|', "$cmd 2>&1" or die "Can't open command\n";
+    
+    my $milliseconds_in_an_hour = 3600000;
+    my $time_last_uploading = time;
+    my $last_reported_uploaded = 0;
+    my $count = 0;
+    while(<$in>) {
+        my ($uploaded, $percent, $rate) = $_ =~ m/^Status:\s+(\d+.\d+|\d+| )\s+[M|G]B\suploaded\s*\((\d+.\d+|\d+| )%\s*complete\)\s*current\s*rate:\s*(\d+.\d+|\d+| )\s*[M|k]B\/s/g;
+        if ($uploaded > $last_reported_uploaded) {
+            $time_last_uploading = time;
+        }
+        elsif ( (time - $time_last_uploading) > $milliseconds_in_an_hour) {
+            exit;
+        }
+        $last_reported_uploaded = $uploaded;
+    }
+}
+
+
 
 0;
