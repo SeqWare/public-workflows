@@ -5,6 +5,7 @@ package com.github.seqware;
  */
 import ca.on.oicr.pde.utilities.workflows.OicrWorkflow;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -43,12 +44,23 @@ public class WorkflowClient extends OicrWorkflow {
   String outputUnmappedFileName = "merged_output.unmapped.bam";
   //BWA
   String bwaAlignMemG = "8";
+  String bwaAlignSlots = "8";
+
   String bwaSampeMemG = "8";
+  String bwaSampleSlots = "8";
+
   String bwaSampeSortSamMemG = "8";
+
   String additionalPicardParams;
+
   String picardSortMem = "6";
+
   String picardSortJobMem = "8";
+  String picardSortJobSlots = "8";
+
   String uploadScriptJobMem = "2";
+  String uploadScriptJobSlots = "4";
+
   int numOfThreads = 1; //aln
   int maxInsertSize; //sampe
   String readGroup;//sampe
@@ -60,11 +72,19 @@ public class WorkflowClient extends OicrWorkflow {
   // each retry is 1 minute
   String gtdownloadRetries = "30";
   String gtdownloadMd5Time = "120";
+
   String gtdownloadMem = "8";
+  String gtdownloadSlots = "8";
+
   String gtdownloadWrapperType = "timer_based";
+
   String smallJobMemM = "4000";
+  String smallJobSlots = "1";
+
   String studyRefnameOverride = "icgc_pancancer";
 
+  String unmappedReadsJobMemM = "8000";
+  String unmappedReadsJobMemSlots = "4";
   @Override
   public Map<String, SqwFile> setupFiles() {
 
@@ -76,20 +96,15 @@ public class WorkflowClient extends OicrWorkflow {
     try {
 
       inputBamPaths = getProperty("input_bam_paths");
-      for (String path : inputBamPaths.split(",")) {
-        bamPaths.add(path);
-      }
+      bamPaths.addAll(Arrays.asList(inputBamPaths.split(",")));
       gnosInputFileURLs = getProperty("gnos_input_file_urls");
-      for (String url : gnosInputFileURLs.split(",")) {
-        inputURLs.add(url);
-      }
+      inputURLs.addAll(Arrays.asList(gnosInputFileURLs.split(",")));
       gnosInputMetadataURLs = getProperty("gnos_input_metadata_urls");
-      for (String url : gnosInputMetadataURLs.split(",")) {
-        inputMetadataURLs.add(url);
-      }
+      inputMetadataURLs.addAll(Arrays.asList(gnosInputMetadataURLs.split(",")));
       outputDir = this.getMetadata_output_dir();
       outputPrefix = this.getMetadata_output_file_prefix();
       resultsDir = outputPrefix + outputDir;
+
       gnosUploadFileURL = getProperty("gnos_output_file_url");
       gnosKey = getProperty("gnos_key");
       gnosMaxChildren = getProperty("gnos_max_children") == null ? 3 : Integer.parseInt(getProperty("gnos_max_children"));
@@ -97,20 +112,40 @@ public class WorkflowClient extends OicrWorkflow {
       gnosTimeout = getProperty("gnos_timeout") == null ? 40 : Integer.parseInt(getProperty("gnos_timeout"));
       reference_path = getProperty("input_reference");
       bwaChoice = getProperty("bwa_choice") == null ? "aln" : getProperty("bwa_choice");
+
       bwaAlignMemG = getProperty("bwaAlignMemG") == null ? "8" : getProperty("bwaAlignMemG");
+      bwaAlignSlots = getProperty("bwaAlignSlots") == null ? "8" : getProperty("bwaAlignSlots");
+
       bwaSampeMemG = getProperty("bwaSampeMemG") == null ? "8" : getProperty("bwaSampeMemG");
+      bwaSampleSlots = getProperty("bwaSampleSlots") == null ? "8" : getProperty("bwaSampleSlots");
+
       bwaSampeSortSamMemG = getProperty("bwaSampeSortSamMemG") == null ? "4" : getProperty("bwaSampeSortSamMemG");
+  
       picardSortMem = getProperty("picardSortMem") == null ? "6" : getProperty("picardSortMem");
+ 
       picardSortJobMem = getProperty("picardSortJobMem") == null ? "8" : getProperty("picardSortJobMem");
+      picardSortJobSlots = getProperty("picardSortJobSlots") == null ? "8" : getProperty("picardSortJobSlots");
+
       uploadScriptJobMem = getProperty("uploadScriptJobMem") == null ? "2" : getProperty("uploadScriptJobMem");
+      uploadScriptJobSlots = getProperty("uploadScriptJobSlots") == null ? "4" : getProperty("uploadScriptJobSlots");
+
       additionalPicardParams = getProperty("additionalPicardParams");
       skipUpload = getProperty("skip_upload") == null ? "true" : getProperty("skip_upload");
       gtdownloadRetries = getProperty("gtdownloadRetries") == null ? "30" : getProperty("gtdownloadRetries");
       gtdownloadMd5Time = getProperty("gtdownloadMd5time") == null ? "120" : getProperty("gtdownloadMd5time");
+
       gtdownloadMem = getProperty("gtdownloadMemG") == null ? "8" : getProperty("gtdownloadMemG");
+      gtdownloadSlots = getProperty("gtdownloadSlots") == null ? "8" : getProperty("gtdownloadSlots");
+
       gtdownloadWrapperType = getProperty("gtdownloadWrapperType") == null ? "timer_based" : getProperty("gtdownloadWrapperType");
       studyRefnameOverride = getProperty("study-refname-override") == null ? "icgc_pancancer" : getProperty("study-refname-override");
+
       smallJobMemM = getProperty("smallJobMemM") == null ? "3000" : getProperty("smallJobMemM");
+      smallJobSlots = getProperty("smallJobSlots") == null ? "1" : getProperty("smallJobSlots");
+
+      unmappedReadsJobMemM = getProperty("unmappedReadsJobMemM") == null ? "8000" : getProperty("unmappedReadsJobMemM");
+      unmappedReadsJobMemSlots = getProperty("unmappedReadsJobMemSlots") == null ? "4" : getProperty("unmappedReadsJobMemSlots");
+
       if (getProperty("use_gtdownload") != null) { if("false".equals(getProperty("use_gtdownload"))) { useGtDownload = false; } }
       if (getProperty("use_gtupload") != null) { if("false".equals(getProperty("use_gtupload"))) { useGtUpload = false; } }
       if (getProperty("use_gtvalidation") != null) { if("false".equals(getProperty("use_gtvalidation"))) { useGtValidation = false; } }
@@ -162,6 +197,7 @@ public class WorkflowClient extends OicrWorkflow {
         downloadJob = this.getWorkflow().createBashJob("gtdownload");
         addDownloadJobArgs(downloadJob, file, fileURL, i, gtdownloadWrapperType);
         downloadJob.setMaxMemory( gtdownloadMem + "000");
+        downloadJob.setThreads(Integer.valueOf(gtdownloadSlots));
       }
 
       // in the future this should use the read group if provided otherwise use read group from bam file
@@ -173,6 +209,7 @@ public class WorkflowClient extends OicrWorkflow {
     		  + " | perl -nae 'next unless /^\\@RG/; s/\\tPI:\\s*\\t/\\t/; s/\\tPI:\\s*\\z/\\n/; s/\\t/\\\\t/g; print' > bam_header." + i + ".txt");
       if (useGtDownload) { headerJob.addParent(downloadJob); }
       headerJob.setMaxMemory(smallJobMemM);
+      headerJob.setThreads(Integer.valueOf(smallJobSlots));
 
       // the QC job used by either path below
       Job qcJob = null;
@@ -192,8 +229,9 @@ public class WorkflowClient extends OicrWorkflow {
                 .addArgument(file)
                 .addArgument(" > aligned_" + i + "_1.sai");
         job01.setMaxMemory(bwaAlignMemG + "900");
+        job01.setThreads(Integer.valueOf(bwaAlignSlots));
         /*if (!getProperty("numOfThreads").isEmpty()) {
-          job01.setThreads(Integer.parseInt(getProperty("numOfThreads")));
+          job01.setThreads(Integer.valueOf(Integer.parseInt(getProperty("numOfThreads")));
         }*/
 
         Job job02 = this.getWorkflow().createBashJob("bwa_align2_" + i);
@@ -204,8 +242,9 @@ public class WorkflowClient extends OicrWorkflow {
                 .addArgument(file)
                 .addArgument(" > aligned_" + i + "_2.sai");
         job02.setMaxMemory(bwaAlignMemG + "900");
+        job02.setThreads(Integer.valueOf(bwaAlignSlots));
         /*if (!getProperty("numOfThreads").isEmpty()) {
-          job02.setThreads(Integer.parseInt(getProperty("numOfThreads")));
+          job02.setThreads(Integer.valueOf(Integer.parseInt(getProperty("numOfThreads")));
         }*/
 
         // BWA SAMPE + CONVERT TO BAM
@@ -231,6 +270,7 @@ public class WorkflowClient extends OicrWorkflow {
         job03.addParent(job01);
         job03.addParent(job02);
         job03.setMaxMemory(bwaSampeMemG + "900");
+        job03.setThreads(Integer.valueOf(bwaSampleSlots));
         bamJobs.add(job03);
 
         // QC JOB
@@ -238,6 +278,7 @@ public class WorkflowClient extends OicrWorkflow {
         addBamStatsQcJobArgument(i, qcJob);
         qcJob.addParent(job03);
         qcJob.setMaxMemory(smallJobMemM);
+        qcJob.setThreads(Integer.valueOf(smallJobSlots));
         qcJobs.add(qcJob);
 
         // CLEANUP DOWNLOADED INPUT UNALIGNED BAM FILES
@@ -245,6 +286,7 @@ public class WorkflowClient extends OicrWorkflow {
           Job cleanup1 = this.getWorkflow().createBashJob("cleanup_" + i);
           cleanup1.getCommand().addArgument("rm -f " + file);
           cleanup1.setMaxMemory(smallJobMemM);
+          cleanup1.setThreads(Integer.valueOf(smallJobSlots));
           cleanup1.addParent(job03);
         }
 
@@ -283,8 +325,9 @@ public class WorkflowClient extends OicrWorkflow {
                 .addArgument("&& date +%s >> bwa_timing_" + i + ".txt");
 
         job01.setMaxMemory(bwaAlignMemG + "900");
+        job01.setThreads(Integer.valueOf(bwaAlignSlots));
         /*if (!getProperty("numOfThreads").isEmpty()) {
-          job01.setThreads(Integer.parseInt(getProperty("numOfThreads")));
+          job01.setThreads(Integer.valueOf(Integer.parseInt(getProperty("numOfThreads")));
         }*/
         bamJobs.add(job01);
 
@@ -293,6 +336,7 @@ public class WorkflowClient extends OicrWorkflow {
         addBamStatsQcJobArgument(i, qcJob);
         qcJob.addParent(job01);
         qcJob.setMaxMemory(smallJobMemM);
+        qcJob.setThreads(Integer.valueOf(smallJobSlots));
         qcJobs.add(qcJob);
 
         // CLEANUP DOWNLOADED INPUT UNALIGNED BAM FILES
@@ -300,6 +344,7 @@ public class WorkflowClient extends OicrWorkflow {
           Job cleanup1 = this.getWorkflow().createBashJob("cleanup2_" + i);
           cleanup1.getCommand().addArgument("rm -f " + file);
           cleanup1.setMaxMemory(smallJobMemM);
+          cleanup1.setThreads(Integer.valueOf(smallJobSlots));
           cleanup1.addParent(job01);
         }
 
@@ -330,6 +375,7 @@ public class WorkflowClient extends OicrWorkflow {
         job04.addParent(pJob);
       }
       job04.setMaxMemory(picardSortJobMem + "900");
+      job04.setThreads(Integer.valueOf(picardSortJobSlots));
 
     } else if ("mem".equals(bwaChoice)) {
 
@@ -350,7 +396,7 @@ public class WorkflowClient extends OicrWorkflow {
         job04.addParent(pJob);
       }
       /* if (!getProperty("numOfThreads").isEmpty()) {
-        job04.setThreads(Integer.parseInt(getProperty("numOfThreads")));
+        job04.setThreads(Integer.valueOf(Integer.parseInt(getProperty("numOfThreads")));
       }*/
 
       // now compute md5sum for the bai file
@@ -358,6 +404,7 @@ public class WorkflowClient extends OicrWorkflow {
           + " > " + this.dataDir + outputFileName + ".bai.md5");
 
       job04.setMaxMemory(picardSortJobMem + "900");
+      job04.setThreads(Integer.valueOf(picardSortJobSlots));  
 
     }
 
@@ -378,7 +425,8 @@ public class WorkflowClient extends OicrWorkflow {
       .addArgument("tmpfile=unmapped1.sorttmp")
       .addArgument("O=unmappedReads1.bam");
 
-    unmappedReadsJob1.setMaxMemory("4000");
+    unmappedReadsJob1.setMaxMemory(unmappedReadsJobMemM);
+        unmappedReadsJob1.setThreads(Integer.valueOf(unmappedReadsJobMemSlots));
   	unmappedReadsJob1.addParent(job04);
   	  
   	unmappedReadsJob2 = this.getWorkflow().createBashJob("unmappedReads2");
@@ -393,7 +441,8 @@ public class WorkflowClient extends OicrWorkflow {
       .addArgument("tmpfile=unmapped2.sorttmp")
       .addArgument("O=unmappedReads2.bam");
 
-  	unmappedReadsJob2.setMaxMemory("8000");
+  	unmappedReadsJob2.setMaxMemory(unmappedReadsJobMemM);
+        unmappedReadsJob2.setThreads(Integer.valueOf(unmappedReadsJobMemSlots));
   	unmappedReadsJob2.addParent(job04);
   	  
   	unmappedReadsJob3 = this.getWorkflow().createBashJob("unmappedReads3");
@@ -401,7 +450,8 @@ public class WorkflowClient extends OicrWorkflow {
       this.getWorkflowBaseDir() + pcapPath + "/bin/samtools view -h -b -f 12 " // reads with both ends unmapped, no need to sort at all
       + this.dataDir + outputFileName
       + " > unmappedReads3.bam");
-  	unmappedReadsJob3.setMaxMemory("4000");
+  	unmappedReadsJob3.setMaxMemory(unmappedReadsJobMemM);
+        unmappedReadsJob3.setThreads(Integer.valueOf(unmappedReadsJobMemSlots));
   	unmappedReadsJob3.addParent(job04);
 
 
@@ -425,8 +475,8 @@ public class WorkflowClient extends OicrWorkflow {
     mergeUnmappedJob.addParent(unmappedReadsJob2);
     mergeUnmappedJob.addParent(unmappedReadsJob3);
         
-    mergeUnmappedJob.setMaxMemory("4000");
-    
+    mergeUnmappedJob.setMaxMemory(unmappedReadsJobMemM);
+    mergeUnmappedJob.setThreads(Integer.valueOf(unmappedReadsJobMemSlots));
     
     // CLEANUP LANE LEVEL BAM FILES
     if (cleanup) {
@@ -435,6 +485,7 @@ public class WorkflowClient extends OicrWorkflow {
         cleanup2.getCommand().addArgument("rm -f out_" + i + ".bam");
         cleanup2.addParent(job04);
         cleanup2.setMaxMemory(smallJobMemM);
+        cleanup2.setThreads(Integer.valueOf(smallJobSlots));
         cleanup2.addParent(qcJobs.get(i));
       }
     }
@@ -461,6 +512,7 @@ public class WorkflowClient extends OicrWorkflow {
       job05.getCommand().addArgument("--skip-validate");
     }
     job05.setMaxMemory(uploadScriptJobMem + "900");
+    job05.setThreads(Integer.valueOf(uploadScriptJobSlots));
     job05.addParent(job04);
     for (Job qcJob : qcJobs) {
       job05.addParent(qcJob);
@@ -487,6 +539,8 @@ public class WorkflowClient extends OicrWorkflow {
       job06.getCommand().addArgument("--skip-validate");
     }
     job06.setMaxMemory(uploadScriptJobMem + "900");
+    job06.setThreads(Integer.valueOf(uploadScriptJobSlots));
+    //carsaddd here
     job06.addParent(mergeUnmappedJob);
 
     // CLEANUP FINAL BAM
@@ -501,6 +555,7 @@ public class WorkflowClient extends OicrWorkflow {
         cleanup3.addParent(qcJob);
       }
       cleanup3.setMaxMemory(smallJobMemM);
+      cleanup3.setThreads(Integer.valueOf(smallJobSlots));
     }
 
   }
@@ -594,6 +649,7 @@ public class WorkflowClient extends OicrWorkflow {
                 + " --max-children " + gnosMaxChildren
                 + " --rate-limit " + gnosRateLimit
                 + " -c " + gnosKey
+                + " -l ./download.log"
                 + " -v -d "+fileURL+"'")
       .addArgument("--file-grep " + analysisId)
       .addArgument("--search-path .")
@@ -608,6 +664,7 @@ public class WorkflowClient extends OicrWorkflow {
                  + " --rate-limit " + gnosRateLimit
                  + " --inactivity-timeout " + gnosTimeout
                  + " -c " + gnosKey
+                 + " -l ./download.log"
                  + " -v -d "+fileURL+"'")
       .addArgument("--retries "+gtdownloadRetries + " ;")
       .addArgument("date +%s >> download_timing_" + jobId + ".txt");
