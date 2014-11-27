@@ -53,7 +53,7 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
     String gtdownloadMd5Time = "120";
     String gtdownloadMem = "8";
     String smallJobMemM = "3000";
-
+    String roddyBaseJobMemory = "8192";
 
     String inputFileTumorURL = null;
     String inputFileNormalURL = null;
@@ -173,7 +173,8 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
             gtdownloadMd5Time = loadProperty("gtdownloadMd5time", gtdownloadMd5Time);
             gtdownloadMem = loadProperty("gtdownloadMemG", gtdownloadMem);
             smallJobMemM = loadProperty("smallJobMemM", smallJobMemM);
-            skipDownloads = loadBooleanProperty("skipDownloads");
+            roddyBaseJobMemory = loadProperty("roddyBaseJobMemory", roddyBaseJobMemory);
+	    skipDownloads = loadBooleanProperty("skipDownloads");
 
             System.out.println("" + doCleanup + " " + doSNVCalling + " " + doIndelCalling + " " + doCopyNumberEstimation);
             
@@ -216,7 +217,7 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
      */
     private Job createRoddyJob(String name, String pid, String analysisConfigurationID, List<Job> parentJobs, String runMode) {
         Job job = this.getWorkflow().createBashJob(name);
-        job.setMaxMemory("16384");
+        job.setMaxMemory(roddyBaseJobMemory);
         for (Job parentJob : parentJobs) {
             job.addParent(parentJob);
         }
