@@ -1,19 +1,13 @@
-
-coresAddressable=8
-tabixSrvUri=http://ec2-54-74-68-204.eu-west-1.compute.amazonaws.com/
-
-tumourAnalysisId=0772aed3-4df7-403f-802a-808df2935cd1
-tumourBam=c007f362d965b32174ec030825262714.bam
-
-controlAnalysisId=5161b68b-e757-47df-80cf-79554430e5cb
-controlBam=459793d5b324900a2f9dd1ec079a368e.bam
-
-pemFile=/mnt/testData/ebi.pem
-gnosServer=https://gtrepo-ebi.annailabs.com
-
-assembly=GRCh37
-species=human
-seqType=WGS
-gender=L # if unknown 'L', other wise 'XX' or 'XY' as appropriate
-
-If there are multiple tumours for the donor please ':' separate the 'tumourAnalysisId' and 'tumourBam' values.  There are very few of these but Brian suggested that it would be best if the workflow could run on a donor basis so that the normal didn't need to be downloaded multiple times…
+coresAddressable=
+tabixSrvUri=
+tumourAnalysisId=
+tumourBam=
+tumorAliquotId=
+controlAnalysisId=
+controlBam=
+pemFile=
+gnosServer=
+assembly=
+species=
+seqType=
+gender=

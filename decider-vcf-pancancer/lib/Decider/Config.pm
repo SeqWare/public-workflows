@@ -29,6 +29,8 @@ sub get {
     }
  
     # General 
+    $ARGV{'--pem-file'} //= $decider_config{'general.pem-file'};
+    die 'Pem file needs to be defined' unless $ARGV{'--pem-file'};
     
     $ARGV{'--workflow-version'} //= $decider_config{'general.workflow-version'};
     die 'Workflow version needs to be defined' unless $ARGV{'--workflow-version'};

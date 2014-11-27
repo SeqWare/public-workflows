@@ -95,8 +95,6 @@ sub schedule_workflow {
          $center_name,
          $run_workflow_version ) = @_;
 
-
-   
     my $cluster = (keys %{$cluster_information})[0];
     my $cluster_found = (defined($cluster) and $cluster ne '' )? 1: 0;
 
@@ -114,11 +112,12 @@ sub schedule_workflow {
         system("mkdir -p $Bin/../$working_dir/samples/$center_name/$sample_id");
 
         create_settings_file($seqware_settings_file, $url, $username, $password, $working_dir, $center_name, $sample_id);
-
-        create_workflow_ini($run_workflow_version, $sample, $gnos_url, $threads, $skip_gtdownload, $skip_gtupload, $upload_results, $output_prefix, $output_dir, $working_dir, $center_name, $sample_id);
+         
+        $workflow_version //= '2.6.3';
+        create_workflow_ini($workflow_version, $sample, $gnos_url, $threads, $skip_gtdownload, $skip_gtupload, $upload_results, $output_prefix, $output_dir, $working_dir, $center_name, $sample_id);
     }
 
-    submit_workflow($working_dir, $workflow_accession, $host, $skip_scheduling, $cluster_found, $report_file, $url, $center_name, $sample_id);
+    submit_workflow($working_dir, $workflow_accession, $host, $skip_scheduling, $cluster_found, $report_file, $url, $center_name, $sample_id) if ($cluster_found);
 
     delete $cluster_information->{$cluster} if ($cluster_found);
 }

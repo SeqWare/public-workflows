@@ -99,9 +99,11 @@ sub get {
             $participant_id = undef;
         }
 
-        my $use_control = $analysis_result{use_cntl};
+	my $use_control = $analysis_result{use_cntl};
+
         my $alignment = $analysis_result{refassem_short_name};
         my $sample_id = $analysis_result{sample_id};
+
         if (ref($sample_id) eq 'HASH') {
            $sample_id = undef;
         }
@@ -143,6 +145,9 @@ sub get {
             $submitter_specimen_id = undef if (ref($submitter_specimen_id) eq 'HASH');
             $workflow_version = $attributes{workflow_version};
             $workflow_name = $attributes{workflow_name};
+
+	    # XML inconsistent across sites?
+	    $use_control ||= $attributes{use_cntl};
         }
         next if ( ( $aliquot_id eq 'ad3d4757-f358-40a3-9d92-742463a95e88'
                    or $aliquot_id eq 'f0eaa94b-f622-49b9-8eac-e4eac6762598'
@@ -291,8 +296,7 @@ sub download_analysis {
 
 	if ($dead) {
 	    my ($analysis) = $url =~ m!/([^/]+)$!;
-	    say STDERR "$analysis: Bad content:\n$dead"; 
-	    say STDERR "Falling back to wget...";
+	    say STDERR "$analysis: Bad XML.  Falling back to wget...";
 	}
 
         $response = system("wget -q -O $out $url");

@@ -35,13 +35,13 @@ $whitelist = get_whitelist($ARGV{'--schedule-whitelist'})
                                        if ($ARGV{'--schedule-whitelist'});
 $blacklist = get_blacklist($ARGV{'--schedule-blacklist'})
                                        if ($ARGV{'--schedule-blacklist'});
+
 say 'Getting SeqWare Cluster Information';
 my ($cluster_information, $running_sample_ids, $failed_samples, $completed_samples)
           = SeqWare::Cluster->cluster_seqware_information( $report_file,
                                                   $ARGV{'--seqware-clusters'}, 
                                                   $ARGV{'--schedule-ignore-failed'},
                                                   $ARGV{'--workflow-version'});
-
 
 #my $failed_db = Decider::Database->failed_connect();
 

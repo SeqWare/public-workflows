@@ -17,6 +17,7 @@ import java.util.logging.*;
  */
 public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
 
+<<<<<<< HEAD
   Logger logger = Logger.getLogger(DKFZBundleWorkflow.class.getName());
 
   // datetime all upload files will be named with
@@ -113,6 +114,88 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
       return res == null ? _default : res;
     } catch (Exception ex) {
       return _default;
+=======
+    Logger logger = Logger.getLogger(DKFZBundleWorkflow.class.getName());
+
+    // comma-seperated for multiple bam inputs
+    // used to download with gtdownload
+    ArrayList<String> inputMetadataURLs = new ArrayList<String>();
+    
+    String gnosInputMetadataURLs = null;
+    String gnosUploadFileURL = null;
+
+    
+    // Input parameters and files
+    String pid;
+    
+    File directoryBaseOutput = null;
+    File directoryBundledFiles = null;
+    
+    File gnosDownloadDirGeneric = null;
+    File gnosUploadDir = null;
+    
+    File processDirectoryPID = null;
+    File directoryAlignmentFiles = null;
+    File directoryDellyFiles = null;
+    File directorySNVCallingResults = null;
+    File directoryIndelCallingResults = null;
+    File directoryCNEResults = null;
+    
+
+    String gnosKey = null;
+
+    // GTDownload settings
+    String gtdownloadRetries = "30";
+    String gtdownloadMd5Time = "120";
+    String gtdownloadMem = "8";
+    String smallJobMemM = "3000";
+    String roddyBaseJobMemory = "8192";
+
+    String inputFileTumorURL = null;
+    String inputFileNormalURL = null;
+    String inputFileDependenciesURL = null;
+    String inputFileDellyURL = null;
+
+    File inputFileTumor = null;
+    File inputFileNormal = null;
+    File inputFileDependencies = null;
+    File inputFileDelly = null;
+    
+    File outputFileSNVCallingVCFRaw = null;
+    File outputFileSNVCallingVCF = null;
+    File outputFileIndelCallingVCFRaw = null;
+    File outputFileIndelCallingVCF = null;
+    File outputFileCNEVCF = null;
+    File outputFileCNETarball = null;
+
+    // Run flags
+    boolean debugmode = false;
+
+    boolean useGtDownload = true;
+    boolean useGtUpload = true;
+
+    boolean doCleanup = false;
+    boolean doSNVCalling = false;
+    boolean doIndelCalling = false;
+    boolean doCopyNumberEstimation = false;
+    boolean skipDownloads = false;
+    boolean useDellyOnDisk = false;
+
+    /**
+     * Safely load a property from seqwares workflow environment.
+     *
+     * @param id
+     * @param _default
+     * @return
+     */
+    private String loadProperty(String id, String _default) {
+        try {
+            String res = getProperty(id);
+            return res == null ? _default : res;
+        } catch (Exception ex) {
+            return _default;
+        }
+>>>>>>> develop
     }
   }
 
@@ -208,6 +291,7 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
       throw new RuntimeException("Problem parsing variable values: " + e.getMessage());
     }
 
+<<<<<<< HEAD
     return this.getFiles();
   }
 
@@ -238,6 +322,76 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
     job.setMaxMemory(this.roddyJobMb);
     for (Job parentJob : parentJobs) {
       job.addParent(parentJob);
+=======
+    /**
+     * This workflow isn't using file provisioning since we're using
+     * GeneTorrent. So this method is just being used to setup various
+     * variables.
+     */
+    @Override
+    public Map<String, SqwFile> setupFiles() {
+
+        try {
+
+            pid = loadProperty("pid", null);
+            debugmode = loadBooleanProperty("debug_mode", debugmode);
+            
+            String outputdir = debugmode ? "testdata" : getProperty("output_dir");
+
+            directoryBaseOutput = new File(getProperty("output_prefix"));
+
+            gnosDownloadDirGeneric = new File(directoryBaseOutput, "gnos_download");
+            directoryBundledFiles = new File(directoryBaseOutput, "bundledFiles");
+
+            processDirectoryPID = new File(new File(directoryBaseOutput, outputdir), pid);
+            directoryAlignmentFiles = new File(processDirectoryPID, "alignment");
+            directoryDellyFiles = new File(processDirectoryPID, "delly");
+            directorySNVCallingResults = new File(processDirectoryPID, "mpileup");
+            directoryIndelCallingResults = new File(processDirectoryPID, "platypus_indel");
+            directoryCNEResults = new File(processDirectoryPID, "ACEseq_dbg");
+
+            gnosInputMetadataURLs = getProperty("gnos_input_metadata_urls");
+            for (String url : gnosInputMetadataURLs.split(",")) {
+                inputMetadataURLs.add(url);
+            }
+
+            gnosUploadFileURL = getProperty("gnos_output_file_url");
+            gnosKey = getProperty("gnos_key");
+            gnosUploadDir = new File(directoryBaseOutput, "gnos_upload");
+
+            doCleanup = loadBooleanProperty("clean_up");
+            doSNVCalling = loadBooleanProperty("snv_calling");
+            doIndelCalling = loadBooleanProperty("indel_calling");
+            doCopyNumberEstimation = loadBooleanProperty("ace_seq");
+
+            inputFileNormalURL = getProperty("input_file_control");
+            inputFileTumorURL = getProperty("input_file_tumor");
+            inputFileDependenciesURL = getProperty("input_file_dependencies");
+            if (doCopyNumberEstimation) {
+                inputFileDellyURL = loadProperty("input_file_dependencies", null);
+                useDellyOnDisk = loadBooleanProperty("useDellyFileFromDisk", false);
+                inputFileDelly = new File(directoryDellyFiles, pid + ".DELLY.somaticFilter.highConf.bedpe.txt");
+            }
+
+            useGtDownload = !"false".equals(getProperty("use_gtdownload"));
+            useGtUpload = !"false".equals(getProperty("use_gtupload"));
+
+            gtdownloadRetries = loadProperty("gtdownloadRetries", gtdownloadRetries);
+            gtdownloadMd5Time = loadProperty("gtdownloadMd5time", gtdownloadMd5Time);
+            gtdownloadMem = loadProperty("gtdownloadMemG", gtdownloadMem);
+            smallJobMemM = loadProperty("smallJobMemM", smallJobMemM);
+            roddyBaseJobMemory = loadProperty("roddyBaseJobMemory", roddyBaseJobMemory);
+	    skipDownloads = loadBooleanProperty("skipDownloads");
+
+            System.out.println("" + doCleanup + " " + doSNVCalling + " " + doIndelCalling + " " + doCopyNumberEstimation);
+            
+        } catch (Exception e) {
+            Logger.getLogger(DKFZBundleWorkflow.class.getName()).log(Level.SEVERE, null, e);
+            //throw new RuntimeException("Problem parsing variable values: " + e.getMessage());
+        }
+
+        return this.getFiles();
+>>>>>>> develop
     }
     String fullConfiguration = "dkfzPancancerBase" + (debugmode ? ".dbg" : "") + "@" + analysisConfigurationID;
     // TODO: this needs to be parameterized I think if we can't bundle Roddy
@@ -247,6 +401,7 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
     if (debugmode) {
       job.getCommand().addArgument(" --verbositylevel=5 ");
     }
+<<<<<<< HEAD
     job.getCommand().addArgument(String.format("  &> %s/roddy_%s.txt ", directorySNVCallingResults, name));
     return job;
   }
@@ -403,6 +558,39 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
           if (doCopyNumberEstimation && !useDellyOnDisk) {
             jobDownloadDellyBedPe = createGNOSDellyDownloadJob(inputFileDellyURL, createDirs);
           }
+=======
+
+    /**
+     * Create job which calls the Roddy workflow environment.
+     *
+     * To allow dependencies on Roddy jobs, Roddy is called with the
+     * --waitforjobs option.
+     *
+     * Roddy itself calls a range of SGE jobs and waits for those jobs to
+     * finish. The return code of Roddy is either 0 (0 faulty jobs) or n (1 .. n
+     * faulty jobs).
+     *
+     * @param name The name for the job
+     * @param pid The pid of the dataset to process
+     * @param analysisConfigurationID The configuration which will be used for
+     * the process
+     * @param parentJobs A list of parent jobs which preceed this job.
+     * @param runMode The runmode which is i.e. run / rerun / testrun.
+     * @return
+     */
+    private Job createRoddyJob(String name, String pid, String analysisConfigurationID, List<Job> parentJobs, String runMode) {
+        Job job = this.getWorkflow().createBashJob(name);
+        job.setMaxMemory(roddyBaseJobMemory);
+        for (Job parentJob : parentJobs) {
+            job.addParent(parentJob);
+        }
+        String fullConfiguration = "dkfzPancancerBase" + (debugmode ? ".dbg" : "") + "@" + analysisConfigurationID;
+        job.getCommand()
+                .addArgument("cd " + this.getWorkflowBaseDir() + "/bin/RoddyBundlePancancer")
+                .addArgument(String.format(" && bash roddy.sh %s %s %s --useconfig=applicationPropertiesAllLocal.ini --waitforjobs", runMode, fullConfiguration, pid));
+        if (debugmode) {
+            job.getCommand().addArgument(" --verbositylevel=5 ");
+>>>>>>> develop
         }
       }
 

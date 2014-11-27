@@ -8,7 +8,7 @@ use autodie qw(:all);
 use FindBin qw($Bin);
 
 use Config::Simple;
-use Capture::Tiny ':all';
+#use Capture::Tiny ':all';
 use Cwd;
 use Carp::Always;
 
@@ -45,6 +45,7 @@ sub schedule_samples {
 	$working_dir,
 	$run_workflow_version,
 	$tabix_url,
+	$pem_file,
 	$whitelist,
 	$blacklist,
 	) = @_;
@@ -96,7 +97,8 @@ sub schedule_samples {
 				      $run_workflow_version,
 				      $whitelist,
 				      $blacklist,
-				      $tabix_url
+				      $tabix_url,
+				      $pem_file
 		    );
 	    }
 	}
@@ -104,9 +106,8 @@ sub schedule_samples {
 }
 
 sub schedule_workflow {
-    die Dumper \@_;
     my $self = shift;
-    my ( $sample, 
+    my ( $donor,
          $seqware_settings_file, 
          $report_file,
          $cluster_information,
@@ -120,11 +121,12 @@ sub schedule_workflow {
          $output_dir,
          $force_run,
 	 $threads,
-         $running_sample_id,
-         $sample_id,
          $center_name,
          $run_workflow_version,
-	 $tabix_url) = @_;
+	 $tabix_url,
+	 $pem_file
+	) = @_;
+
 
     my $cluster = (keys %{$cluster_information})[0];
     my $cluster_found = (defined($cluster) and $cluster ne '' )? 1: 0;
@@ -135,27 +137,28 @@ sub schedule_workflow {
 
     my $workflow_accession = $cluster_information->{$cluster}{workflow_accession};
     my $workflow_version = $cluster_information->{$cluster}{workflow_version};
-    my $workflow_accession = $cluster_information->{$cluster}{workflow_accession};
-    my $workflow_version = $cluster_information->{$cluster}{workflow_version};
     my $host = $cluster_information->{$cluster}{host};
 
-    if ($cluster_found or $skip_scheduling) {
-        system("mkdir -p $Bin/../$working_dir/samples/$center_name/$sample_id");
+    my $donor_id = $donor->{donor_id};
 
-        create_settings_file(
+    if ($cluster_found or $skip_scheduling) {
+        system("mkdir -p $Bin/../$working_dir/samples/$center_name/$donor_id");
+
+        $self->create_settings_file(
+	    $donor,
 	    $seqware_settings_file, 
 	    $url, 
 	    $username, 
 	    $password, 
 	    $working_dir, 
-	    $center_name, 
-	    $sample_id
+	    $center_name
 	    );
 
-        create_workflow_ini(
+        $self->create_workflow_ini(
+	    $donor,
 	    $run_workflow_version, 
-	    $sample, 
 	    $gnos_url, 
+	    $threads,
 	    $skip_gtdownload, 
 	    $skip_gtupload,
 	    $upload_results,
@@ -163,72 +166,25 @@ sub schedule_workflow {
 	    $output_dir,
 	    $working_dir,
 	    $center_name,
-	    $sample_id
+	    $tabix_url,
+	    $pem_file
 	    );
     }
 
-    submit_workflow(
-	$working_dir,
-	$workflow_accession,
-	$host,
-	$skip_scheduling,
-	$cluster_found,
-	$report_file,
-	$url,
-	$center_name,
-	$sample_id
-	);
+#    $self->submit_workflow(
+#	$working_dir,
+#	$workflow_accession,
+#	$host,
+#	$skip_scheduling,
+#	$cluster_found,
+#	$report_file,
+#	$url,
+#	$center_name,
+#	$donor_id
+#	);
 
     delete $cluster_information->{$cluster} if ($cluster_found);
 }
-
-sub create_settings_file {
-    my $self = shift;
-    my ($seqware_settings_file, $url, $username, $password, $working_dir, $center_name, $sample_id) = @_;
-
-    my $settings = new Config::Simple("$Bin/../conf/ini/$seqware_settings_file");
-
-    $url //= '<SEQWARE URL>';
-    $username //= '<SEQWARE USER NAME>';
-    $password //= '<SEQWARE PASSWORD>';
-
-    $settings->param('SW_REST_URL', $url);
-    $settings->param('SW_REST_USER', $username);
-    $settings->param('SW_REST_PASS',$password);
-
-    $settings->write("$Bin/../$working_dir/samples/$center_name/$sample_id/settings");
-}
-
-sub create_workflow_ini {
-    my $self = shift;
-    my ($workflow_version, $sample, $gnos_url, $threads, $skip_gtdownload, $skip_gtupload, $upload_results, $output_prefix, $output_dir, $working_dir, $center_name, $sample_id) = @_;
-
-    my $ini_path = "$Bin/../conf/ini/workflow-$workflow_version.ini";
-    die "ini template does not exist: $ini_path" unless (-e $ini_path);
-    my $workflow_ini = new Config::Simple($ini_path); 
-
-    my $local_bams_string = $sample->{local_bams_string};
-    my $gnos_input_file_urls = $sample->{gnos_input_file_urls};
-    my $analysis_url_string = $sample->{analysis_url_string};
-    
-    $workflow_ini->param('input_bam_paths', $local_bams_string) if ($local_bams_string);
-    $workflow_ini->param('gnos_input_file_urls', $gnos_input_file_urls) 
-                                                             if ($gnos_input_file_urls);
-    $workflow_ini->param('gnos_input_metadata_urls', $analysis_url_string)
-
-                                                             if ($analysis_url_string);
-    $workflow_ini->param('gnos_output_file_url', $gnos_url);
-    $workflow_ini->param('numOfThreads', $threads);
-    $workflow_ini->param('use_gtdownload', (defined $skip_gtdownload)? 'false': 'true');
-    $workflow_ini->param('use_gtupload',  (defined $skip_gtupload)? 'false': 'true');
-    $workflow_ini->param('skip_upload', (defined $upload_results)? 'false': 'true');
-    $workflow_ini->param('output_prefix', $output_prefix);
-    $workflow_ini->param('output_dir', $output_dir);
-    $workflow_ini->param('sample_id', $sample_id);    
-  
-    $workflow_ini->write("$Bin/../$working_dir/samples/$center_name/$sample_id/workflow.ini");
-}
-
 
 sub submit_workflow {
     my $self = shift;
@@ -300,7 +256,9 @@ sub schedule_donor {
          $run_workflow_version,
          $whitelist,
          $blacklist,
-	 $tabix_url) = @_;
+	 $tabix_url,
+	 $pem_file
+	) = @_;
 
     say $report_file "DONOR/PARTICIPANT: $donor_id\n";
 
@@ -319,7 +277,7 @@ sub schedule_donor {
     my @whitelist = @{$whitelist->{sample}} if $whitelist and $whitelist->{sample};
 
     my (%specimens,%aligned_specimens);
-    
+
     foreach my $sample_id (@sample_ids) {      
 	$specimens{$sample_id}++;
 
@@ -339,10 +297,11 @@ sub schedule_donor {
                 # Skip unaligned BAMs, not relevant to VC workflows
 		next if $alignment_id eq 'unaligned';
 		
-		my $aliquotes = $alignments->{$alignment_id};
-		foreach my $aliquot_id (keys %{$aliquotes}) {
-		    
-		    my $libraries = $aliquotes->{$aliquot_id};
+		my $aliquots = $alignments->{$alignment_id};
+		foreach my $aliquot_id (keys %{$aliquots}) {
+		    $donor->{aliquot_ids}->{$alignment_id} = $aliquot_id;  
+
+		    my $libraries = $aliquots->{$aliquot_id};
 		    foreach my $library_id (keys %{$libraries}) {
 			my $library = $libraries->{$library_id};
 
@@ -402,13 +361,19 @@ sub schedule_donor {
 			foreach my $file (keys %{$files}) {
 			    my $local_path = $files->{$file}{local_path};
 			    push @local_bams, $local_path if ($local_path =~ /bam$/);
+			    $donor->{bam_ids}->{$alignment_id} = $local_path;
 			}
+
 			my @analysis_ids = keys %{$library->{analysis_ids}};
 			my $analysis_ids = join ',', @analysis_ids;
 			
 			say $report_file "\t\t\t\t\tBAMS: ".join ',', @local_bams;
 			say $report_file "\t\t\t\t\tANALYSIS IDS: $analysis_ids\n";
 			
+			$donor->{analysis_ids}->{$alignment_id} = @analysis_ids;
+			$donor->{alignment_genome} = $library->{alignment_genome};
+			$donor->{library_strategy} = $library->{library_strategy};
+
 			foreach my $file (keys %{$files}) {
 			    my $local_path = $files->{$file}{local_path};
 			    if ($local_path =~ /bam$/) {
@@ -448,7 +413,7 @@ sub schedule_donor {
     
 
     # We want the most recent alignment for a given aliquot if there are > 1
-    # First, relate time stampe to alignment IDs
+    # First, relate time stamp to alignment IDs
     my %aln_date;
     for my $aln (keys %normal, keys %tumor) {
 	my ($timestamp) = reverse split /\s+/, $aln;
@@ -498,7 +463,12 @@ sub schedule_donor {
     # Make sure all samples for this donor are accounted for
     my $missing_sample = (keys %specimens) != (keys %aligned_specimens);
 
-    if ($missing_sample or $unpaired_specimens) {
+    if ($unpaired_specimens) {
+	say STDERR "This set is missing a tumor or control; skipping";
+	return 1;
+    }
+
+    if ($missing_sample) {
 	say STDERR "Not all samples have been aligned for this donor; skipping...";
 	return 1;
     }
@@ -508,47 +478,43 @@ sub schedule_donor {
 
     say "Donor $donor_id ready for Variant calling";
 
-    # Schedule the workflow as long we have tumor and normal BAMs
-#    unless ( $unpaired_specimens) {
-#	schedule_workflow( $sample, 
-#			   $seqware_settings_file, 
-#			   $report_file,
-#			   $cluster_information,
-#			   $working_dir,
-#			   $gnos_url,
-#			   $skip_gtdownload,
-#			   $skip_gtupload,
-#			   $skip_scheduling,
-#			   $upload_results,
-#			   $output_prefix,
-#			   $output_dir,
-#			   $force_run,
-#			   $threads,
-#			   $running_samples,
-#			   $sample_id,
-#			   $center_name,
-#			   $run_workflow_version,
-#			   $tabix_url)
-#	    if should_be_scheduled( $aligns, 
-#				    $force_run, 
-#				    $report_file, 
-#				    $sample, 
-#				    $running_samples, 
-#				    $ignore_failed, 
-#				    $skip_scheduling);
-#  }
-}
+    $donor->{donor_id} = $donor_id;
+    for my $analysis (keys %{$donor->{analysis_ids}}) {
+	my ($actual_id) = $analysis =~ /^\S+ - (\S+)/;
+	$donor->{analysis_ids}->{$analysis} = $actual_id;
+    }
+    $donor->{normal} = \%normal;
+    $donor->{tumor}  = \%tumor;
 
+    $self->schedule_workflow( $donor,
+			      $seqware_settings_file, 
+			      $report_file,
+			      $cluster_information,
+			      $working_dir,
+			      $gnos_url,
+			      $skip_gtdownload,
+			      $skip_gtupload,
+			      $skip_scheduling,
+			      $upload_results,
+			      $output_prefix,
+			      $output_dir,
+			      $force_run,
+			      $threads,
+			      $center_name,
+			      $run_workflow_version,
+			      $tabix_url,
+			      $pem_file
+	)
+	if should_be_scheduled(
+	    $report_file,
+	    $skip_scheduling
+	);
+}
 
 sub should_be_scheduled {
     my $self = shift;
-    my ($aligns, 
-	$force_run, 
-	$report_file, 
-	$sample, 
-	$running_samples, 
-	$ignore_failed, 
-	$skip_scheduling) = @_;
+    my $report_file = shift;
+    my $skip_scheduling = shift;
 
     if ($skip_scheduling) {
         say $report_file "\t\tCONCLUSION: SKIPPING SCHEDULING";

@@ -1,4 +1,4 @@
-perl bin/workflow_decider.pl \
+perl bin/embl_workflow_decider.pl \
 --schedule-force-run \
 --seqware-clusters cluster.json \
 --workflow-version 2.6.0 \
