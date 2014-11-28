@@ -85,7 +85,6 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
   boolean doSNVCalling = false;
   boolean doIndelCalling = false;
   boolean doCopyNumberEstimation = false;
-  boolean skipDownloads = false;
   boolean useDellyOnDisk = false;
 
   // workflow related
@@ -95,10 +94,6 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
   private String workflowFullName = null;
   private String workflowVersion = null;
   private String seqwareVersion = null;
-  
-  // memory for Roddy wrapper job (originally 
-  // TODO: this might be a duplicate for the roddyBaseJobMemory that I think Michael added
-  private String roddyJobMb = "5120"; // roddy_job_mb
   
   // the GNOS download directories to cleanup
   private ArrayList<String> dirsToCleanup = new ArrayList<String>();
@@ -192,6 +187,7 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
       gtdownloadMd5Time = loadProperty("gtdownloadMd5time", gtdownloadMd5Time);
       gtdownloadMem = loadProperty("gtdownloadMemG", gtdownloadMem);
       smallJobMemM = loadProperty("smallJobMemM", smallJobMemM);
+      roddyBaseJobMemory = loadProperty("roddyBaseJobMemory", roddyBaseJobMemory);
 
       // workflow related
       workflowName = loadProperty("workflow_name", "dkfz_unkown");
@@ -200,9 +196,6 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
       workflowFullName = loadProperty("workflow_full_name", "DKFZ-Variant-Calling");
       workflowVersion = loadProperty("workflow_version", "unkown");
       seqwareVersion = loadProperty("seqware_version", "unkown");
-      
-      // memory
-      roddyJobMb = loadProperty("roddy_job_mb", "5120");
 
       System.out.println("" + doCleanup + " " + doSNVCalling + " " + doIndelCalling + " " + doCopyNumberEstimation);
 
@@ -238,7 +231,7 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
   private Job createRoddyJob(String name, String pid, String analysisConfigurationID, List<Job> parentJobs, String runMode) {
     Job job = this.getWorkflow().createBashJob(name);
     // FIXME: why does this need 16384M?  Seems excessive for a simple wrapper script?  
-    job.setMaxMemory(this.roddyJobMb);
+    job.setMaxMemory(this.roddyBaseJobMemory);
     for (Job parentJob : parentJobs) {
       job.addParent(parentJob);
     }
