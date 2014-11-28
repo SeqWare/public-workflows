@@ -81,3 +81,7 @@ to compile the workflow.
 
 * Michael Heinold <m.heinold@dkfz.de>
 * Florian Kärcher <f.kaercher@dkfz.de>
+
+## TODO
+
+* the handling of output_prefix is not flexible, want working dir to be the current dir and a system wide folder for resources downloaded only once.
