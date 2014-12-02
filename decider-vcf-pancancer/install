@@ -14,7 +14,7 @@ libxqilla6 gdebi libxml-simple-perl
 sudo apt-get -q -y --force-yes install libcommon-sense-perl libipc-system-simple-perl \
 libgetopt-euclid-perl libfile-slurp-perl libxml-dom-perl libconfig-simple-perl libdata-dump-perl \
 libcapture-tiny-perl libcarp-always-perl libjson-perl libxml-libxml-perl libxml-libxml-simple-perl \
-libdb4.8 libberkeleydb-perl
+libdb4.8 libberkeleydb-perl libtemplate-perl
 
 # Install GeneTorrent
 wget --no-clobber http://cghub.ucsc.edu/software/downloads/GeneTorrent/3.8.5/genetorrent-common_3.8.5-ubuntu2.91-12.04_amd64.deb -P /tmp
