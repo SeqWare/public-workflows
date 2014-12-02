@@ -44,7 +44,6 @@ my ($cluster_information, $running_sample_ids, $failed_samples, $completed_sampl
                                                   $ARGV{'--schedule-ignore-failed'},
                                                   $ARGV{'--workflow-version'});
 
-
 #my $failed_db = Decider::Database->failed_connect();
 
 say 'Reading in GNOS Sample Information';
@@ -79,6 +78,7 @@ $scheduler->schedule_samples( $report_file,
 			      $ARGV{'--schedule-ignore-failed'},
 			      $ARGV{'--working-dir'},
 			      $ARGV{'--workflow-version'},
+			      $ARGV{'--bwa-workflow-version'},
 			      $ARGV{'--tabix-url'},
 			      $ARGV{'--pem-file'},
 			      $whitelist,

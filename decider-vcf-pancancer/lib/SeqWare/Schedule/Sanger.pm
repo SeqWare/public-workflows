@@ -1,9 +1,10 @@
 package SeqWare::Schedule::Sanger;
-# subclass schedule for EBI-specific variant calling workflow
+# subclass schedule for Sanger-specific variant calling workflow
 
-#use common::sense;
+use common::sense;
 use Data::Dumper;
-use parent SeqWare::Schedule;
+use parent 'SeqWare::Schedule';
+use SeqWare::Schedule::Ini;
 use FindBin qw($Bin);
 use warnings;
 use strict;
@@ -56,11 +57,19 @@ sub create_workflow_ini {
 	$tabix_url,
 	$pem_file) = @_;
     
-    my $ini_path = "$Bin/../conf/ini/workflow-$workflow_version.ini";
-    die "ini template does not exist: $ini_path" unless (-e $ini_path);
-    my $workflow_ini = new Config::Simple($ini_path) || die "No workflow ini"; 
-
-    my $donor_id = $donor->{donor_id};
+    # Read in the default data
+    my $defaults = "$Bin/../conf/ini/settings.conf";
+    die "Settings file does not exist: $defaults" unless (-e $defaults);
+    open DEF, $defaults or die $!; 
+    my $data = {};
+    while(<DEF>) {
+	chomp;
+	if(/(\S+)\s*=\s*(\S+)/) {
+	    my $key = $1;
+	    my $val = $2;
+	    $data->{$key} = $val;
+	}
+    }
 
     my @normal_alignments = keys %{$donor->{normal}};
     my @tumor_alignments  = keys %{$donor->{tumor}};
@@ -78,32 +87,22 @@ sub create_workflow_ini {
 	push @tumor_aliquot, $donor->{aliquot_ids}->{$aln_id};
     }
 
-    my ($assembly) = keys %{$donor->{alignment_genome}};
-    my ($seq_type) = keys %{$donor->{library_strategy}};
-
-    $workflow_ini->param('coresAddressable' => $threads);
-    $workflow_ini->param('tabixSrvUri'      => $tabix_url);
-
-    $workflow_ini->param('tumourAnalysisId' => join(':',@tumor_analysis));
-    $workflow_ini->param('tumourAliquotId'  => join(':',@tumor_aliquot));
-    $workflow_ini->param('tumourBam'        => join(':',@tumor_bam));
-
-    $workflow_ini->param('controlAnalysisId' => join(':',@normal_analysis));
-    $workflow_ini->param('controlAliquotId'  => join(':',@normal_aliquot));
-    $workflow_ini->param('controlBam'        => join(':',@normal_bam));
-
-    $workflow_ini->param('pemFile'           => $pem_file);
-    $workflow_ini->param('gnosServer'        => $gnos_url);
+    $data->{'coresAddressable'}  = $threads;
+    $data->{'tabixSrvUri'}       = $tabix_url;
+    $data->{'tumourAnalysisIds'}  = join(':',@tumor_analysis);
+    $data->{'tumourAliquotIds'}   = join(':',@tumor_aliquot);
+    $data->{'tumourBams'}        = join(':',@tumor_bam);
+    $data->{'controlAnalysisId'} = join(':',@normal_analysis);
+    $data->{'controlAliquotId'}  = join(':',@normal_aliquot);
+    $data->{'controlBam'}        = join(':',@normal_bam);
+    $data->{'pemFile'}           = $pem_file;
+    $data->{'gnosServer'}        = $gnos_url;
+    $data->{'donor_id'}          = $donor->{donor_id};    
     
-    $workflow_ini->param('assembly'          => $assembly);
-    $workflow_ini->param('species'           => 'human'); # will always be, no?
-    $workflow_ini->param('seqType'           => $seq_type);
-    $workflow_ini->param('gender'            => 'L'); # not linked
-    
-    $workflow_ini->param('donor_id'          => $donor->{donor_id});    
-  
-    print "$Bin/../$working_dir/samples/$center_name/$donor_id/workflow.ini\n";
-    $workflow_ini->write("$Bin/../$working_dir/samples/$center_name/$donor_id/workflow.ini");
+    my $template = "$Bin/../conf/ini/workflow-$workflow_version.ini";
+
+    my $ini_factory = SeqWare::Schedule::Ini->new;
+    $ini_factory->create_ini_file($output_dir,$template,$data);
 }
 
 1;

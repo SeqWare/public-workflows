@@ -119,8 +119,8 @@ sub get {
             }
         }
 
-        my (%attributes, $total_lanes, $aliquot_uuid, $submitter_participant_id, $submitter_donor_id, 
-            $submitter_sample_id, $workflow_version, $submitter_specimen_id, $workflow_name, $dcc_project_code);
+        my (%attributes, $total_lanes, $aliquot_uuid, $submitter_participant_id, $submitter_donor_id, $workflow_version, 
+            $submitter_sample_id, $bwa_workflow_version, $submitter_specimen_id, $bwa_workflow_name, $dcc_project_code);
         if (ref($analysis_attributes) eq 'ARRAY') {
             foreach my $attribute (@$analysis_attributes) {
                 $attributes{$attribute->{TAG}} = $attribute->{VALUE};
@@ -143,8 +143,8 @@ sub get {
 
             $submitter_specimen_id = $attributes{submitter_specimen_id};
             $submitter_specimen_id = undef if (ref($submitter_specimen_id) eq 'HASH');
-            $workflow_version = $attributes{workflow_version};
-            $workflow_name = $attributes{workflow_name};
+            $bwa_workflow_version = $attributes{workflow_version};
+            $bwa_workflow_name = $attributes{workflow_name};
 
 	    # XML inconsistent across sites?
 	    $use_control ||= $attributes{use_cntl};
@@ -166,7 +166,7 @@ sub get {
         say $parse_log "\tSUBMITTER DONOR ID:\t$submitter_donor_id";
         say $parse_log "\tSUBMITTER SAMPLE ID:\t$submitter_sample_id";
         say $parse_log "\tSUBMITTER ALIQUOT ID:\t$submitter_aliquot_id";
-        say $parse_log "\tWORKFLOW VERSION:\t$workflow_version";
+        say $parse_log "\tWORKFLOW VERSION:\t$bwa_workflow_version";
 
         my ($library_name, $library_strategy, $library_source);
         my $library_descriptor;
@@ -198,8 +198,9 @@ sub get {
             $submitter_sample_id = $submitter_specimen_id;
         }
         $submitter_participant_id = (defined $submitter_donor_id) ? $submitter_donor_id : $submitter_participant_id;
-        $aliquot_id = (defined $submitter_sample_id) ? $submitter_sample_id : $aliquot_id;           
-        $submitter_aliquot_id = (defined $submitter_sample_id)? $submitter_sample_id: $submitter_aliquot_id;
+        #$aliquot_id = (defined $submitter_sample_id) ? $submitter_sample_id : $aliquot_id;           
+        #$submitter_aliquot_id = (defined $submitter_sample_id)? $submitter_sample_id: $submitter_aliquot_id;
+	
         $sample_id = (defined $submitter_specimen_id) ? $submitter_specimen_id: $sample_id;
         $center_name //= 'unknown';
 
@@ -217,11 +218,12 @@ sub get {
                      submitter_sample_id      => $submitter_sample_id,
                      submitter_aliquot_id     => $submitter_aliquot_id,
                      sample_uuid              => $sample_uuid,
-                     workflow_version         => $workflow_version };
+                     bwa_workflow_version     => $bwa_workflow_version,
+	};
 
         $center_name = 'seqware';
         if ($alignment ne 'unaligned') { 
-            $alignment = "$alignment - $analysis_id - $workflow_name - $workflow_version - $upload_date";
+            $alignment = "$alignment - $analysis_id - $bwa_workflow_name - $bwa_workflow_version - $upload_date";
         }
 
 

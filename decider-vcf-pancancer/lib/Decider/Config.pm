@@ -35,6 +35,9 @@ sub get {
     $ARGV{'--workflow-version'} //= $decider_config{'general.workflow-version'};
     die 'Workflow version needs to be defined' unless $ARGV{'--workflow-version'};
     
+    $ARGV{'--bwa-workflow-version'} //= $decider_config{'general.bwa-workflow-version'};
+    die 'Workflow version needs to be defined' unless $ARGV{'--bwa-workflow-version'};
+
     $ARGV{'--gnos-url'} //= $decider_config{'general.gnos-url'};
     die 'GNOS url needs to be defined' unless $ARGV{'--gnos-url'};
     
