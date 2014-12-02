@@ -89,8 +89,8 @@ sub create_workflow_ini {
 
     $data->{'coresAddressable'}  = $threads;
     $data->{'tabixSrvUri'}       = $tabix_url;
-    $data->{'tumourAnalysisIds'}  = join(':',@tumor_analysis);
-    $data->{'tumourAliquotIds'}   = join(':',@tumor_aliquot);
+    $data->{'tumourAnalysisIds'} = join(':',@tumor_analysis);
+    $data->{'tumourAliquotIds'}  = join(':',@tumor_aliquot);
     $data->{'tumourBams'}        = join(':',@tumor_bam);
     $data->{'controlAnalysisId'} = join(':',@normal_analysis);
     $data->{'controlAliquotId'}  = join(':',@normal_aliquot);
