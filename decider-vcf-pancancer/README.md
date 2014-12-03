@@ -29,7 +29,7 @@ blacklist-sample=
 Each list is a text file with one donor or sample ID/line
 
 ## Testing
-There is a shell script 'sanger_decider_test.sh' that will run the decoder through its paces.
+There is a shell script 'sanger_decider_test.sh' that will run the decider through its paces.
 
 # To test on itri GNOS repo
 bash sanger_workflow_test_itri.sh
