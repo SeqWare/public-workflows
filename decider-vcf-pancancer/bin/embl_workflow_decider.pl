@@ -1,5 +1,7 @@
 #!/usr/bin/env perl
 
+# This is just a placeholder pending implementation for EMBL workflow
+
 use common::sense;
 use utf8;
 
@@ -14,7 +16,7 @@ use Getopt::Euclid;
 use Config::Simple;
 
 use SeqWare::Cluster;
-use SeqWare::Schedule::EMBL;
+use SeqWare::Schedule::Sanger;
 use GNOS::SampleInformation;
 
 use Decider::Database;
@@ -44,7 +46,6 @@ my ($cluster_information, $running_sample_ids, $failed_samples, $completed_sampl
                                                   $ARGV{'--schedule-ignore-failed'},
                                                   $ARGV{'--workflow-version'});
 
-
 #my $failed_db = Decider::Database->failed_connect();
 
 say 'Reading in GNOS Sample Information';
@@ -56,7 +57,7 @@ my $sample_information = GNOS::SampleInformation->get( $ARGV{'--working-dir'},
 
 
 say 'Scheduling Samples';
-my $scheduler = SeqWare::Schedule::EMBL->new();
+my $scheduler = SeqWare::Schedule::Sanger->new();
 $scheduler->schedule_samples( $report_file,
 			      $sample_information,
 			      $cluster_information,
@@ -79,6 +80,7 @@ $scheduler->schedule_samples( $report_file,
 			      $ARGV{'--schedule-ignore-failed'},
 			      $ARGV{'--working-dir'},
 			      $ARGV{'--workflow-version'},
+			      $ARGV{'--bwa-workflow-version'},
 			      $ARGV{'--tabix-url'},
 			      $ARGV{'--pem-file'},
 			      $whitelist,

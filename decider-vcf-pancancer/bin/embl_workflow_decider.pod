@@ -53,7 +53,11 @@ file in the conf folder.
 
 =item --workflow-version[=][ ]<workflow_version>
 
-Specify the BWA workflow version you would like to run (eg. 2.6.0)
+Specify the variant caller workflow version you would like to run (eg. 1.0.1)
+
+=item --bwa-workflow-version[=][ ]<workflow_version>
+
+Specify the bwa workflow required to proceed to variant calling (eg 2.6.0)
 
 =back
 
