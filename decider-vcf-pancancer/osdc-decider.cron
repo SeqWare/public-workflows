@@ -1,7 +1,0 @@
-#!/bin/bash
-
-source ~/.bashrc
-
-cd /glusterfs/netapp/homes1/BOCONNOR/gitroot/public-workflows/decider-bwa-pancancer
-perl workflow_decider.pl --gnos-url https://gtrepo-osdc.annailabs.com --cluster-json my_cluster.json --report osdc.log --working-dir osdc_working --skip-gtdownload --skip-gtupload --output-prefix /glusterfs/data/ICGC1/scratch/ --output-dir seqware_results/ --input-prefix /glusterfs/data/ICGC1/gnos/data/ --skip-cached
-
