@@ -103,6 +103,9 @@ sub schedule_samples {
 				      $pem_file
 		    );
 	    }
+	    elsif (@whitelist > 0) {
+		say STDERR "Donor $donor_id is not on the whitelist";
+	    } 
 	}
     }
 }
