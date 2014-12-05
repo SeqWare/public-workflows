@@ -82,6 +82,7 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
     boolean doSNVCalling = false;
     boolean doIndelCalling = false;
     boolean doCopyNumberEstimation = false;
+    boolean doTelomereExtraction = false;
     boolean skipDownloads = false;
     boolean useDellyOnDisk = false;
 
@@ -156,6 +157,7 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
             doSNVCalling = loadBooleanProperty("snv_calling");
             doIndelCalling = loadBooleanProperty("indel_calling");
             doCopyNumberEstimation = loadBooleanProperty("ace_seq");
+            doTelomereExtraction = loadBooleanProperty("telomere_extraction");
 
             inputFileNormalURL = getProperty("input_file_control");
             inputFileTumorURL = getProperty("input_file_tumor");
@@ -410,6 +412,11 @@ public class DKFZBundleWorkflow extends AbstractWorkflowDataModel {
                 jobIndelCalling = createRoddyJob("RoddyIndelCalling", pid, "indelCalling", downloadJobDependencies);
 //                createGNOSUploadJob("GNOSUpload Raw VCF IndelCalling", new File(directoryIndelCallingResults, "indels_" + pid + "_raw.vcf.gz"), jobIndelCalling);
 //                createGNOSUploadJob("GNOSUpload VCF IndelCalling", new File(directoryIndelCallingResults, "indels_" + pid + ".vcf.gz"), jobIndelCalling);
+            }
+
+            if (doTelomereExtraction) {
+                logger.info("Telomere extraction will be done.");
+                Job jobTelomereExtraction = createRoddyJob("RoddyTelomereExtraction", pid, "telomereExtraction", downloadJobDependencies);
             }
             
             if(jobDownloadDellyBedPe != null)
