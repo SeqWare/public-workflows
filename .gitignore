@@ -8,6 +8,7 @@
 /workflow-bwa-pancancer/links/
 /workflow-DKFZ-SNV-Calling/target/
 /workflow-DKFZ-SNV-Calling/links/
+/workflow-DKFZ-SNV-Calling/workflow/scripts/gnoskey.txt
 /workflow-bwa-pancancer/workflow/scripts/*.pem
 /workflow-bwa-pancancer/workflow/scripts/xml/
 /workflow-bam-slicer/target/
