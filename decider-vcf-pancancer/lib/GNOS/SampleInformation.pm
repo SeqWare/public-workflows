@@ -33,8 +33,8 @@ sub get {
         my $base_gnos_name = $1;
 
         if ( (not $use_live_cached) || (not -e "$Bin/../$working_dir/xml/$base_gnos_name\_data.xml") ) {
-            my $cmd = "mkdir -p $working_dir/xml; cgquery -s $gnos_url -o $Bin/../$working_dir/xml/$base_gnos_name\_data.xml";
-            $cmd .= ($gnos_url =~ /cghub.ucsc.edu/)? " 'study=*2.0&state=live'":" 'study=*&state=live'";
+            my $cmd = "mkdir -p $working_dir/xml; cgquery -s $curr_gnos_server -o $Bin/../$working_dir/xml/$base_gnos_name\_data.xml";
+            $cmd .= ($curr_gnos_server =~ /cghub.ucsc.edu/)? " 'study=*2.0&state=live'":" 'study=*&state=live'";
 
             say $parse_log "cgquery command: $cmd";
 
