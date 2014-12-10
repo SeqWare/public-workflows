@@ -26,10 +26,13 @@ sub get {
     # this will support multiple GNOS servers
     my @gnos_servers = split /,/, $gnos_url;
 
+    # iterate over each GNOS server
     foreach my $curr_gnos_server (@gnos_servers) {
 
         $curr_gnos_server =~ /http:\/\/(\S+)/;
         my $base_gnos_name = $1;
+
+        die "HTTP: $curr_gnos_server $1\n";
 
         if ( (not $use_live_cached) || (not -e "$Bin/../$working_dir/xml/$base_gnos_name\_data.xml") ) {
             my $cmd = "mkdir -p $working_dir/xml; cgquery -s $gnos_url -o $Bin/../$working_dir/xml/$base_gnos_name\_data.xml";
@@ -249,7 +252,7 @@ sub get {
         close $parse_log;
 
 
-    }
+    } # loop for each GNOS repo
 
     return $participants;
 
