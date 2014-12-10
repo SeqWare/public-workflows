@@ -32,8 +32,6 @@ sub get {
         $curr_gnos_server =~ /https*:\/\/(\S+)/;
         my $base_gnos_name = $1;
 
-        die "HTTP: $curr_gnos_server $1\n";
-
         if ( (not $use_live_cached) || (not -e "$Bin/../$working_dir/xml/$base_gnos_name\_data.xml") ) {
             my $cmd = "mkdir -p $working_dir/xml; cgquery -s $gnos_url -o $Bin/../$working_dir/xml/$base_gnos_name\_data.xml";
             $cmd .= ($gnos_url =~ /cghub.ucsc.edu/)? " 'study=*2.0&state=live'":" 'study=*&state=live'";
