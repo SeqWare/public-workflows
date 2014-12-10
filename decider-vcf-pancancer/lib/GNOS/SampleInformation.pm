@@ -247,10 +247,10 @@ sub get {
                 $participants->{$center_name}{$donor_id}{$sample_id}{$alignment}{$aliquot_id}{$library_name}{files}{$file_name} = $file_info;
             }
         }
-        close $parse_log;
-
 
     } # loop for each GNOS repo
+
+    close $parse_log;
 
     return $participants;
 
