@@ -40,7 +40,7 @@ get_list($ARGV{'--schedule-blacklist-donor'},  'black', 'donor',  $blacklist);
 say 'Getting SeqWare Cluster Information';
 my ($cluster_information, $running_sample_ids, $failed_samples, $completed_samples)
           = SeqWare::Cluster->cluster_seqware_information( $report_file,
-                                                  $ARGV{'--seqware-clusters'}, 
+                                                  $ARGV{'--seqware-clusters'},
                                                   $ARGV{'--schedule-ignore-failed'},
                                                   $ARGV{'--workflow-version'});
 
@@ -53,6 +53,9 @@ my $sample_information = GNOS::SampleInformation->get( $ARGV{'--working-dir'},
                                               $ARGV{'--use-cached-analysis'},
                                               $ARGV{'--lwp-download-timeout'});
 
+print Dumper($sample_information);
+die;
+
 
 say 'Scheduling Samples';
 my $scheduler = SeqWare::Schedule::Sanger->new();
@@ -61,7 +64,7 @@ $scheduler->schedule_samples( $report_file,
 			      $cluster_information,
 			      $running_sample_ids,
 			      $ARGV{'--workflow-skip-scheduling'},
-			      $ARGV{'--schedule-sample'}, 
+			      $ARGV{'--schedule-sample'},
 			      $ARGV{'--schedule-center'},
 			      $ARGV{'--schedule-donor'},
 			      $ARGV{'--schdeule-ignore-lane-count'},
@@ -70,9 +73,9 @@ $scheduler->schedule_samples( $report_file,
 			      $ARGV{'--workflow-output-prefix'},
 			      $ARGV{'--schedule-force-run'},
 			      $ARGV{'--cores-addressable'},
-			      $ARGV{'--workflow-skip-gtdownload'}, 
+			      $ARGV{'--workflow-skip-gtdownload'},
 			      $ARGV{'--workflow-skip-gtupload'},
-			      $ARGV{'--workflow-upload-results'}, 
+			      $ARGV{'--workflow-upload-results'},
 			      $ARGV{'--workflow-input-prefix'},
 			      $ARGV{'--gnos-url'},
 			      $ARGV{'--schedule-ignore-failed'},
@@ -94,19 +97,16 @@ sub get_list {
     my $color = shift;
     my $type  = shift;
     my $list  = shift;
-    
+
     my $file = "$Bin/../${color}list/$path";
     die "${color}list does not exist: $file" if (not -e $file);
-    
+
     open my $list_file, '<', $file;
-    
+
     my @list_raw = <$list_file>;
     my @list = grep(s/\s*$//g, @list_raw);
-    
+
     close $list_file;
-    
+
     $list->{$type} = \@list;
 }
-
-
-

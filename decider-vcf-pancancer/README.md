@@ -41,3 +41,7 @@ bash sanger_workflow_test_osdc.sh
  perl bin/sanger_workflow_decider.pl --schedule-force-run --seqware-clusters cluster.json --workflow-version 1.0.1 --working-dir osdc --gnos-url  https://cghub.ucsc.edu  --decider-config conf/decider.ini --use-live-cached --schedule-whitelist-donor donors_I_want.txt --workflow-skip-scheduling
 
 
+# TODO
+
+* I think we need to be able to read XML from multiple GNOS repos, for the bulk of academic cloud processing I think we'll need to pull from CGHub and write to BioNimbus.  For ICGC data it's the same repository to and from
+* 

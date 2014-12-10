@@ -25,7 +25,7 @@ sub get {
 
     if ( (not $use_live_cached) || (not -e "$Bin/../$working_dir/xml/data.xml") ) {
         my $cmd = "mkdir -p $working_dir/xml; cgquery -s $gnos_url -o $Bin/../$working_dir/xml/data.xml";
-        $cmd .= ($gnos_url =~ /cghub.ucsc.edu/)? " 'study=PAWG&state=live'":" 'study=*&state=live'";
+        $cmd .= ($gnos_url =~ /cghub.ucsc.edu/)? " 'study=*2.0&state=live'":" 'study=*&state=live'";
 
         say $parse_log "cgquery command: $cmd";
 
@@ -57,19 +57,19 @@ sub get {
         say $parse_log "\n\nANALYSIS\n";
         say $parse_log "\tANALYSIS FULL URL: $analysis_full_url $analysis_id";
         my $analysis_xml_path =  "$Bin/../$working_dir/xml/data_$analysis_id.xml";
-        
+
         my $status = 0;
         my $attempts = 0;
 
         while ($status == 0 and $attempts < 10) {
             $status = download_analysis($analysis_full_url, $analysis_xml_path, $use_cached_analysis, $lwp_download_timeout);
             $attempts++;
-        }         
+        }
 
         if (not -e $analysis_xml_path or not eval {$xs->XMLin($analysis_xml_path); } ) {
            say $parse_log "skipping $analysis_id - no xml file available: $analysis_xml_path";
            die;
-        } 
+        }
 
         my $analysis_data = $xs->XMLin($analysis_xml_path);
 
@@ -79,14 +79,14 @@ sub get {
         }
 
         my %analysis = %{$analysis_data};
-        
+
         my $analysis_result = $analysis{Result};
         if (ref($analysis_result) ne 'HASH') {
              say $parse_log "XML does not contain Results - not including:$analysis_id";
              next;
         }
 
-        my %analysis_result = %{$analysis_result};      
+        my %analysis_result = %{$analysis_result};
         my $upload_date = $analysis_result{upload_date};
         my $analysis_xml_path =  "$working_dir/xml/data_$analysis_id.xml";
         my $center_name = $analysis_result{center_name};
@@ -111,7 +111,7 @@ sub get {
         if (ref($analysis_result{analysis_xml}{ANALYSIS_SET}) eq 'HASH'
            and ref($analysis_result{analysis_xml}{ANALYSIS_SET}{ANALYSIS}) eq 'HASH') {
             if (ref($analysis_result{analysis_xml}{ANALYSIS_SET}{ANALYSIS}{ANALYSIS_ATTRIBUTES}) eq 'HASH') {
-                $analysis_attributes = $analysis_result{analysis_xml}{ANALYSIS_SET}{ANALYSIS}{ANALYSIS_ATTRIBUTES}{ANALYSIS_ATTRIBUTE};                
+                $analysis_attributes = $analysis_result{analysis_xml}{ANALYSIS_SET}{ANALYSIS}{ANALYSIS_ATTRIBUTES}{ANALYSIS_ATTRIBUTE};
             }
             elsif ( ref($analysis_result{analysis_xml}{ANALYSIS_SET}{ANALYSIS}{TARGETS}{TARGETS_ATTRIBUTES}) eq 'HASH'
                  and ref($analysis_result{analysis_xml}{ANALYSIS_SET}{ANALYSIS}{TARGETS}{TARGET}) eq 'HASH') {
@@ -119,7 +119,7 @@ sub get {
             }
         }
 
-        my (%attributes, $total_lanes, $aliquot_uuid, $submitter_participant_id, $submitter_donor_id, $workflow_version, 
+        my (%attributes, $total_lanes, $aliquot_uuid, $submitter_participant_id, $submitter_donor_id, $workflow_version,
             $submitter_sample_id, $bwa_workflow_version, $submitter_specimen_id, $bwa_workflow_name, $dcc_project_code);
         if (ref($analysis_attributes) eq 'ARRAY') {
             foreach my $attribute (@$analysis_attributes) {
@@ -155,7 +155,7 @@ sub get {
                    or $aliquot_id eq '34c9ff85-c2f8-45dc-b4aa-fba05748e355') and $dcc_project_code eq 'LIHC-US');
 
         my $donor_id =  $submitter_donor_id || $participant_id;
-        
+
         say $parse_log "\tDONOR:\t$donor_id";
         say $parse_log "\tANALYSIS:\t$analysis_data_uri";
         say $parse_log "\tANALYSIS ID:\t$analysis_id";
@@ -178,7 +178,7 @@ sub get {
              else {
                  $library_descriptor = $analysis_result{experiment_xml}{EXPERIMENT_SET}{EXPERIMENT}[0]{DESIGN}{LIBRARY_DESCRIPTOR};
              }
-        }         
+        }
         my %library = (ref($library_descriptor) == 'HASH')? %{$library_descriptor} : ();
         my $library_name = $library{LIBRARY_NAME};
         my $library_strategy = $library{LIBRARY_STRATEGY};
@@ -198,9 +198,9 @@ sub get {
             $submitter_sample_id = $submitter_specimen_id;
         }
         $submitter_participant_id = (defined $submitter_donor_id) ? $submitter_donor_id : $submitter_participant_id;
-        #$aliquot_id = (defined $submitter_sample_id) ? $submitter_sample_id : $aliquot_id;           
+        #$aliquot_id = (defined $submitter_sample_id) ? $submitter_sample_id : $aliquot_id;
         #$submitter_aliquot_id = (defined $submitter_sample_id)? $submitter_sample_id: $submitter_aliquot_id;
-	
+
         $sample_id = (defined $submitter_specimen_id) ? $submitter_specimen_id: $sample_id;
         $center_name //= 'unknown';
 
@@ -222,7 +222,7 @@ sub get {
 	};
 
         $center_name = 'seqware';
-        if ($alignment ne 'unaligned') { 
+        if ($alignment ne 'unaligned') {
             $alignment = "$alignment - $analysis_id - $bwa_workflow_name - $bwa_workflow_version - $upload_date";
         }
 
@@ -241,7 +241,7 @@ sub get {
     close $parse_log;
 
     return $participants;
-   
+
 }
 
 sub files {
@@ -255,7 +255,7 @@ sub files {
     my %files;
     foreach my $file (@{$files}) {
         my $file_name  = $file->{filename};
-        
+
         next if (not $file_name =~ /\.bam$/);
 
         $files{$file_name}{size} =  $file->{filesize};
@@ -292,7 +292,7 @@ sub download_analysis {
         open(my $FH, ">:encoding(UTF-8)", $out);
         write_file($FH, $response->decoded_content);
         close $FH;
-    } 
+    }
     else {
         say $response->status_line unless $response->status_line eq '200 OK';
 
