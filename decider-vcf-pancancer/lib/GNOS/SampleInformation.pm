@@ -29,7 +29,7 @@ sub get {
     # iterate over each GNOS server
     foreach my $curr_gnos_server (@gnos_servers) {
 
-        $curr_gnos_server =~ /http:\/\/(\S+)/;
+        $curr_gnos_server =~ /https*:\/\/(\S+)/;
         my $base_gnos_name = $1;
 
         die "HTTP: $curr_gnos_server $1\n";
