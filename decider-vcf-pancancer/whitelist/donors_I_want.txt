@@ -1,25 +1,25 @@
-CESC-US-00ad0ffe-2105-4829-a495-1c2aceb5bb31 is not on the whitelist
-CESC-US-00bca18c-b3d4-45a3-8f19-034cc40449a4 is not on the whitelist
-GBM-US-0798dbe2-1914-427c-a2fe-2a865d0d6eda is not on the whitelist
-STAD-US-0aecac64-5982-4d76-8f31-958f6a00951d is not on the whitelist
-PRAD-US-11fb5853-8eeb-4ad8-825d-3eaaf3fa08d6 is not on the whitelist
-READ-US-0cb21fb0-520f-4105-99ec-697a335115b5 is not on the whitelist
-KIRC-US-1adb05d4-e1ca-4ede-81c7-ff24a243abae is not on the whitelist
-OV-US-0a48873a-092a-4b25-822b-b0b3c18c08a8 is not on the whitelist
-KIRP-US-925ae8ff-3200-4564-be76-94db0984b027 is not on the whitelist
-UCEC-US-2b76cc9c-c379-43e4-9c3f-56197a3353be is not on the whitelist
-GBM-US-12824b2b-9c0a-4dcf-8941-34593a4e93da is not on the whitelist
-PRAD-US-10fbe481-f111-4f88-ae45-4d67cb265567 is not on the whitelist
-LGG-US-01c4ca12-ac08-41dd-9e4f-bfb0971688a2 is not on the whitelist
-HNSC-US-0956bc67-dd55-4c54-a56a-f22f2856662a is not on the whitelist
-LGG-US-010aac75-3bfe-4bf2-b866-af0f2d92f125 is not on the whitelist
-KICH-US-0ec3caa1-7c51-417b-a89c-18e9fceb80c4 is not on the whitelist
-SARC-US-257dc623-41e1-4fa3-859c-c787db10bd60 is not on the whitelist
-COAD-US-268c01b3-d2ce-44c0-a2fe-ea846a1253cc is not on the whitelist
-KIRC-US-11ab53c8-6366-4bc9-b60d-23e6ed2d1cae is not on the whitelist
-HNSC-US-05fbd98c-28bd-41bc-ae60-16ac0c16c723 is not on the whitelist
-BRCA-US-045c13ef-3db7-4adf-b0a3-23338f0479f3 is not on the whitelist
-LUAD-US-028e99e9-5b9a-4954-bb6e-6d4709a3cea8 is not on the whitelist
-SKCM-US-01ad975d-c2ed-4e4d-bd3b-c9512fc9073c is not on the whitelist
-LAML-US-05924106-07f6-44ca-ba15-7452b8a657e4 is not on the whitelist
-LAML-US-082ca353-a5ae-421f-ae58-098257a1425f is not on the whitelist
+CESC-US-00ad0ffe-2105-4829-a495-1c2aceb5bb31
+CESC-US-00bca18c-b3d4-45a3-8f19-034cc40449a4
+GBM-US-0798dbe2-1914-427c-a2fe-2a865d0d6eda
+STAD-US-0aecac64-5982-4d76-8f31-958f6a00951d
+PRAD-US-11fb5853-8eeb-4ad8-825d-3eaaf3fa08d6
+READ-US-0cb21fb0-520f-4105-99ec-697a335115b5
+KIRC-US-1adb05d4-e1ca-4ede-81c7-ff24a243abae
+OV-US-0a48873a-092a-4b25-822b-b0b3c18c08a8
+KIRP-US-925ae8ff-3200-4564-be76-94db0984b027
+UCEC-US-2b76cc9c-c379-43e4-9c3f-56197a3353be
+GBM-US-12824b2b-9c0a-4dcf-8941-34593a4e93da
+PRAD-US-10fbe481-f111-4f88-ae45-4d67cb265567
+LGG-US-01c4ca12-ac08-41dd-9e4f-bfb0971688a2
+HNSC-US-0956bc67-dd55-4c54-a56a-f22f2856662a
+LGG-US-010aac75-3bfe-4bf2-b866-af0f2d92f125
+KICH-US-0ec3caa1-7c51-417b-a89c-18e9fceb80c4
+SARC-US-257dc623-41e1-4fa3-859c-c787db10bd60
+COAD-US-268c01b3-d2ce-44c0-a2fe-ea846a1253cc
+KIRC-US-11ab53c8-6366-4bc9-b60d-23e6ed2d1cae
+HNSC-US-05fbd98c-28bd-41bc-ae60-16ac0c16c723
+BRCA-US-045c13ef-3db7-4adf-b0a3-23338f0479f3
+LUAD-US-028e99e9-5b9a-4954-bb6e-6d4709a3cea8
+SKCM-US-01ad975d-c2ed-4e4d-bd3b-c9512fc9073c
+LAML-US-05924106-07f6-44ca-ba15-7452b8a657e4
+LAML-US-082ca353-a5ae-421f-ae58-098257a1425f
