@@ -107,7 +107,8 @@ sub get_list {
     # If this is a donor whitelist, check the format
     my $format_OK = grep {/^\S+\s+\S+$/} @list;
     
-    unless ($color =~ /white|black/ && $format_OK && $format_OK == @list) {
+    if ($color =~ /white|black/ && $type eq 'donor' && (!$format_OK || $format_OK != @list)) {
+	warn "$type $color";
 	die "Error: Donor ${color}list requires two columns (study_name,participant_id)\n";
     }
 

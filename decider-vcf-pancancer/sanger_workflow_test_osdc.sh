@@ -4,7 +4,7 @@ perl bin/sanger_workflow_decider.pl \
 --workflow-version 1.0.1 \
 --bwa-workflow-version 2.6.0 \
 --working-dir osdc \
---gnos-url  https://gtrepo-osdc-icgc.annailabs.com \
+--gnos-url  https://gtrepo-osdc-tcga.annailabs.com \
 --decider-config conf/decider.ini \
 --use-cached-analysis \
 --schedule-whitelist-donor donors_I_want.txt \

@@ -40,12 +40,22 @@ sub get {
     my @donor_whitelist;
     if ($whitelist) {
 	@donor_whitelist = grep {s/^\S+\s+//} @{$whitelist->{donor}};
-	say STDERR "Downloading only donor whitelist analysis results" if @donor_whitelist > 0;;
+	say STDERR "Downloading only donor whitelist analysis results" if @donor_whitelist > 0;
     }
     my @donor_blacklist;
     if ($blacklist) {
 	@donor_blacklist = grep{s/^\S+\s+//} @{$blacklist->{donor}};
 	say STDERR "Downloading only donor blacklist analysis results" if @donor_blacklist > 0;
+    }
+    my @sample_whitelist;
+    if ($whitelist) {
+        @sample_whitelist = grep {/^\S+$/} @{$whitelist->{sample}};
+        say STDERR "Downloading only sample whitelist analysis results" if @sample_whitelist > 0;
+    }
+    my @sample_blacklist;
+    if ($blacklist) {
+        @sample_blacklist = grep{/^\S+$/} @{$blacklist->{sample}};
+        say STDERR "Downloading only sample blacklist analysis results" if @sample_blacklist > 0;
     }
 
 
@@ -53,17 +63,7 @@ sub get {
     foreach my $result_id (keys %{$results}) {
         my $result = $results->{$result_id};
         my $analysis_full_url = $result->{analysis_full_uri};
-
 	my $participant_id = $result->{participant_id};
-	if (@donor_whitelist) {
-	    say "testing $participant_id";
-	    next unless grep {$participant_id eq $_} @donor_whitelist;
-	    say "OK";
-	}
-	if (@donor_blacklist) {
-            next unless grep {$participant_id eq $_} @donor_blacklist;
-        }
-
 
         my $analysis_id = $i;
         if ( $analysis_full_url =~ /^(.*)\/([^\/]+)$/ ) {
@@ -75,6 +75,24 @@ sub get {
             next;
         }
 
+	if (@donor_whitelist) {
+            next unless grep {$participant_id eq $_} @donor_whitelist;
+	    say STDERR "Donor $participant_id is whitelisted";
+        }
+	if (@donor_blacklist) {
+            say STDERR "Donor $participant_id is blacklisted"
+                and next if grep {$analysis_id eq $_} @sample_blacklist;
+        }
+        if (@sample_whitelist) {
+            next unless grep {$analysis_id eq $_} @sample_whitelist;
+	    say STDERR "Analysis $analysis_id is whitelisted";
+        }
+	if (@sample_blacklist) {
+            say STDERR "Analysis $analysis_id is blacklisted" 
+		and next if grep {$analysis_id eq $_} @sample_blacklist;
+        }
+
+
         say $parse_log "\n\nANALYSIS\n";
         say $parse_log "\tANALYSIS FULL URL: $analysis_full_url $analysis_id";
         my $analysis_xml_path =  "$Bin/../$working_dir/xml/data_$analysis_id.xml";
@@ -83,7 +101,7 @@ sub get {
         my $attempts = 0;
 
 	
-
+	say "ANALYSIS $analysis_id";
         while ($status == 0 and $attempts < 10) {
             $status = download_analysis($analysis_full_url, $analysis_xml_path, $use_cached_xml);
             $attempts++;
