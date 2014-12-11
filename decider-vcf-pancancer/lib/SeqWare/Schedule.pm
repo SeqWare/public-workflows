@@ -8,7 +8,7 @@ use autodie qw(:all);
 use FindBin qw($Bin);
 
 use Config::Simple;
-#use Capture::Tiny ':all';
+use Capture::Tiny ':all';
 use Cwd;
 use Carp::Always;
 
@@ -44,6 +44,7 @@ sub schedule_samples {
 	$ignore_failed, 
 	$working_dir,
 	$run_workflow_version,
+	$bwa_workflow_version,
 	$tabix_url,
 	$pem_file,
 	$whitelist,
@@ -69,8 +70,10 @@ sub schedule_samples {
             next if @blacklist > 0 and grep {/^$donor_id$/} @blacklist;
 
 	    # Skip and non-whitelisted donors if applicable
-            if (@whitelist == 0 or grep {/^$donor_id$/} @whitelist) {
-
+	    my $on_whitelist = grep {/^$donor_id/} @whitelist;
+            if (@whitelist == 0 or $on_whitelist) {
+		say STDERR "Donor $donor_id is on the whitelist" if $on_whitelist;
+		
 		my $donor_information = $sample_information->{$center_name}{$donor_id};
 
 		$self->schedule_donor($report_file,
@@ -95,12 +98,16 @@ sub schedule_samples {
 				      $working_dir, 
 				      $center_name, 
 				      $run_workflow_version,
+				      $bwa_workflow_version,
 				      $whitelist,
 				      $blacklist,
 				      $tabix_url,
 				      $pem_file
 		    );
 	    }
+	    elsif (@whitelist > 0) {
+		say STDERR "Donor $donor_id is not on the whitelist";
+	    } 
 	}
     }
 }
@@ -123,10 +130,10 @@ sub schedule_workflow {
 	 $threads,
          $center_name,
          $run_workflow_version,
+	 $bwa_workflow_version,
 	 $tabix_url,
 	 $pem_file
 	) = @_;
-
 
     my $cluster = (keys %{$cluster_information})[0];
     my $cluster_found = (defined($cluster) and $cluster ne '' )? 1: 0;
@@ -144,15 +151,15 @@ sub schedule_workflow {
     if ($cluster_found or $skip_scheduling) {
         system("mkdir -p $Bin/../$working_dir/samples/$center_name/$donor_id");
 
-        $self->create_settings_file(
-	    $donor,
-	    $seqware_settings_file, 
-	    $url, 
-	    $username, 
-	    $password, 
-	    $working_dir, 
-	    $center_name
-	    );
+#        $self->create_settings_file(
+#	    $donor,
+#	    $seqware_settings_file, 
+#	    $url, 
+#	    $username, 
+#	    $password, 
+#	    $working_dir, 
+#	    $center_name
+#	    );
 
         $self->create_workflow_ini(
 	    $donor,
@@ -254,6 +261,7 @@ sub schedule_donor {
          $working_dir,
          $center_name,
          $run_workflow_version,
+	 $bwa_workflow_version,
          $whitelist,
          $blacklist,
 	 $tabix_url,
@@ -305,13 +313,13 @@ sub schedule_donor {
 		    foreach my $library_id (keys %{$libraries}) {
 			my $library = $libraries->{$library_id};
 
-			my $current_bwa_workflow_version = $library->{workflow_version};
+			my $current_bwa_workflow_version = $library->{bwa_workflow_version};
 			my @current_bwa_workflow_version = keys %$current_bwa_workflow_version;
 			$current_bwa_workflow_version = $current_bwa_workflow_version[0];
 			
 			my @current_bwa_workflow_version = split /\./, $current_bwa_workflow_version;
-			my @run_bwa_workflow_versions = split /\./, $run_workflow_version;
-			
+			my @run_bwa_workflow_versions = split /\./, $bwa_workflow_version;
+
 			# Should add to list of aligns if the BWA workflow has already been run 
 			# and the first two version numbers are equal to the 
 			# desired BWA workflow version. 
@@ -330,7 +338,7 @@ sub schedule_donor {
 			# If we got here, we have a useable alignment
 			#
 			$aligned_specimens{$sample_id}++;
-
+			
 			$aliquot{$alignment_id} = $aliquot_id;
 
 			# Is it tumor or normal?
@@ -502,6 +510,7 @@ sub schedule_donor {
 			      $threads,
 			      $center_name,
 			      $run_workflow_version,
+			      $bwa_workflow_version,
 			      $tabix_url,
 			      $pem_file
 	)

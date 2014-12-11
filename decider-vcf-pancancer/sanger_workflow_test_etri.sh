@@ -1,7 +1,8 @@
 perl bin/sanger_workflow_decider.pl \
 --schedule-force-run \
 --seqware-clusters cluster.json \
---workflow-version 2.6.0 \
+--bwa-workflow-version 2.6.0 \
+--workflow-version 1.0.1 \
 --working-dir etri \
 --gnos-url  https://gtrepo-etri.annailabs.com \
 --decider-config conf/decider.ini \
