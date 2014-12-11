@@ -16,7 +16,7 @@ use XML::LibXML::Simple qw(XMLin);
 use Data::Dumper;
 
 sub get {
-    my ($class, $working_dir, $gnos_url, $use_cached_xml, $lwp_download_timeout) = @_;
+    my ($class, $working_dir, $gnos_url, $use_cached_xml, $whitelist, $blacklist) = @_;
 
     system "mkdir -p $working_dir";
     open my $parse_log, '>', "$Bin/../$working_dir/xml_parse.log";
@@ -37,10 +37,33 @@ sub get {
 
     say $parse_log '';
 
+    my @donor_whitelist;
+    if ($whitelist) {
+	@donor_whitelist = grep {s/^\S+\s+//} @{$whitelist->{donor}};
+	say STDERR "Downloading only donor whitelist analysis results" if @donor_whitelist > 0;;
+    }
+    my @donor_blacklist;
+    if ($blacklist) {
+	@donor_blacklist = grep{s/^\S+\s+//} @{$blacklist->{donor}};
+	say STDERR "Downloading only donor blacklist analysis results" if @donor_blacklist > 0;
+    }
+
+
     my $i = 0;
     foreach my $result_id (keys %{$results}) {
         my $result = $results->{$result_id};
         my $analysis_full_url = $result->{analysis_full_uri};
+
+	my $participant_id = $result->{participant_id};
+	if (@donor_whitelist) {
+	    say "testing $participant_id";
+	    next unless grep {$participant_id eq $_} @donor_whitelist;
+	    say "OK";
+	}
+	if (@donor_blacklist) {
+            next unless grep {$participant_id eq $_} @donor_blacklist;
+        }
+
 
         my $analysis_id = $i;
         if ( $analysis_full_url =~ /^(.*)\/([^\/]+)$/ ) {
@@ -59,8 +82,10 @@ sub get {
         my $status = 0;
         my $attempts = 0;
 
+	
+
         while ($status == 0 and $attempts < 10) {
-            $status = download_analysis($analysis_full_url, $analysis_xml_path, $use_cached_xml, $lwp_download_timeout);
+            $status = download_analysis($analysis_full_url, $analysis_xml_path, $use_cached_xml);
             $attempts++;
         }         
 
@@ -147,16 +172,13 @@ sub get {
 	    # XML inconsistent across sites?
 	    $use_control ||= $attributes{use_cntl};
         }
-        next if ( ( $aliquot_id eq 'ad3d4757-f358-40a3-9d92-742463a95e88'
-                   or $aliquot_id eq 'f0eaa94b-f622-49b9-8eac-e4eac6762598'
-                   or $aliquot_id eq '6d8044f7-3f63-487c-9191-adfeed4e74d3'
-                   or $aliquot_id eq '34c9ff85-c2f8-45dc-b4aa-fba05748e355') and $dcc_project_code eq 'LIHC-US');
 
         my $donor_id =  $submitter_donor_id || $participant_id;
+
 	# make sure the donor ID is unique for white/blacklist purposes;
-	$donor_id = join('-',$dcc_project_code,$donor_id);
+	my $unique_donor_id = join(/\t/,$dcc_project_code,$donor_id);
         
-        say $parse_log "\tDONOR:\t$donor_id";
+        say $parse_log "\tDONOR:\t$unique_donor_id";
         say $parse_log "\tANALYSIS:\t$analysis_data_uri";
         say $parse_log "\tANALYSIS ID:\t$analysis_id";
         say $parse_log "\tPARTICIPANT ID:\t$participant_id";
@@ -282,37 +304,13 @@ sub download_analysis {
     chomp(my $xml = `basename $out`);
     say STDERR "downloading $xml...";
 
-#    $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME}=0;
+    my $response = system("wget -q -O $out $url");
+    if ($response != 0) {
+	say STDERR "wget failed; falling back to lwp-download...";
+	$response = system("lwp-download $url $out");
+	return 0 if ($response != 0 );
+    }
 
-#    no autodie;
-#    my $browser = LWP::UserAgent->new();
-#    $browser->timeout($lwp_download_timeout);
-#    my $response = $browser->get($url);
-
-    # x-died flag has to do with aborted chunk downloads
-    # in HTTPS.
-#    my $dead = $response->header('x-died');
-
-#    if ($response->is_success and not $dead) {
-#        open(my $FH, ">:encoding(UTF-8)", $out);
-#        write_file($FH, $response->decoded_content);
-#        close $FH;
-#    } 
-#    else {
-#        say $response->status_line unless $response->status_line eq '200 OK';
-
-#	if ($dead) {
-#	    my ($analysis) = $url =~ m!/([^/]+)$!;
-#	    say STDERR "$analysis: Bad XML.  Falling back to wget...";
-#	}
-
-        my $response = system("wget -q -O $out $url");
-        if ($response != 0) {
-	    say STDERR "wget failed; falling back to lwp-download...";
-            $response = system("lwp-download $url $out");
-            return 0 if ($response != 0 );
-        }
- #   }
     if (-e $out and eval { $xs->XMLin($out) }) {
          return 1;
     }

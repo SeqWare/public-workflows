@@ -46,11 +46,13 @@ my ($cluster_information, $running_sample_ids, $failed_samples, $completed_sampl
 
 #my $failed_db = Decider::Database->failed_connect();
 
+
 say 'Reading in GNOS Sample Information';
 my $sample_information = GNOS::SampleInformation->get( $ARGV{'--working-dir'},
-                                              $ARGV{'--gnos-url'},
-                                              $ARGV{'--use-cached-xml'},
-                                              $ARGV{'--lwp-download-timeout'});
+						       $ARGV{'--gnos-url'},
+						       $ARGV{'--use-cached-xml'},
+						       $whitelist,
+						       $blacklist);
 
 
 say 'Scheduling Samples';
@@ -101,7 +103,14 @@ sub get_list {
     
     my @list_raw = <$list_file>;
     my @list = grep(s/\s*$//g, @list_raw);
+
+    # If this is a donor whitelist, check the format
+    my $format_OK = grep {/^\S+\s+\S+$/} @list;
     
+    unless ($color =~ /white|black/ && $format_OK && $format_OK == @list) {
+	die "Error: Donor ${color}list requires two columns (study_name,participant_id)\n";
+    }
+
     close $list_file;
     
     $list->{$type} = \@list;
