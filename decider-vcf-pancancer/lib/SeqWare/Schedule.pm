@@ -22,6 +22,9 @@ sub new {
 
 sub schedule_samples {
     my $self = shift;
+
+    # Passing arguments in an ordered list is not sane.  TODO: convert to hashref
+
     my ($report_file,
 	$sample_information, 
 	$cluster_information, 
@@ -76,6 +79,7 @@ sub schedule_samples {
 		
 		my $donor_information = $sample_information->{$center_name}{$donor_id};
 
+		# TODO: this should be a hashref
 		$self->schedule_donor($report_file,
 				      $donor_id, 
 				      $donor_information,
@@ -269,7 +273,6 @@ sub schedule_donor {
 	) = @_;
 
     say $report_file "DONOR/PARTICIPANT: $donor_id\n";
-
     
     my @sample_ids = keys %{$donor_information};
     my @samples;
@@ -312,6 +315,11 @@ sub schedule_donor {
 		    my $libraries = $aliquots->{$aliquot_id};
 		    foreach my $library_id (keys %{$libraries}) {
 			my $library = $libraries->{$library_id};
+			
+			my %variant_workflow = %{$library->{variant_workflow}};
+			say Dumper \%variant_workflow;
+			
+
 
 			my $current_bwa_workflow_version = $library->{bwa_workflow_version};
 			my @current_bwa_workflow_version = keys %$current_bwa_workflow_version;

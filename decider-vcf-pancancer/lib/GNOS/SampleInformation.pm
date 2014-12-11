@@ -22,7 +22,6 @@ sub new {
     return $self;
 }
 
-
 sub get {
     my ($self, $working_dir, $gnos_url, $use_cached_xml, $whitelist, $blacklist) = @_;
 
@@ -65,6 +64,9 @@ sub get {
         @sample_blacklist = grep{/^\S+$/} @{$blacklist->{sample}};
         say STDERR "Downloading only sample blacklist analysis results" if @sample_blacklist > 0;
     }
+
+    # Save info about variant workflows external to the analysis list
+    my $variant_workflow = {};
 
     my $i = 0;
     foreach my $result_id (keys %{$results}) {
@@ -237,8 +239,7 @@ sub get {
 	# We don't need to save the analysis for variant calls, just
 	# to record that it has been run.
 	if ($vc_workflow_name && $vc_workflow_version) {
-	    my @version = split('.',$vc_workflow_version);
-	    $self->{variant_workflow}->{$donor_id}->{$vc_workflow_name} = \@version;
+	    $variant_workflow->{$donor_id}->{$vc_workflow_name} = $vc_workflow_version;
 	    next;
 	}
 
@@ -299,8 +300,7 @@ sub get {
 	    submitter_aliquot_id     => $submitter_aliquot_id,
 	    sample_uuid              => $sample_uuid,
 	    bwa_workflow_version     => $bwa_workflow_version,
-	    variant_workflow         => $self->{variant_workflow}
-		
+	    variant_workflow         => $variant_workflow
 	};
 
         $center_name = 'seqware';
