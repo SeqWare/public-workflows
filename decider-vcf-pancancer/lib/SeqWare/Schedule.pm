@@ -70,8 +70,10 @@ sub schedule_samples {
             next if @blacklist > 0 and grep {/^$donor_id$/} @blacklist;
 
 	    # Skip and non-whitelisted donors if applicable
-            if (@whitelist == 0 or grep {/^$donor_id$/} @whitelist) {
-
+	    my $on_whitelist = grep {/^$donor_id/} @whitelist;
+            if (@whitelist == 0 or $on_whitelist) {
+		say STDERR "Donor $donor_id is on the whitelist" if $on_whitelist;
+		
 		my $donor_information = $sample_information->{$center_name}{$donor_id};
 
 		$self->schedule_donor($report_file,

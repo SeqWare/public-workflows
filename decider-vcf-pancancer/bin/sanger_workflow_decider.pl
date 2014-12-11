@@ -50,7 +50,6 @@ say 'Reading in GNOS Sample Information';
 my $sample_information = GNOS::SampleInformation->get( $ARGV{'--working-dir'},
                                               $ARGV{'--gnos-url'},
                                               $ARGV{'--use-cached-xml'},
-                                              $ARGV{'--use-cached-analysis'},
                                               $ARGV{'--lwp-download-timeout'});
 
 

@@ -16,21 +16,19 @@ use XML::LibXML::Simple qw(XMLin);
 use Data::Dumper;
 
 sub get {
-    my ($class, $working_dir, $gnos_url, $use_cached_xml, $use_cached_analysis, $lwp_download_timeout) = @_;
+    my ($class, $working_dir, $gnos_url, $use_cached_xml, $lwp_download_timeout) = @_;
 
-    system("mkdir -p $working_dir");
+    system "mkdir -p $working_dir";
     open my $parse_log, '>', "$Bin/../$working_dir/xml_parse.log";
 
     my $participants = {};
 
-    if ( (not $use_cached_xml) || (not -e "$Bin/../$working_dir/xml/data.xml") ) {
-        my $cmd = "mkdir -p $working_dir/xml; cgquery -s $gnos_url -o $Bin/../$working_dir/xml/data.xml";
-        $cmd .= ($gnos_url =~ /cghub.ucsc.edu/)? " 'study=PAWG&state=live'":" 'study=*&state=live'";
+    my $cmd = "mkdir -p $working_dir/xml; cgquery -s $gnos_url -o $Bin/../$working_dir/xml/data.xml";
+    $cmd .= ($gnos_url =~ /cghub.ucsc.edu/)? " 'study=PAWG&state=live'":" 'study=*&state=live'";
 
-        say $parse_log "cgquery command: $cmd";
+    say $parse_log "cgquery command: $cmd";
 
-        system($cmd);
-    }
+    system($cmd);
 
     my $xs = XML::LibXML::Simple->new(forcearray => 0, keyattr => 0 );
     my $data = $xs->XMLin("$Bin/../$working_dir/xml/data.xml");
@@ -62,7 +60,7 @@ sub get {
         my $attempts = 0;
 
         while ($status == 0 and $attempts < 10) {
-            $status = download_analysis($analysis_full_url, $analysis_xml_path, $use_cached_analysis, $lwp_download_timeout);
+            $status = download_analysis($analysis_full_url, $analysis_xml_path, $use_cached_xml, $lwp_download_timeout);
             $attempts++;
         }         
 
@@ -156,7 +154,7 @@ sub get {
 
         my $donor_id =  $submitter_donor_id || $participant_id;
 	# make sure the donor ID is unique for white/blacklist purposes;
-	$donor_id = join('-',$center_name,$donor_id);
+	$donor_id = join('-',$dcc_project_code,$donor_id);
         
         say $parse_log "\tDONOR:\t$donor_id";
         say $parse_log "\tANALYSIS:\t$analysis_data_uri";
@@ -273,43 +271,48 @@ sub files {
 }
 
 sub download_analysis {
-    my ($url, $out, $use_cached_analysis, $lwp_download_timeout) = @_;
+    my ($url, $out, $use_cached_xml) = @_;
 
     my $xs = XML::LibXML::Simple->new(forcearray => 0, keyattr => 0 );
 
-    return 1   if (-e $out and eval {$xs->XMLin($out)} and $use_cached_analysis);
+    if (-e $out and eval {$xs->XMLin($out)} and $use_cached_xml) {
+	return 1;
+    }
 
-    $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME}=0;
+    chomp(my $xml = `basename $out`);
+    say STDERR "downloading $xml...";
 
-    no autodie;
-    my $browser = LWP::UserAgent->new();
-    $browser->timeout($lwp_download_timeout);
-    my $response = $browser->get($url);
+#    $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME}=0;
+
+#    no autodie;
+#    my $browser = LWP::UserAgent->new();
+#    $browser->timeout($lwp_download_timeout);
+#    my $response = $browser->get($url);
 
     # x-died flag has to do with aborted chunk downloads
     # in HTTPS.
-    my $dead = $response->header('x-died');
+#    my $dead = $response->header('x-died');
 
-    if ($response->is_success and not $dead) {
-        open(my $FH, ">:encoding(UTF-8)", $out);
-        write_file($FH, $response->decoded_content);
-        close $FH;
-    } 
-    else {
-        say $response->status_line unless $response->status_line eq '200 OK';
+#    if ($response->is_success and not $dead) {
+#        open(my $FH, ">:encoding(UTF-8)", $out);
+#        write_file($FH, $response->decoded_content);
+#        close $FH;
+#    } 
+#    else {
+#        say $response->status_line unless $response->status_line eq '200 OK';
 
-	if ($dead) {
-	    my ($analysis) = $url =~ m!/([^/]+)$!;
-	    say STDERR "$analysis: Bad XML.  Falling back to wget...";
-	}
+#	if ($dead) {
+#	    my ($analysis) = $url =~ m!/([^/]+)$!;
+#	    say STDERR "$analysis: Bad XML.  Falling back to wget...";
+#	}
 
-        $response = system("wget -q -O $out $url");
+        my $response = system("wget -q -O $out $url");
         if ($response != 0) {
 	    say STDERR "wget failed; falling back to lwp-download...";
             $response = system("lwp-download $url $out");
             return 0 if ($response != 0 );
         }
-    }
+ #   }
     if (-e $out and eval { $xs->XMLin($out) }) {
          return 1;
     }
