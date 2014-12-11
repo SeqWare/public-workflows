@@ -53,8 +53,8 @@ sub get {
     $ARGV{'--report'} //= $decider_config{'general.report'};
         die 'Report needs to be defined' unless $ARGV{'--report'};
     
-    $ARGV{'--use-live-cached'} = 1 
-        if ($decider_config{'general.use-live-cached'} eq 'true');
+    $ARGV{'--use-cached-xml'} = 1 
+        if ($decider_config{'general.use-cached-xml'} eq 'true');
     
     $ARGV{'--lwp-download-timeout'} //= $decider_config{'general.lwp-download-timeout'};
      die 'LWP download timeout needs to be defined' unless $ARGV{'--lwp-download-timeout'};

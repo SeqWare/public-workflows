@@ -15,6 +15,7 @@ sub new {
     return $self;
 }
 
+
 sub create_settings_file {
     my $self = shift;
     my (
@@ -102,7 +103,7 @@ sub create_workflow_ini {
     my $template = "$Bin/../conf/ini/workflow-$workflow_version.ini";
 
     my $ini_factory = SeqWare::Schedule::Ini->new;
-    $ini_factory->create_ini_file($output_dir,$template,$data);
+    $ini_factory->create_ini_file("$working_dir/ini",$template,$data,$donor->{donor_id});
 }
 
 1;

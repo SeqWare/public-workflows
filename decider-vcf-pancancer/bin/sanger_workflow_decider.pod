@@ -30,7 +30,7 @@ Variant Walling Workflow Decider - SeqWare
 
 =item --decider-config[=][ ]<decider_path>
 
-The path to the file containing the default settings for the decider. If another option is chosen via command line option the command line setting will take presidence. 
+The path to the file containing the default settings for the decider. If another option is chosen via command line option the command line setting will take precedence. 
 
 =over
 
@@ -85,7 +85,7 @@ The template seqware settings file
 
 The report file name that the results will be placed in by the decider
 
-=item --use-live-cached
+=item --use-cached-xml
 
 A flag indicating that previously download xml files for each analysis file should not be downloaded again
 

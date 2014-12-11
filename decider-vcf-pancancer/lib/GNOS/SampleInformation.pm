@@ -16,14 +16,14 @@ use XML::LibXML::Simple qw(XMLin);
 use Data::Dumper;
 
 sub get {
-    my ($class, $working_dir, $gnos_url, $use_live_cached, $use_cached_analysis, $lwp_download_timeout) = @_;
+    my ($class, $working_dir, $gnos_url, $use_cached_xml, $use_cached_analysis, $lwp_download_timeout) = @_;
 
     system("mkdir -p $working_dir");
     open my $parse_log, '>', "$Bin/../$working_dir/xml_parse.log";
 
     my $participants = {};
 
-    if ( (not $use_live_cached) || (not -e "$Bin/../$working_dir/xml/data.xml") ) {
+    if ( (not $use_cached_xml) || (not -e "$Bin/../$working_dir/xml/data.xml") ) {
         my $cmd = "mkdir -p $working_dir/xml; cgquery -s $gnos_url -o $Bin/../$working_dir/xml/data.xml";
         $cmd .= ($gnos_url =~ /cghub.ucsc.edu/)? " 'study=PAWG&state=live'":" 'study=*&state=live'";
 
@@ -155,6 +155,8 @@ sub get {
                    or $aliquot_id eq '34c9ff85-c2f8-45dc-b4aa-fba05748e355') and $dcc_project_code eq 'LIHC-US');
 
         my $donor_id =  $submitter_donor_id || $participant_id;
+	# make sure the donor ID is unique for white/blacklist purposes;
+	$donor_id = join('-',$center_name,$donor_id);
         
         say $parse_log "\tDONOR:\t$donor_id";
         say $parse_log "\tANALYSIS:\t$analysis_data_uri";
@@ -166,7 +168,7 @@ sub get {
         say $parse_log "\tSUBMITTER DONOR ID:\t$submitter_donor_id";
         say $parse_log "\tSUBMITTER SAMPLE ID:\t$submitter_sample_id";
         say $parse_log "\tSUBMITTER ALIQUOT ID:\t$submitter_aliquot_id";
-        say $parse_log "\tWORKFLOW VERSION:\t$bwa_workflow_version";
+        say $parse_log "\tBWA WORKFLOW VERSION:\t$bwa_workflow_version";
 
         my ($library_name, $library_strategy, $library_source);
         my $library_descriptor;
@@ -218,7 +220,7 @@ sub get {
                      submitter_sample_id      => $submitter_sample_id,
                      submitter_aliquot_id     => $submitter_aliquot_id,
                      sample_uuid              => $sample_uuid,
-                     bwa_workflow_version     => $bwa_workflow_version,
+                     bwa_workflow_version     => $bwa_workflow_version
 	};
 
         $center_name = 'seqware';

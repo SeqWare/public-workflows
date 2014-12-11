@@ -49,7 +49,7 @@ my ($cluster_information, $running_sample_ids, $failed_samples, $completed_sampl
 say 'Reading in GNOS Sample Information';
 my $sample_information = GNOS::SampleInformation->get( $ARGV{'--working-dir'},
                                               $ARGV{'--gnos-url'},
-                                              $ARGV{'--use-live-cached'},
+                                              $ARGV{'--use-cached-xml'},
                                               $ARGV{'--use-cached-analysis'},
                                               $ARGV{'--lwp-download-timeout'});
 
