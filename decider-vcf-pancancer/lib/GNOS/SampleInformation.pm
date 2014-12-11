@@ -15,8 +15,16 @@ use XML::LibXML::Simple qw(XMLin);
 
 use Data::Dumper;
 
+
+sub new {
+    my $class = shift;
+    my $self = bless {}, $class;
+    return $self;
+}
+
+
 sub get {
-    my ($class, $working_dir, $gnos_url, $use_cached_xml, $whitelist, $blacklist) = @_;
+    my ($self, $working_dir, $gnos_url, $use_cached_xml, $whitelist, $blacklist) = @_;
 
     system "mkdir -p $working_dir";
     open my $parse_log, '>', "$Bin/../$working_dir/xml_parse.log";
@@ -57,7 +65,6 @@ sub get {
         @sample_blacklist = grep{/^\S+$/} @{$blacklist->{sample}};
         say STDERR "Downloading only sample blacklist analysis results" if @sample_blacklist > 0;
     }
-
 
     my $i = 0;
     foreach my $result_id (keys %{$results}) {
@@ -100,10 +107,8 @@ sub get {
         my $status = 0;
         my $attempts = 0;
 
-	
-	say "ANALYSIS $analysis_id";
         while ($status == 0 and $attempts < 10) {
-            $status = download_analysis($analysis_full_url, $analysis_xml_path, $use_cached_xml);
+            $status = $self->download_analysis($analysis_full_url, $analysis_xml_path, $use_cached_xml);
             $attempts++;
         }         
 
@@ -161,7 +166,8 @@ sub get {
         }
 
         my (%attributes, $total_lanes, $aliquot_uuid, $submitter_participant_id, $submitter_donor_id, $workflow_version, 
-            $submitter_sample_id, $bwa_workflow_version, $submitter_specimen_id, $bwa_workflow_name, $dcc_project_code);
+            $submitter_sample_id, $bwa_workflow_version, $submitter_specimen_id, $bwa_workflow_name, $dcc_project_code,
+	    $vc_workflow_version, $vc_workflow_name, $workflow_name);
         if (ref($analysis_attributes) eq 'ARRAY') {
             foreach my $attribute (@$analysis_attributes) {
                 $attributes{$attribute->{TAG}} = $attribute->{VALUE};
@@ -184,12 +190,31 @@ sub get {
 
             $submitter_specimen_id = $attributes{submitter_specimen_id};
             $submitter_specimen_id = undef if (ref($submitter_specimen_id) eq 'HASH');
-            $bwa_workflow_version = $attributes{workflow_version};
-            $bwa_workflow_name = $attributes{workflow_name};
+            $bwa_workflow_version = $attributes{workflow_version} || $attributes{alignmant_workflow_version};
+            $bwa_workflow_name = $attributes{workflow_name} || $attributes{alignmant_workflow_name};
+
+	    $vc_workflow_name    = $attributes{variant_workflow_name};
+	    $vc_workflow_version = $attributes{variant_workflow_version};
+
+#	    say "\t\t\t\t\t\tTHIS is a VC record $dcc_project_code $submitter_donor_id $participant_id" if $vc_workflow_name;
+
+
+#        <ANALYSIS_ATTRIBUTE>
+#          <TAG>variant_workflow_name</TAG>
+#          <VALUE>Workflow_Bundle_Test_Cancer_Variant_Analysis</VALUE>
+#        </ANALYSIS_ATTRIBUTE>
+#        <ANALYSIS_ATTRIBUTE>
+#          <TAG>variant_workflow_version</TAG>
+#          <VALUE>1.0.0</VALUE>
+
 
 	    # XML inconsistent across sites?
 	    $use_control ||= $attributes{use_cntl};
         }
+
+	$workflow_name = $vc_workflow_name || $bwa_workflow_name;
+	$workflow_version = $vc_workflow_version || $bwa_workflow_version;
+
 
         my $donor_id =  $submitter_donor_id || $participant_id;
 
@@ -206,9 +231,24 @@ sub get {
         say $parse_log "\tSUBMITTER DONOR ID:\t$submitter_donor_id";
         say $parse_log "\tSUBMITTER SAMPLE ID:\t$submitter_sample_id";
         say $parse_log "\tSUBMITTER ALIQUOT ID:\t$submitter_aliquot_id";
-        say $parse_log "\tBWA WORKFLOW VERSION:\t$bwa_workflow_version";
+        say $parse_log "\tWORKFLOW NAME:\t$workflow_name";
+	say $parse_log "\tWORKFLOW VERSION:\t$workflow_version";
+	
+	# We don't need to save the analysis for variant calls, just
+	# to record that it has been run.
+	if ($vc_workflow_name && $vc_workflow_version) {
+	    my @version = split('.',$vc_workflow_version);
+	    $self->{variant_workflow}->{$donor_id}->{$vc_workflow_name} = \@version;
+	    next;
+	}
 
-        my ($library_name, $library_strategy, $library_source);
+        # We don't need to save the analysis if there is no workflow name or version
+	unless ($workflow_name && $workflow_version) {
+	    say $parse_log "\tNO WORKFLOW; analysis skipped";
+	    next;
+	}
+
+	my ($library_name, $library_strategy, $library_source);
         my $library_descriptor;
         if (exists ($analysis_result{experiment_xml})) {
 
@@ -245,20 +285,22 @@ sub get {
         $center_name //= 'unknown';
 
         my $library = {
-                     analysis_ids             => $analysis_id,
-                     analysis_url             => $analysis_data_uri,
-                     library_name             => $library_name,
-                     library_strategy         => $library_strategy,
-                     library_source           => $library_source,
-                     alignment_genome         => $alignment,
-                     use_control              => $use_control,
-                     total_lanes              => $total_lanes,
-                     submitter_participant_id => $submitter_participant_id,
-                     sample_id                => $sample_id,
-                     submitter_sample_id      => $submitter_sample_id,
-                     submitter_aliquot_id     => $submitter_aliquot_id,
-                     sample_uuid              => $sample_uuid,
-                     bwa_workflow_version     => $bwa_workflow_version
+	    analysis_ids             => $analysis_id,
+	    analysis_url             => $analysis_data_uri,
+	    library_name             => $library_name,
+	    library_strategy         => $library_strategy,
+	    library_source           => $library_source,
+	    alignment_genome         => $alignment,
+	    use_control              => $use_control,
+	    total_lanes              => $total_lanes,
+	    submitter_participant_id => $submitter_participant_id,
+	    sample_id                => $sample_id,
+	    submitter_sample_id      => $submitter_sample_id,
+	    submitter_aliquot_id     => $submitter_aliquot_id,
+	    sample_uuid              => $sample_uuid,
+	    bwa_workflow_version     => $bwa_workflow_version,
+	    variant_workflow         => $self->{variant_workflow}
+		
 	};
 
         $center_name = 'seqware';
@@ -311,7 +353,7 @@ sub files {
 }
 
 sub download_analysis {
-    my ($url, $out, $use_cached_xml) = @_;
+    my ($self, $url, $out, $use_cached_xml) = @_;
 
     my $xs = XML::LibXML::Simple->new(forcearray => 0, keyattr => 0 );
 

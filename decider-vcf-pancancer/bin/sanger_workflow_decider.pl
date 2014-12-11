@@ -48,11 +48,12 @@ my ($cluster_information, $running_sample_ids, $failed_samples, $completed_sampl
 
 
 say 'Reading in GNOS Sample Information';
-my $sample_information = GNOS::SampleInformation->get( $ARGV{'--working-dir'},
-						       $ARGV{'--gnos-url'},
-						       $ARGV{'--use-cached-xml'},
-						       $whitelist,
-						       $blacklist);
+my $gnos_info = GNOS::SampleInformation->new();
+my $sample_information = $gnos_info->get( $ARGV{'--working-dir'},
+					  $ARGV{'--gnos-url'},
+					  $ARGV{'--use-cached-xml'},
+					  $whitelist,
+					  $blacklist);
 
 
 say 'Scheduling Samples';
