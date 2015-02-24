@@ -86,7 +86,7 @@ public class dockerHelloWorldWorkflow extends AbstractWorkflowDataModel {
         // this particular container is downloaded from a central repository
 	// the output is saved to the metadata database
         Job dockerJob1 = this.getWorkflow().createBashJob("dockerJob1");
-	dockerJob1.getCommand().addArgument("docker run --rm ubuntu dmesg").addArgument(" > ").addArgument("dir1/tree");
+	dockerJob1.getCommand().addArgument("docker run --rm centos dmesg").addArgument(" | ").addArgument("tee dir1/tree");
         dockerJob1.addParent(mkdirJob);
 	dockerJob1.addFile(createOutputFile("dir1/tree", "txt/plain", manualOutput));       
         
@@ -95,7 +95,7 @@ public class dockerHelloWorldWorkflow extends AbstractWorkflowDataModel {
         
         dockerJob2.getCommand().addArgument("docker load -i " + this.getWorkflowBaseDir() + "/workflows/postgres_image.tar");
         dockerJob2.getCommand().addArgument("\n");
-	dockerJob2.getCommand().addArgument("docker run --rm eg_postgresql ps aux | grep postgres").addArgument(" > ").addArgument("dir1/ps_out");
+	dockerJob2.getCommand().addArgument("docker run --rm eg_postgresql ps aux | grep postgres").addArgument(" | ").addArgument("tee dir1/ps_out");
         dockerJob2.addParent(mkdirJob);
 	dockerJob2.addFile(createOutputFile("dir1/ps_out", "txt/plain", manualOutput));       
         
