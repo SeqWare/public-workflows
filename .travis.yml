@@ -1,6 +1,5 @@
 sudo: false
 language: java
 jdk:
-  - oraclejdk8
   - oraclejdk7
 script: cd DEWrapperWorkflow &&  mvn -B clean install
