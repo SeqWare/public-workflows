@@ -96,11 +96,11 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.1</version>
                 <configuration>
-                    <source>1.6</source>
-                    <target>1.6</target>
+                    <source>1.7</source>
+                    <target>1.7</target>
                 </configuration>
             </plugin>
-      
+
 
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
@@ -135,7 +135,7 @@
                         </goals>
                         <configuration>
                             <outputDirectory>${workflow-dir}</outputDirectory>
-                             <!-- see the explanation for this mutually exclusive syntax at http://maven.apache.org/plugins/maven-resources-plugin/examples/filter.html -->
+                            <!-- see the explanation for this mutually exclusive syntax at http://maven.apache.org/plugins/maven-resources-plugin/examples/filter.html -->
                             <resources>
                                 <resource>
                                     <directory>workflow</directory>
@@ -215,9 +215,9 @@
                             <outputDirectory>${workflow-dir}/bin</outputDirectory>
                             <overWriteReleases>false</overWriteReleases>
                             <overWriteSnapshots>true</overWriteSnapshots>
-                            
+
                             <excludeScope>provided</excludeScope>
-                            
+
                         </configuration>
                     </execution>
                 </executions>

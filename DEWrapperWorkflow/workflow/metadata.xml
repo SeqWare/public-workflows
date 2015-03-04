@@ -2,8 +2,8 @@
   <workflow name="DEWrapperWorkflow" version="${workflow-version}" seqware_version="${seqware-version}"
   basedir="${workflow_bundle_dir}/Workflow_Bundle_DEWrapperWorkflow/${workflow-version}">
     <description>${workflow-description}</description>
-    <workflow_class path="${workflow_bundle_dir}/Workflow_Bundle_DEWrapperWorkflow/${workflow-version}/classes/io/seqware/DEWrapperWorkflowWorkflow.java"/>
-    <config path="${workflow_bundle_dir}/Workflow_Bundle_DEWrapperWorkflow/${workflow-version}/config/DEWrapperWorkflowWorkflow.ini"/>
+    <workflow_class path="${workflow_bundle_dir}/Workflow_Bundle_DEWrapperWorkflow/${workflow-version}/classes/io/seqware/DEWrapperWorkflow.java"/>
+    <config path="${workflow_bundle_dir}/Workflow_Bundle_DEWrapperWorkflow/${workflow-version}/config/DEWrapperWorkflow.ini"/>
     <requirements compute="single" memory="20M" network="local"  workflow_engine="Oozie" workflow_type="java"/>
   </workflow>
 </bundle>
