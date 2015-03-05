@@ -181,7 +181,8 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                 DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
                 Calendar cal = Calendar.getInstance();
                 String date = dateFormat.format(cal.getTime());
-                String baseFile = "/workflow_data/results/" + tumorAliquotId + ".embl_1-0-0." + date + ".somatic." + emblType;
+                String baseFile = "`pwd`/" + SHARED_WORKSPACE + "/workflow_data/results/" + tumorAliquotId + ".embl_1-0-0." + date
+                        + ".somatic." + emblType;
 
                 vcfs.add(baseFile + ".vcf.gz");
                 tbis.add(baseFile + ".vcf.gz.tbi");
@@ -211,16 +212,19 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                         + "perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
                         + "/opt/vcf-uploader/vcf-uploader-1.0.0/gnos_upload_vcf.pl "
                         // parameters to gnos_upload
-                        + "--metadata-urls " + this.metadataURLs + " --vcfs " + Joiner.on(',').join(vcfs) + " --vcf-md5sum-files "
-                        + Joiner.on(',').join(vcfmd5s) + " --vcf-idxs " + Joiner.on(',').join(tbis) + " --vcf-idx-md5sum-files "
-                        + Joiner.on(',').join(tbimd5s) + " --tarballs " + Joiner.on(',').join(tars) + " --tarball-md5sum-files "
-                        + Joiner.on(',').join(tarmd5s) + " --outdir `pwd`/" + SHARED_WORKSPACE + "/uploads" + " --key " + uploadPemFile
-                        + " --upload-url " + uploadServer + " --qc-metrics-json /tmp/empty.json" + " --timing-metrics-json /tmp/empty.json"
+                        + "--metadata-urls "
+                        + this.metadataURLs
+                        //
+                        + " --vcfs " + Joiner.on(',').join(vcfs) + " --vcf-md5sum-files " + Joiner.on(',').join(vcfmd5s) + " --vcf-idxs "
+                        + Joiner.on(',').join(tbis) + " --vcf-idx-md5sum-files " + Joiner.on(',').join(tbimd5s) + " --tarballs "
+                        + Joiner.on(',').join(tars) + " --tarball-md5sum-files " + Joiner.on(',').join(tarmd5s) + " --outdir `pwd`/"
+                        + SHARED_WORKSPACE + "/uploads" + " --key " + uploadPemFile + " --upload-url " + uploadServer
+                        + " --qc-metrics-json /tmp/empty.json" + " --timing-metrics-json /tmp/empty.json"
                         + " --workflow-src-url http://github.com" + "--workflow-url http://github.com" + " --workflow-name EMBL"
                         + " --workflow-version 1.0.0" + " --seqware-version " + this.getSeqware_version() + " --vm-instance-type "
                         + this.vmInstanceType + " --vm-instance-cores " + this.vmInstanceCores + " --vm-instance-mem-gb "
                         + this.vmInstanceMemGb + " --vm-location-code " + this.vmLocationCode + " --study-refname-override "
-                        + this.studyRefnameOverride + " --analysis-center-override " + this.analysisCenterOverride);
+                        + this.studyRefnameOverride + " --analysis-center-override " + this.analysisCenterOverride + '\'');
         uploadJob.addParent(previousJobPointer);
         // for now, make these sequential
         return uploadJob;
