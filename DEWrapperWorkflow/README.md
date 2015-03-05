@@ -6,7 +6,7 @@ This is intended to wrap the DKFZ and EMBL workflows as a SeqWare workflow and a
 
 ## Users
 
-In order to get this running, you will need to setup Docker. It is recommended that you do this on an Amazon host with a 100GBroot disk (one good choice is ami-9a562df2):
+In order to get this running, you will need to setup Docker. It is recommended that you do this on an Amazon host with a 100GB root disk (one good choice is ami-9a562df2):
 
         curl -sSL https://get.docker.com/ | sudo sh
         sudo usermod -aG docker ubuntu
@@ -50,4 +50,7 @@ These are the remaining tasks that need to be completed for phase 1
 - [ ] replace call to Ubuntu container with a call to the DKFZ container
 - [ ] uncomment and test upload of DKFZ data
 
-   
+Tasks for phase 2
+
+- [ ] Integrate the q2seqware component into the workflow so it can grab an ini and parameterize itself when launching
+- [ ] Send tracking information (possibly a scrape of the working directory) back to a reporting queue for debugging and tracking of issues
