@@ -689,7 +689,7 @@ public class WorkflowClient extends OicrWorkflow {
         if ("file_based".equals(wrapperType)) {
             job.getCommand()
                     .addArgument("set -e; set -o pipefail; date +%s > download_timing_" + jobId + ".txt;")
-                    .addArgument("perl " + this.getWorkflowBaseDir() + "/scripts/launch_and_monitor_gnos.pl")
+                    .addArgument("perl -I " + this.getWorkflowBaseDir() + gtUploadDownloadWrapperLib + " " + this.getWorkflowBaseDir() + "/scripts/launch_and_monitor_gnos.pl")
                     .addArgument(
                             "--command 'gtdownload " + " --max-children " + gnosMaxChildren + " --rate-limit " + gnosRateLimit + " -c "
                                     + gnosKey + " -l ./download.log" + " -v -d " + fileURL + "'").addArgument("--file-grep " + analysisId)
@@ -698,7 +698,7 @@ public class WorkflowClient extends OicrWorkflow {
         } else {
             job.getCommand()
                     .addArgument("set -e; set -o pipefail; date +%s > download_timing_" + jobId + ".txt;")
-                    .addArgument("perl " + this.getWorkflowBaseDir() + "/scripts/launch_and_monitor_cmd.pl")
+                    .addArgument("perl -I " + this.getWorkflowBaseDir() + gtUploadDownloadWrapperLib + " " + this.getWorkflowBaseDir() + "/scripts/launch_and_monitor_cmd.pl")
                     .addArgument(
                             " --command 'gtdownload " + " --max-children " + gnosMaxChildren + " --rate-limit " + gnosRateLimit
                                     + " --inactivity-timeout " + gnosTimeout + " -c " + gnosKey + " -l ./download.log" + " -v -d "
