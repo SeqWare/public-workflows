@@ -41,6 +41,8 @@ Look in your datastore for the two working directories generated per run (one fo
 
 ## Developers
 
+Refer to https://github.com/SeqWare/docker/commit/9b98f6ec47f0acc4545fd0d6243a7693305da83a to see the Perl script this was derived from. 
+
 These are the remaining tasks that need to be completed for phase 1
 
 - [ ] uncomment and test the download of data provided with a valid pem key 
