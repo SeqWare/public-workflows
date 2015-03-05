@@ -1,0 +1,5 @@
+sudo: false
+language: java
+jdk:
+  - oraclejdk7
+script: cd workflow-bwa-pancancer &&  mvn -B clean install
