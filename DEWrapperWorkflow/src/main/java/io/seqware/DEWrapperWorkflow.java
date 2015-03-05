@@ -7,6 +7,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Map.Entry;
 import net.sourceforge.seqware.pipeline.workflowV2.AbstractWorkflowDataModel;
 import net.sourceforge.seqware.pipeline.workflowV2.model.Job;
 
@@ -148,6 +149,11 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         // call the EMBL workflow
         Job emblJob = this.getWorkflow().createBashJob("embl workflow");
         // we have to use a nested container here because of the seqware_lock
+        for (Entry<String, String> entry : this.getConfigs().entrySet()) {
+            emblJob.getCommand().addArgument(
+            // we need a better way of getting the ini file here, this may not be safe if the workflow has escaped key-values
+                    "echo \"" + entry.getKey() + "\"=\"" + entry.getValue() + "\" >> `pwd`/" + SHARED_WORKSPACE + "/settings/embl.ini \n");
+        }
         emblJob.getCommand()
                 .addArgument(
                 // this is the actual command we run inside the container, which is to launch a workflow
