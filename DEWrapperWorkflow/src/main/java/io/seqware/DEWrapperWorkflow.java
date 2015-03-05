@@ -236,11 +236,11 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         runWorkflow.getCommand().addArgument(
                 "docker run "
                         // mount shared directories
-                        + "-v `pwd`" + SHARED_WORKSPACE
+                        + "-v `pwd`/" + SHARED_WORKSPACE
                         + "/downloads/dkfz:/mnt/datastore/bundledFiles "
                         // this path does not look right
-                        + "-v `pwd`" + SHARED_WORKSPACE + ":/mnt/datastore/workflow_data " + "-v `pwd`" + SHARED_WORKSPACE
-                        + "/settings/dkfz.ini:/mnt/datastore/workflow_data/workflow.ini " + "-v `pwd`" + SHARED_WORKSPACE
+                        + "-v `pwd`/" + SHARED_WORKSPACE + ":/mnt/datastore/workflow_data " + "-v `pwd`/" + SHARED_WORKSPACE
+                        + "/settings/dkfz.ini:/mnt/datastore/workflow_data/workflow.ini " + "-v `pwd`/" + SHARED_WORKSPACE
                         + "/results:/mnt/datastore/result_data " + "ubuntu /bin/bash -c 'dmesg'");
         runWorkflow.addParent(generateIni);
         // upload
@@ -248,7 +248,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         uploadWorkflow
                 .getCommand()
                 .addArgument(
-                        "#docker run -t -i -v `pwd`"
+                        "#docker run -t -i -v `pwd`/"
                                 + SHARED_WORKSPACE
                                 + "/workflow_data:/workflow_data "
                                 + "-v "
