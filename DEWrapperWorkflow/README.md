@@ -51,6 +51,7 @@ These are the remaining tasks that need to be completed for phase 1
 - [ ] validate that ini file for DKFZ which looks incomplete
 - [ ] replace call to Ubuntu container with a call to the DKFZ container
 - [ ] uncomment and test upload of DKFZ data
+- [ ] nail down container versions and tag them in Docker Hub (where possible)
 
 Tasks for phase 2
 
