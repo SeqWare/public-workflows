@@ -40,6 +40,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
     private String vmLocationCode;
     private String studyRefnameOverride;
     private String analysisCenterOverride;
+    private String formattedDate;
 
     @Override
     public void setupWorkflow() {
@@ -70,6 +71,11 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             this.vmLocationCode = getProperty("vmLocationCode");
             this.studyRefnameOverride = getProperty("study-refname-override");
             this.analysisCenterOverride = getProperty("analysis-center-override");
+
+            // record the date
+            DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
+            Calendar cal = Calendar.getInstance();
+            this.formattedDate = dateFormat.format(cal.getTime());
 
         } catch (Exception e) {
             throw new RuntimeException("Could not read property from ini", e);
@@ -109,7 +115,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             downloadJob
                     .getCommand()
                     .addArgument(
-                            "#docker run -t -i "
+                            "docker run "
                                     // link in the input directory
                                     + "-v `pwd`/"
                                     + SHARED_WORKSPACE
@@ -117,9 +123,9 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                                     // link in the pem kee
                                     + "-v "
                                     + pemFile
-                                    + ":/root/gnos_icgc_keyfile.pem seqware/pancancer-upload-download"
+                                    + ":/root/gnos_icgc_keyfile.pem seqware/pancancer_upload_download"
                                     // here is the Bash command to be run
-                                    + " /bin/bash -c 'cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
+                                    + " /bin/bash -c 'cd /workflow_data/ && dmesg' #perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
                                     + "/opt/vcf-uploader/vcf-uploader-1.0.0/gnos_download_file.pl "
                                     // here is the command that is fed to gtdownload
                                     + "--command \\\"gtdownload -c /root/gnos_icgc_keyfile.pem -k 60 -vv " + gnosServer
@@ -157,9 +163,14 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         emblJob.getCommand()
                 .addArgument(
                 // this is the actual command we run inside the container, which is to launch a workflow
-                        "docker run --rm -h master -v /datastore:/datastore seqware/seqware_whitestar "
-                        // command received by seqware
-                                + "seqware bundle launch --dir /home/seqware/provisioned-bundles/Workflow_Bundle_HelloWorld_1.0-SNAPSHOT_SeqWare_1.1.0-rc.1/ --no-metadata \n");
+                        "docker run --rm -h master -v /datastore:/datastore "
+                                // mount the workflow.ini
+                                + "-v `pwd`/" + SHARED_WORKSPACE
+                                + "/settings/embl.ini:/workflow.ini "
+                                // the container
+                                + "pancancer/pcawg-delly-workflow "
+                                // command received by seqware (replace this with a real call to Delly after getting bam files downloaded)
+                                + "/start.sh \"seqware bundle launch --dir /home/seqware/provisioned-bundles/Workflow_Bundle_HelloWorld_1.0-SNAPSHOT_SeqWare_1.1.0-rc.1/ --engine whitestar --no-metadata\" \n");
         // with a real workflow, we would pass in the workflow.ini
 
         emblJob.addParent(previousJobPointer);
@@ -177,12 +188,9 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
 
         for (String emblType : emblTypes) {
             for (String tumorAliquotId : tumorAliquotIds) {
-                // TODO: do we want system time dates or the date the workflow was created? This is unclear
-                DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
-                Calendar cal = Calendar.getInstance();
-                String date = dateFormat.format(cal.getTime());
-                String baseFile = "`pwd`/" + SHARED_WORKSPACE + "/workflow_data/results/" + tumorAliquotId + ".embl_1-0-0." + date
-                        + ".somatic." + emblType;
+
+                String baseFile = "`pwd`/" + SHARED_WORKSPACE + "/workflow_data/results/" + tumorAliquotId + ".embl_1-0-0."
+                        + this.formattedDate + ".somatic." + emblType;
 
                 vcfs.add(baseFile + ".vcf.gz");
                 tbis.add(baseFile + ".vcf.gz.tbi");
@@ -195,7 +203,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
 
         Job uploadJob = this.getWorkflow().createBashJob("uploadEMBL");
         uploadJob.getCommand().addArgument(
-                "#docker run -t -i "
+                "docker run "
                 // link in the input directory
                         + "-v `pwd`/"
                         + SHARED_WORKSPACE
@@ -205,10 +213,12 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                         + pemFile
                         + ":/root/gnos_icgc_keyfile.pem "
                         // looked like a placeholder in the Perl script
-                        + "-v <embl_output_per_donor>:/result_data "
+                        // + "-v <embl_output_per_donor>:/result_data "
                         //
-                        + "seqware/pancancer-upload-download "
-                        + "/bin/bash -c 'cd /workflow_data/results/ && "
+                        + "seqware/pancancer_upload_download "
+                        + " dmesg "
+                        // the command invoked on the container follows
+                        + "#/bin/bash -c 'cd /workflow_data/results/ && "
                         + "perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
                         + "/opt/vcf-uploader/vcf-uploader-1.0.0/gnos_upload_vcf.pl "
                         // parameters to gnos_upload
@@ -232,13 +242,10 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
 
     private Job createDKFZWorkflow(Job previousJobPointer) {
         Job generateIni = this.getWorkflow().createBashJob("generateDKFZ_ini");
-        DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
-        Calendar cal = Calendar.getInstance();
-        String date = dateFormat.format(cal.getTime());
         generateIni.getCommand().addArgument(
                 "echo \"#!/bin/bash\n" + "tumorBams=( <full_path>/7723a85b59ebce340fe43fc1df504b35.bam )\n"
                         + "controlBam=8f957ddae66343269cb9b854c02eee2f.bam\n" + "dellyFiles=( <per_tumor> )\n" + "runACEeq=true\n"
-                        + "runSNVCalling=true\n" + "runIndelCalling=true\n" + "date=" + date + "\" > " + SHARED_WORKSPACE
+                        + "runSNVCalling=true\n" + "runIndelCalling=true\n" + "date=" + this.formattedDate + "\" > " + SHARED_WORKSPACE
                         + "/settings/dkfz.ini \n");
         generateIni.addParent(previousJobPointer);
         // cleanup
@@ -251,20 +258,23 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                         // this path does not look right
                         + "-v `pwd`/" + SHARED_WORKSPACE + ":/mnt/datastore/workflow_data " + "-v `pwd`/" + SHARED_WORKSPACE
                         + "/settings/dkfz.ini:/mnt/datastore/workflow_data/workflow.ini " + "-v `pwd`/" + SHARED_WORKSPACE
-                        + "/results:/mnt/datastore/result_data " + "ubuntu /bin/bash -c 'dmesg'");
+                        + "/results:/mnt/datastore/result_data "
+                        // the DKFZ image and the command we feed into it follow
+                        + "dkfz_dockered_workflows /bin/bash -c 'dmesg'");
         runWorkflow.addParent(generateIni);
         // upload
         Job uploadWorkflow = this.getWorkflow().createBashJob("uploadDKFZ");
-        uploadWorkflow
-                .getCommand()
-                .addArgument(
-                        "#docker run -t -i -v `pwd`/"
-                                + SHARED_WORKSPACE
-                                + "/workflow_data:/workflow_data "
-                                + "-v "
-                                + uploadPemFile
-                                + ":/root/gnos_icgc_keyfile.pem "
-                                + "-v <dkfz_output_per_donor>:/result_data seqware/pancancer-upload-download /bin/bash -c 'cd /result_data/ && run_upload.pl ... '\");\n");
+        uploadWorkflow.getCommand().addArgument(
+                "docker run -v `pwd`/" + SHARED_WORKSPACE + "/workflow_data:/workflow_data " + "-v " + uploadPemFile
+                        + ":/root/gnos_icgc_keyfile.pem "
+                        // uncomment this when we get the real paths
+                        // + "-v <dkfz_output_per_donor>:/result_data
+                        // this is the container we're using
+                        + "seqware/pancancer_upload_download "
+                        // this is the placeholder command
+                        + "dmesg\n"
+                        // the real command follows
+                        + "#bin/bash -c 'cd /result_data/ && run_upload.pl ... '\");\n");
         uploadWorkflow.addParent(runWorkflow);
         return uploadWorkflow;
     }
