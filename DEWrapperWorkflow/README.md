@@ -16,6 +16,7 @@ Next, after logging back in, cache the seqware containers that we will be using
 
         docker pull seqware/seqware_whitestar
         docker pull seqware/seqware_full
+        docker pull pancancer/pcawg-delly-workflow
 
 Next, setup your environment with your workflow and a shared datastore directory
 
@@ -57,3 +58,10 @@ Tasks for phase 2
 
 - [ ] Integrate the q2seqware component into the workflow so it can grab an ini and parameterize itself when launching
 - [ ] Send tracking information (possibly a scrape of the working directory) back to a reporting queue for debugging and tracking of issues
+
+## Dependencies
+
+This project uses components from the following projects
+
+* [pcawg_delly_workflow](https://github.com/ICGC-TCGA-PanCancer/pcawg_delly_workflow)
+* [genetorrent](https://cghub.ucsc.edu/software/downloads.html)
