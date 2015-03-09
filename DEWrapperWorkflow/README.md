@@ -20,7 +20,7 @@ Next, after logging back in, cache the seqware containers that we will be using
         
 You need to get and build the DKFZ portion:
 
-    test
+        test
 
 Next, setup your environment with your workflow and a shared datastore directory
 
