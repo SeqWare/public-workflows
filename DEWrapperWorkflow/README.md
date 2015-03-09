@@ -64,6 +64,22 @@ Tasks for phase 2
 - [ ] Integrate the q2seqware component into the workflow so it can grab an ini and parameterize itself when launching
 - [ ] Send tracking information (possibly a scrape of the working directory) back to a reporting queue for debugging and tracking of issues
 
+## Docker Images
+
+### DKFZ
+
+
+
+### EMBL
+
+Original code is: https://bitbucket.org/weischen/pcawg-delly-workflow
+
+Our import for build process is: https://github.com/ICGC-TCGA-PanCancer/pcawg_delly_workflow
+
+There is a SeqWare workflow and Docker image to go with it.  These are built by Travis and DockerHub respectively.
+
+If there are changes on the original BitBucket repo they need to be mirrored to the GitHub repo to they are automatically built.
+
 ## Dependencies
 
 This project uses components from the following projects
