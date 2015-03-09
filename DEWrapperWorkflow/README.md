@@ -95,6 +95,25 @@ There is a SeqWare workflow and Docker image to go with it.  These are built by 
 
 If there are changes on the original BitBucket repo they need to be mirrored to the GitHub repo to they are automatically built.
 
+#### Github Bitbucket Sync
+
+In order to keep the two of these up-to-date:
+
+First, checkout from bitbucket:
+
+    git clone <bitbucket embl repo>
+    
+Second, add github as a remote to your .gitconfig
+
+    [remote "github"]
+    url = git@github.com:ICGC-TCGA-PanCancer/pcawg_delly_workflow.git
+    fetch = +refs/heads/*:refs/remotes/github/*
+    
+Third, pull from bitbucket and push to Github
+
+    git pull origin master
+    git push github
+
 ## Dependencies
 
 This project uses components from the following projects
