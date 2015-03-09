@@ -48,6 +48,7 @@ Next, you will need to grab a copy of the workflow wrappering the DKFZ and EMBL 
         git checkout feature/workflow-DKFZ-EMBL-wrap-workflow
         cd DEWrapperWorkflow/
         mvn clean install
+        rsync -rauvL target/Workflow_Bundle_DEWrapperWorkflow_1.0-SNAPSHOT_SeqWare_1.1.0-rc.1 /workflows/
 
 This will eventually be uploaded to S3.
 
