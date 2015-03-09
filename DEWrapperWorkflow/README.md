@@ -56,6 +56,10 @@ Do your `mvn clean install`,`seqware bundle package --dir target/Workflow_Bundle
 
         java -cp seqware-distribution-1.1.0-alpha.6-full.jar net.sourceforge.seqware.pipeline.tools.UnZip --input-zip Workflow_Bundle_DEWrapperWorkflow_1.0-SNAPSHOT_SeqWare_1.1.0-rc.1.zip --output-dir Workflow_Bundle_DEWrapperWorkflow_1.0-SNAPSHOT_SeqWare_1.1.0-rc.1
 
+Copy your pem key to:
+
+        /home/ubuntu/.ssh/20150212_boconnor_gnos_icgc_keyfile.pem
+
 Finally, you can run your workflow with a small launcher script that can be modified for different workflows
 
         wget https://raw.githubusercontent.com/SeqWare/public-workflows/feature/workflow-DKFZ-EMBL-wrap-workflow/DEWrapperWorkflow/launchWorkflow.sh
