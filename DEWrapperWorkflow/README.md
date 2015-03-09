@@ -25,6 +25,7 @@ You need to get and build the DKFZ portion:
 See https://github.com/SeqWare/docker/tree/develop/dkfz_dockered_workflows for downloading Roddy bundles of data/binaries.
 
         cd ~/gitroot/docker/dkfz_dockered_workflows/
+        # you need to download the Roddy binary, untar/gz, and move the Roddy directory into the current git checkout dir
         docker build -t dkfz_dockered_workflows .
         Successfully built 0805f987f138
         # you can list it out using...
