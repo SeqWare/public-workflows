@@ -17,6 +17,10 @@ Next, after logging back in, cache the seqware containers that we will be using
         docker pull seqware/seqware_whitestar
         docker pull seqware/seqware_full
         docker pull pancancer/pcawg-delly-workflow
+        
+You need to get and build the DKFZ portion:
+
+    test
 
 Next, setup your environment with your workflow and a shared datastore directory
 
