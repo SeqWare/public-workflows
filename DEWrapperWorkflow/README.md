@@ -6,7 +6,7 @@ This is intended to wrap the DKFZ and EMBL workflows as a SeqWare workflow and a
 
 ## Users
 
-In order to get this running, you will need to setup Docker. It is recommended that you do this on an Amazon host with a 100GB root disk (one good choice is ami-9a562df2). We used a m3.xlarge:
+In order to get this running, you will need to setup Docker. It is recommended that you do this on an Amazon host with a 100GB root disk (one good choice is ami-9a562df2, this should be an Ubuntu 14.04 image if you use another AMI). We used a m3.xlarge:
 
         curl -sSL https://get.docker.com/ | sudo sh
         sudo usermod -aG docker ubuntu
@@ -17,6 +17,21 @@ Next, after logging back in, cache the seqware containers that we will be using
         docker pull seqware/seqware_whitestar
         docker pull seqware/seqware_full
         docker pull pancancer/pcawg-delly-workflow
+        
+You need to get and build the DKFZ portion:
+
+        git clone git@github.com:SeqWare/docker.git
+
+See https://github.com/SeqWare/docker/tree/develop/dkfz_dockered_workflows for downloading Roddy bundles of data/binaries.
+
+        cd ~/gitroot/docker/dkfz_dockered_workflows/
+        # you need to download the Roddy binary, untar/gz, and move the Roddy directory into the current git checkout dir
+        docker build -t dkfz_dockered_workflows .
+        Successfully built 0805f987f138
+        # you can list it out using...
+        ubuntu@ip-10-169-171-198:~/gitroot/docker/dkfz_dockered_workflows$ docker images
+        REPOSITORY                          TAG                 IMAGE ID            CREATED             VIRTUAL SIZE
+        dkfz_dockered_workflows             latest              0805f987f138        8 seconds ago       1.63 GB
 
 Next, setup your environment with your workflow and a shared datastore directory
 
@@ -25,9 +40,18 @@ Next, setup your environment with your workflow and a shared datastore directory
         sudo chown ubuntu:ubuntu /datastore
         chmod a+wrx /workflows && chmod a+wrx /datastore
         wget https://seqwaremaven.oicr.on.ca/artifactory/seqware-release/com/github/seqware/seqware-distribution/1.1.0-alpha.6/seqware-distribution-1.1.0-alpha.6-full.jar
-        sudo apt-get install openjdk-7-jre-headless
+        sudo apt-get install openjdk-7-jdk
 
-Next, you will need to grab a copy of your workflow. Do your `mvn clean install`,`seqware bundle package --dir target/Workflow_Bundle_WorkflowOfWorkflows_1.0-SNAPSHOT_SeqWare_1.1.0-rc.1/`, and then scp the bundle in. These next steps assume that you have copied in your bundle. Do 
+Next, you will need to grab a copy of the workflow wrappering the DKFZ and EMBL pipelines.
+
+        git clone git clone git@github.com:SeqWare/public-workflows.git
+        git checkout feature/workflow-DKFZ-EMBL-wrap-workflow
+        cd DEWrapperWorkflow/
+        mvn clean install
+
+This will eventually be uploaded to S3.
+
+Do your `mvn clean install`,`seqware bundle package --dir target/Workflow_Bundle_WorkflowOfWorkflows_1.0-SNAPSHOT_SeqWare_1.1.0-rc.1/`, and then scp the bundle in. These next steps assume that you have copied in your bundle. Do the following if you're downloading a zip from S3.
 
         java -cp seqware-distribution-1.1.0-alpha.6-full.jar net.sourceforge.seqware.pipeline.tools.UnZip --input-zip Workflow_Bundle_DEWrapperWorkflow_1.0-SNAPSHOT_SeqWare_1.1.0-rc.1.zip --output-dir Workflow_Bundle_DEWrapperWorkflow_1.0-SNAPSHOT_SeqWare_1.1.0-rc.1
 
@@ -63,6 +87,41 @@ Tasks for phase 2
 
 - [ ] Integrate the q2seqware component into the workflow so it can grab an ini and parameterize itself when launching
 - [ ] Send tracking information (possibly a scrape of the working directory) back to a reporting queue for debugging and tracking of issues
+
+## Docker Images
+
+### DKFZ
+
+
+
+### EMBL
+
+Original code is: https://bitbucket.org/weischen/pcawg-delly-workflow
+
+Our import for build process is: https://github.com/ICGC-TCGA-PanCancer/pcawg_delly_workflow
+
+There is a SeqWare workflow and Docker image to go with it.  These are built by Travis and DockerHub respectively.
+
+If there are changes on the original BitBucket repo they need to be mirrored to the GitHub repo to they are automatically built.
+
+#### Github Bitbucket Sync
+
+In order to keep the two of these up-to-date:
+
+First, checkout from bitbucket:
+
+    git clone <bitbucket embl repo>
+    
+Second, add github as a remote to your .gitconfig
+
+    [remote "github"]
+    url = git@github.com:ICGC-TCGA-PanCancer/pcawg_delly_workflow.git
+    fetch = +refs/heads/*:refs/remotes/github/*
+    
+Third, pull from bitbucket and push to Github
+
+    git pull origin master
+    git push github
 
 ## Dependencies
 
