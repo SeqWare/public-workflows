@@ -40,7 +40,7 @@ Next, setup your environment with your workflow and a shared datastore directory
         sudo chown ubuntu:ubuntu /datastore
         chmod a+wrx /workflows && chmod a+wrx /datastore
         wget https://seqwaremaven.oicr.on.ca/artifactory/seqware-release/com/github/seqware/seqware-distribution/1.1.0-alpha.6/seqware-distribution-1.1.0-alpha.6-full.jar
-        sudo apt-get install openjdk-7-jdk
+        sudo apt-get install openjdk-7-jdk maven
 
 Next, you will need to grab a copy of the workflow wrappering the DKFZ and EMBL pipelines.
 
