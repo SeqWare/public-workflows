@@ -125,7 +125,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                                     + pemFile
                                     + ":/root/gnos_icgc_keyfile.pem seqware/pancancer_upload_download"
                                     // here is the Bash command to be run
-                                    + " /bin/bash -c 'cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
+                                    + " \"/bin/bash -c 'cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
                                     + "/opt/vcf-uploader/vcf-uploader-1.0.0/gnos_download_file.pl "
                                     // here is the command that is fed to gtdownload
                                     + "--command \\\"gtdownload -c /root/gnos_icgc_keyfile.pem -k 60 -vv " + gnosServer
