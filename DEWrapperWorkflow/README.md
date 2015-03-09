@@ -6,7 +6,7 @@ This is intended to wrap the DKFZ and EMBL workflows as a SeqWare workflow and a
 
 ## Users
 
-In order to get this running, you will need to setup Docker. It is recommended that you do this on an Amazon host with a 100GB root disk (one good choice is ami-9a562df2). We used a m3.xlarge:
+In order to get this running, you will need to setup Docker. It is recommended that you do this on an Amazon host with a 100GB root disk (one good choice is ami-9a562df2, this should be an Ubuntu 14.04 image if you use another AMI). We used a m3.xlarge:
 
         curl -sSL https://get.docker.com/ | sudo sh
         sudo usermod -aG docker ubuntu
