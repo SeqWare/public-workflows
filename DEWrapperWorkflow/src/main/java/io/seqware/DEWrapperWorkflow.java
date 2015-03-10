@@ -165,12 +165,15 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         // call the EMBL workflow
         Job emblJob = this.getWorkflow().createBashJob("embl workflow");
         // we have to use a nested container here because of the seqware_lock
+        boolean count = true;
         for (Entry<String, String> entry : this.getConfigs().entrySet()) {
             if (entry.getKey().startsWith(EMBL_PREFIX)) {
+                String cat = ">>";
+                if (count) { cat = ">"; count = false; }
                 emblJob.getCommand().addArgument(
                 // we need a better way of getting the ini file here, this may not be safe if the workflow has escaped key-values
-                        "echo \"" + entry.getKey().replaceFirst(EMBL_PREFIX, "") + "\"=\"" + entry.getValue() + "\" >> `pwd`/"
-                                + SHARED_WORKSPACE + "/settings/embl.ini \n");
+                         "echo \"" + entry.getKey().replaceFirst(EMBL_PREFIX, "") + "\"=\"" + entry.getValue() + "\" "+cat+" `pwd`/"
+                                + SHARED_WORKSPACE + "/settings/embl.ini \n"); 
             }
         }
 
