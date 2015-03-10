@@ -146,7 +146,9 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             previousJobPointer = downloadJob;
         }
 
+        // call the EMBL workflow
         previousJobPointer = createEMBLJobs(previousJobPointer);
+        
         // call the DKFZ workflow
         previousJobPointer = createDKFZWorkflow(previousJobPointer);
 
@@ -260,6 +262,9 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
     private static final String EMBL_PREFIX = "EMBL.";
 
     private Job createDKFZWorkflow(Job previousJobPointer) {
+      
+      // the dellyFile is of the format: 
+      
         Job generateIni = this.getWorkflow().createBashJob("generateDKFZ_ini");
         generateIni.getCommand().addArgument(
                 "echo \"#!/bin/bash\n" + "tumorBams=( <full_path>/7723a85b59ebce340fe43fc1df504b35.bam )\n"
