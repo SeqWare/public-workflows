@@ -115,7 +115,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         getReferenceDataJob.getCommand().addArgument("gunzip genome.fa.gz || true \n");
         // upload this to S3 after testing
         getReferenceDataJob.getCommand().addArgument(
-                "wget ftp://ftp-exchange.embl-heidelberg.de/pub/exchange/weischen/outgoing/pcawg/hs37d5_1000GP.gc \n");
+                "wget https://s3.amazonaws.com/pan-cancer-data/pan-cancer-reference/hs37d5_1000GP.gc \n");
         getReferenceDataJob.addParent(createSharedWorkSpaceJob);
 
         // create inputs
