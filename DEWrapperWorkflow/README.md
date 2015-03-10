@@ -40,7 +40,7 @@ Next, setup your environment with your workflow and a shared datastore directory
         sudo chown ubuntu:ubuntu /datastore
         chmod a+wrx /workflows && chmod a+wrx /datastore
         wget https://seqwaremaven.oicr.on.ca/artifactory/seqware-release/com/github/seqware/seqware-distribution/1.1.0-alpha.6/seqware-distribution-1.1.0-alpha.6-full.jar
-        sudo apt-get install openjdk-7-jdk
+        sudo apt-get install openjdk-7-jdk maven
 
 Next, you will need to grab a copy of the workflow wrappering the DKFZ and EMBL pipelines.
 
@@ -48,12 +48,17 @@ Next, you will need to grab a copy of the workflow wrappering the DKFZ and EMBL 
         git checkout feature/workflow-DKFZ-EMBL-wrap-workflow
         cd DEWrapperWorkflow/
         mvn clean install
+        rsync -rauvL target/Workflow_Bundle_DEWrapperWorkflow_1.0-SNAPSHOT_SeqWare_1.1.0-rc.1 /workflows/
 
 This will eventually be uploaded to S3.
 
 Do your `mvn clean install`,`seqware bundle package --dir target/Workflow_Bundle_WorkflowOfWorkflows_1.0-SNAPSHOT_SeqWare_1.1.0-rc.1/`, and then scp the bundle in. These next steps assume that you have copied in your bundle. Do the following if you're downloading a zip from S3.
 
         java -cp seqware-distribution-1.1.0-alpha.6-full.jar net.sourceforge.seqware.pipeline.tools.UnZip --input-zip Workflow_Bundle_DEWrapperWorkflow_1.0-SNAPSHOT_SeqWare_1.1.0-rc.1.zip --output-dir Workflow_Bundle_DEWrapperWorkflow_1.0-SNAPSHOT_SeqWare_1.1.0-rc.1
+
+Copy your pem key to:
+
+        /home/ubuntu/.ssh/20150212_boconnor_gnos_icgc_keyfile.pem
 
 Finally, you can run your workflow with a small launcher script that can be modified for different workflows
 
