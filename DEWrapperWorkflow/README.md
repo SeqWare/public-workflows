@@ -78,21 +78,6 @@ Look in your datastore for the two working directories generated per run (one fo
 
 Refer to https://github.com/SeqWare/docker/commit/9b98f6ec47f0acc4545fd0d6243a7693305da83a to see the Perl script this was derived from. 
 
-These are the remaining tasks that need to be completed for phase 1
-
-- [ ] uncomment and test the download of data provided with a valid pem key 
-- [ ] insert a proper workflow in-place of the HelloWorld bundle that stands in for EMBL
-- [ ] uncomment and test upload of EMBL data
-- [ ] validate that ini file for DKFZ which looks incomplete
-- [ ] replace call to Ubuntu container with a call to the DKFZ container
-- [ ] uncomment and test upload of DKFZ data
-- [ ] nail down container versions and tag them in Docker Hub (where possible)
-
-Tasks for phase 2
-
-- [ ] Integrate the q2seqware component into the workflow so it can grab an ini and parameterize itself when launching
-- [ ] Send tracking information (possibly a scrape of the working directory) back to a reporting queue for debugging and tracking of issues
-
 ## Docker Images
 
 ### DKFZ
