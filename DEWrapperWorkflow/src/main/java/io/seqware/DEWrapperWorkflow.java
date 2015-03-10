@@ -104,12 +104,21 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/downloads/embl \n");
         createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/inputs \n");
         createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/uploads \n");
+        createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/data \n");
 
         // create reference data by calling download_data (currently a stub in the Perl version)
         // TODO: download reference data here
+        Job getReferenceDataJob = this.getWorkflow().createBashJob("get_some_stuff");
+        getReferenceDataJob.getCommand().addArgument("cd " + SHARED_WORKSPACE + "/data");
+        getReferenceDataJob.getCommand().addArgument("wget http://s3.amazonaws.com/pan-cancer-data/pan-cancer-reference/genome.fa.gz");
+        getReferenceDataJob.getCommand().addArgument("gunzip genome.fa.gz");
+        // upload this to S3 after testing
+        getReferenceDataJob.getCommand().addArgument(
+                "wget ftp://ftp-exchange.embl-heidelberg.de/pub/exchange/weischen/outgoing/pcawg/hs37d5_1000GP.gc");
+        getReferenceDataJob.addParent(createSharedWorkSpaceJob);
 
         // create inputs
-        Job previousJobPointer = createSharedWorkSpaceJob;
+        Job previousJobPointer = getReferenceDataJob;
         for (int i = 0; i < analysisIds.size(); i++) {
             Job downloadJob = this.getWorkflow().createBashJob("download" + i);
             downloadJob
