@@ -156,21 +156,24 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         Job emblJob = this.getWorkflow().createBashJob("embl workflow");
         // we have to use a nested container here because of the seqware_lock
         for (Entry<String, String> entry : this.getConfigs().entrySet()) {
+            if (entry.getKey().startsWith("EMBL")) {
             emblJob.getCommand().addArgument(
             // we need a better way of getting the ini file here, this may not be safe if the workflow has escaped key-values
-                    "echo \"" + entry.getKey() + "\"=\"" + entry.getValue() + "\" >> `pwd`/" + SHARED_WORKSPACE + "/settings/embl.ini \n");
+                    "echo \"" + entry.getKey().replaceFirst("DELLY_", "") + "\"=\"" + entry.getValue() + "\" >> `pwd`/" + SHARED_WORKSPACE + "/settings/embl.ini \n");
+            }
         }
+
         emblJob.getCommand()
                 .addArgument(
                 // this is the actual command we run inside the container, which is to launch a workflow
-                        "docker run --rm -h master -v /datastore:/datastore "
+                        "docker run --rm -h master -v `pwd`/" + SHARED_WORKSPACE +":/datastore "
                                 // mount the workflow.ini
                                 + "-v `pwd`/" + SHARED_WORKSPACE
                                 + "/settings/embl.ini:/workflow.ini "
                                 // the container
                                 + "pancancer/pcawg-delly-workflow "
                                 // command received by seqware (replace this with a real call to Delly after getting bam files downloaded)
-                                + "/start.sh \"seqware bundle launch --dir /home/seqware/provisioned-bundles/Workflow_Bundle_HelloWorld_1.0-SNAPSHOT_SeqWare_1.1.0-rc.1/ --engine whitestar --no-metadata\" \n");
+                                + "/start.sh \"seqware bundle launch --dir /mnt/home/seqware/DELLY/target/Workflow_Bundle_DELLY_1.0-SNAPSHOT_SeqWare_1.1.0-alpha.6 --engine whitestar --no-metadata --ini /workflow.ini\" \n");
         // with a real workflow, we would pass in the workflow.ini
 
         emblJob.addParent(previousJobPointer);
