@@ -189,7 +189,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                                 // the container
                                 + "pancancer/pcawg-delly-workflow "
                                 // command received by seqware (replace this with a real call to Delly after getting bam files downloaded)
-                                + "/start.sh \"seqware bundle launch --dir /mnt/home/seqware/DELLY/target/Workflow_Bundle_DELLY_1.0-SNAPSHOT_SeqWare_1.1.0-alpha.6 --engine whitestar --no-metadata --ini /workflow.ini\" \n");
+                                + "/start.sh \"seqware bundle launch --dir /mnt/home/seqware/DELLY/target/Workflow_Bundle_DELLY_1.0-SNAPSHOT_SeqWare_1.1.0-alpha.6 --engine whitestar-parallel --no-metadata --ini /workflow.ini\" \n");
         // with a real workflow, we would pass in the workflow.ini
 
         emblJob.addParent(previousJobPointer);
