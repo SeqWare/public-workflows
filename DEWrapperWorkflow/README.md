@@ -2,7 +2,7 @@ This is a prototype for the DKFZ/EMBL workflow.
 
 This is intended to wrap the DKFZ and EMBL workflows as a SeqWare workflow and allow it to run on both within a seqware/seqware\_full container and on our existing Bindle provisioned infrastructure with an additional Docker install. 
 
-[![Build Status](https://travis-ci.org/SeqWare/public-workflows.svg?branch=feature%2Fworkflow-DKFZ-EMBL-wrap-workflow)](https://travis-ci.org/SeqWare/public-workflows)
+[![Build Status](https://travis-ci.org/SeqWare/public-workflows.svg?branch=develop)](https://travis-ci.org/SeqWare/public-workflows)
 
 ## Users
 
