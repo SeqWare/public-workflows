@@ -278,13 +278,13 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                 "docker run "
                         // mount shared directories
                         + "-v `pwd`/" + SHARED_WORKSPACE
-                        + "/downloads/dkfz:/mnt/datastore/bundledFiles "
+                        + "/downloads/dkfz/bundledFiles:/mnt/datastore/bundledFiles "
                         // this path does not look right
                         + "-v `pwd`/" + SHARED_WORKSPACE + ":/mnt/datastore/workflow_data " + "-v `pwd`/" + SHARED_WORKSPACE
                         + "/settings/dkfz.ini:/mnt/datastore/workflow_data/workflow.ini " + "-v `pwd`/" + SHARED_WORKSPACE
                         + "/results:/mnt/datastore/result_data "
                         // the DKFZ image and the command we feed into it follow
-                        + "dkfz_dockered_workflows /bin/bash -c 'dmesg'");
+                        + "dkfz_dockered_workflows /bin/bash -c '/root/bin/runwrapper.sh' ");
         runWorkflow.addParent(generateIni);
         // upload
         Job uploadWorkflow = this.getWorkflow().createBashJob("uploadDKFZ");
