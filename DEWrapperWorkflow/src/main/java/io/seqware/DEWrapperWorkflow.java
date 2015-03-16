@@ -38,13 +38,16 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
     private String vmInstanceCores;
     private String vmInstanceMemGb;
     private String vmLocationCode;
-    private String studyRefnameOverride;
-    private String analysisCenterOverride;
+    private String studyRefnameOverride = null;
+    private String analysisCenterOverride = null;
     private String formattedDate;
     private String commonDataDir = "";
     private String dkfzDataBundleServer = "";
     private String dkfzDataBundleUUID = "";
     private String dkfzDataBundleFile = "";
+    private static final String EMBL_PREFIX = "EMBL.";
+    private String controlBam = null;
+    private String controlAnalysisId = null;
     
     @Override
     public void setupWorkflow() {
@@ -57,6 +60,10 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             bams.add(getProperty("controlBam"));
             this.gnosServer = getProperty("gnosServer");
             this.pemFile = getProperty("pemFile");
+            
+            // controls
+            this.controlBam = getProperty("controlBam");
+            this.controlAnalysisId = getProperty("controlAnalysisId");
 
             // these variables are those extra required for EMBL upload
             this.uploadServer = getProperty("uploadServer");
@@ -73,8 +80,8 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             this.vmInstanceCores = getProperty("vmInstanceCores");
             this.vmInstanceMemGb = getProperty("vmInstanceMemGb");
             this.vmLocationCode = getProperty("vmLocationCode");
-            this.studyRefnameOverride = getProperty("study-refname-override");
-            this.analysisCenterOverride = getProperty("analysis-center-override");
+            if (this.hasPropertyAndNotNull("study-refname-override")) { this.studyRefnameOverride = getProperty("study-refname-override"); }
+            if (this.hasPropertyAndNotNull("analysis-center-override")) { this.analysisCenterOverride = getProperty("analysis-center-override"); }
             
             // shared data directory
             commonDataDir = getProperty("common_data_dir");
@@ -134,7 +141,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         // download DKFZ data from GNOS
         Job getDKFZReferenceDataJob = this.getWorkflow().createBashJob("getDKFZDataFiles");
         getDKFZReferenceDataJob.getCommand().addArgument("cd " + commonDataDir + "/dkfz \n");
-        getDKFZReferenceDataJob.getCommand().addArgument("docker run "
+        getDKFZReferenceDataJob.getCommand().addArgument("if [ ! -d " + dkfzDataBundleUUID + "/bundledFiles ]; then docker run "
                                     // link in the input directory
                                     + "-v `pwd`:/workflow_data "
                                     // link in the pem key
@@ -149,7 +156,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                                     + "/cghub/data/analysis/download/" + dkfzDataBundleUUID + "\" --file " + dkfzDataBundleUUID + "/"
                                     + dkfzDataBundleFile + " --retries 10 --sleep-min 1 --timeout-min 60' \n "
                                     + "cd " + dkfzDataBundleUUID + " \n "
-                                    + "tar zxf " + dkfzDataBundleFile + " \n ");
+                                    + "tar zxf " + dkfzDataBundleFile + " \n fi \n ");
         getDKFZReferenceDataJob.addParent(getReferenceDataJob);
         
         // create inputs
@@ -181,12 +188,13 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         }
 
         // call the EMBL workflow
-        previousJobPointer = createEMBLJobs(previousJobPointer);
+        previousJobPointer = runEMBLWorkflow(previousJobPointer);
         
         // call the DKFZ workflow
-        previousJobPointer = createDKFZWorkflow(previousJobPointer);
+        previousJobPointer = runDKFZWorkflow(previousJobPointer);
 
         // cleanup
+        // TODO: turn on cleanup
         Job cleanup = this.getWorkflow().createBashJob("cleanup");
         cleanup.getCommand().addArgument("#rf -Rf " + SHARED_WORKSPACE + " \n");
         cleanup.addParent(previousJobPointer);
@@ -197,7 +205,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
      * @param previousJobPointer
      * @return a pointer to the last job created
      */
-    private Job createEMBLJobs(Job previousJobPointer) {
+    private Job runEMBLWorkflow(Job previousJobPointer) {
         // call the EMBL workflow
         Job emblJob = this.getWorkflow().createBashJob("embl workflow");
         // we have to use a nested container here because of the seqware_lock
@@ -217,6 +225,8 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                 .addArgument(
                 // this is the actual command we run inside the container, which is to launch a workflow
                         "docker run --rm -h master -v `pwd`/" + SHARED_WORKSPACE + ":/datastore "
+                                // data files
+                                + "-v " + commonDataDir + "/embl:/data "
                                 // mount the workflow.ini
                                 + "-v `pwd`/" + SHARED_WORKSPACE
                                 + "/settings/embl.ini:/workflow.ini "
@@ -230,7 +240,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         previousJobPointer = emblJob;
 
         // upload the EMBL results
-        String[] emblTypes = { "snv_mnv", "indel", "sv", "cnv" };
+        String[] emblTypes = { "sv" };
 
         List<String> vcfs = new ArrayList<>();
         List<String> tbis = new ArrayList<>();
@@ -242,70 +252,115 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         for (String emblType : emblTypes) {
             for (String tumorAliquotId : tumorAliquotIds) {
 
-                String baseFile = "`pwd`/" + SHARED_WORKSPACE + "/workflow_data/results/" + tumorAliquotId + ".embl_1-0-0."
-                        + this.formattedDate + ".somatic." + emblType;
+              // TODO: this isn't following the naming convention
+              // should be "f393bb07-270c-2c93-e040-11ac0d484533.embl-delly-prefilter_1-0-0.20150311.somatic.sv.vcf.gz"
+              // String baseFile = "`pwd`/" + SHARED_WORKSPACE + "/" + tumorAliquotId + ".embl-delly-prefilter_1-0-0."
+              //          + this.formattedDate + ".somatic." + emblType;
+                String baseFile = "`pwd`/" + SHARED_WORKSPACE + "/" + tumorAliquotId + ".embl-delly_1-0-0.preFilter.*.somatic";
 
                 vcfs.add(baseFile + ".vcf.gz");
-                tbis.add(baseFile + ".vcf.gz.tbi");
-                tars.add(baseFile + ".tar.gz");
                 vcfmd5s.add(baseFile + ".vcf.gz.md5");
+                tbis.add(baseFile + ".vcf.gz.tbi");
                 tbimd5s.add(baseFile + ".vcf.gz.tbi.md5");
-                tarmd5s.add(baseFile + ".tar.gz.md5");
+                
+                tars.add(baseFile + ".readname.txt.tar.gz");
+                tarmd5s.add(baseFile + ".readname.txt.tar.gz.md5");      
+                
+                tars.add(baseFile + "bedpe.txt.tar.gz");
+                tarmd5s.add(baseFile + "bedpe.txt.tar.gz.md5");
             }
         }
 
+        // FIXME: hardcoded versions, URLs, etc
         Job uploadJob = this.getWorkflow().createBashJob("uploadEMBL");
+        StringBuffer overrideTxt = new StringBuffer();
+        if (this.studyRefnameOverride != null) {
+          overrideTxt.append(" --study-refname-override " + this.studyRefnameOverride);
+        }
+        if (this.analysisCenterOverride != null) {
+          overrideTxt.append(" --analysis-center-override " + this.analysisCenterOverride);
+        }
         uploadJob.getCommand().addArgument(
                 "docker run "
                 // link in the input directory
                         + "-v `pwd`/"
                         + SHARED_WORKSPACE
-                        + "/workflow_data:/workflow_data "
+                        + ":/workflow_data "
                         // link in the pem kee
                         + "-v "
                         + pemFile
                         + ":/root/gnos_icgc_keyfile.pem "
                         // looked like a placeholder in the Perl script
                         // + "-v <embl_output_per_donor>:/result_data "
-                        //
                         + "seqware/pancancer_upload_download "
-                        + " dmesg "
                         // the command invoked on the container follows
-                        + "#/bin/bash -c 'cd /workflow_data/results/ && "
+                        + "/bin/bash -c 'cd /workflow_data && echo '{}' > /tmp/empty.json && mkdir -p uploads && "
                         + "perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
                         + "/opt/vcf-uploader/vcf-uploader-1.0.0/gnos_upload_vcf.pl "
                         // parameters to gnos_upload
                         + "--metadata-urls "
                         + this.metadataURLs
-                        //
                         + " --vcfs " + Joiner.on(',').join(vcfs) + " --vcf-md5sum-files " + Joiner.on(',').join(vcfmd5s) + " --vcf-idxs "
                         + Joiner.on(',').join(tbis) + " --vcf-idx-md5sum-files " + Joiner.on(',').join(tbimd5s) + " --tarballs "
-                        + Joiner.on(',').join(tars) + " --tarball-md5sum-files " + Joiner.on(',').join(tarmd5s) + " --outdir `pwd`/"
-                        + SHARED_WORKSPACE + "/uploads" + " --key " + uploadPemFile + " --upload-url " + uploadServer
+                        + Joiner.on(',').join(tars) + " --tarball-md5sum-files " + Joiner.on(',').join(tarmd5s) + " --outdir uploads" 
+                        + " --key /root/gnos_icgc_keyfile.pem --upload-url " + uploadServer
                         + " --qc-metrics-json /tmp/empty.json" + " --timing-metrics-json /tmp/empty.json"
-                        + " --workflow-src-url http://github.com" + "--workflow-url http://github.com" + " --workflow-name EMBL"
+                        + " --workflow-src-url https://bitbucket.org/weischen/pcawg-delly-workflow" + "--workflow-url https://registry.hub.docker.com/u/pancancer/pcawg-delly-workflow" + " --workflow-name EMBL-Delly"
                         + " --workflow-version 1.0.0" + " --seqware-version " + this.getSeqware_version() + " --vm-instance-type "
                         + this.vmInstanceType + " --vm-instance-cores " + this.vmInstanceCores + " --vm-instance-mem-gb "
-                        + this.vmInstanceMemGb + " --vm-location-code " + this.vmLocationCode + " --study-refname-override "
-                        + this.studyRefnameOverride + " --analysis-center-override " + this.analysisCenterOverride + '\'');
+                        + this.vmInstanceMemGb + " --vm-location-code " + this.vmLocationCode + overrideTxt);
         uploadJob.addParent(previousJobPointer);
         // for now, make these sequential
         return uploadJob;
     }
 
-    private static final String EMBL_PREFIX = "EMBL.";
 
-    private Job createDKFZWorkflow(Job previousJobPointer) {
+    private Job runDKFZWorkflow(Job previousJobPointer) {
       
-      // the dellyFile is of the format: 
+        // generate the tumor array
+        ArrayList<String> tumorBams = new ArrayList<String>();
+        for  (int i=0; i<analysisIds.size(); i++) {
+          tumorBams.add("/mnt/datastore/workflow_data/inputdata/"+analysisIds.get(i)+"/"+bams.get(i));
+        }
+        // tumor delly files
+        ArrayList<String> tumorDelly = new ArrayList<String>();
+        for  (int i=0; i<tumorAliquotIds.size(); i++) {
+          tumorBams.add("/mnt/datastore/workflow_data/inputdata/"+tumorAliquotIds.get(i)+".embl-delly_1-0-0.preFilter.20150311.germline.bedpe.txt");
+        }
       
         Job generateIni = this.getWorkflow().createBashJob("generateDKFZ_ini");
         generateIni.getCommand().addArgument(
-                "echo \"#!/bin/bash\n" + "tumorBams=( <full_path>/7723a85b59ebce340fe43fc1df504b35.bam )\n"
-                        + "controlBam=8f957ddae66343269cb9b854c02eee2f.bam\n" + "dellyFiles=( <per_tumor> )\n" + "runACEeq=true\n"
-                        + "runSNVCalling=true\n" + "runIndelCalling=true\n" + "date=" + this.formattedDate + "\" > " + SHARED_WORKSPACE
+                        "echo \"#!/bin/bash\n" 
+                        + "tumorBams=( "+Joiner.on(" ").join(tumorBams)+" )\n"
+                        + "controlBam=/mnt/datastore/workflow_data/inputdata/"+controlAnalysisId+"/"+controlBam+"\n" 
+                        + "dellyFiles=( "+Joiner.on(" ").join(tumorDelly)+" )\n"
+                        + "runACEeq=true\n"
+                        + "runSNVCalling=true\n" 
+                        + "runIndelCalling=true\n"
+                        + "date=" + this.formattedDate
+                        + "\" > " + SHARED_WORKSPACE
                         + "/settings/dkfz.ini \n");
         generateIni.addParent(previousJobPointer);
+        
+        // LEFT OFF HERE: need to refactor the below using the "working" example here:
+        /*
+        export SEQWARE_SETTINGS=/home/seqware/.seqware/settings
+cd /datastore/oozie-1ed05159-7233-4e64-9e8f-8d9e9ba73f5f
+echo "#!/bin/bash
+tumorBams=( /mnt/datastore/workflow_data/inputdata/ef26d046-e88a-4f21-a232-16ccb43637f2/7723a85b59ebce340fe43fc1df504b35.bam )
+aliquotIDs=( f393bb07-270c-2c93-e040-11ac0d484533 )
+controlBam=/mnt/datastore/workflow_data/inputdata/1b9215ab-3634-4108-9db7-7e63139ef7e9/8f957ddae66343269cb9b854c02eee2f.bam
+dellyFiles=( /mnt/datastore/workflow_data/inputdata/test_run.embl-delly_1-0-0.preFilter.20150311.germline.bedpe.txt )
+runACEeq=true
+runSNVCalling=true
+runIndelCalling=true
+date=20150310" > shared_workspace/settings/dkfz.ini
+        
+        docker run -v `pwd`/shared_workspace/downloads/dkfz/bundledFiles:/mnt/datastore/bundledFiles -v `pwd`/shared_workspace/inputs:/mnt/datastore/workflow_data/inputdata -v `pwd`/shared_workspace/testdata:/mnt/datastore/testdata  -v `pwd`/shared_workspace/settings/dkfz.ini:/mnt/datastore/workflow_data/workflow.ini -v `pwd`/shared_workspace/results:/mnt/datastore/resultdata dkfz_dockered_workflows /bin/bash -c '/root/bin/runwrapper.sh'
+~                                                     
+        
+        */
+        
         // cleanup
         Job runWorkflow = this.getWorkflow().createBashJob("runDKFZ");
         runWorkflow.getCommand().addArgument(
@@ -320,6 +375,9 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                         // the DKFZ image and the command we feed into it follow
                         + "dkfz_dockered_workflows /bin/bash -c '/root/bin/runwrapper.sh' ");
         runWorkflow.addParent(generateIni);
+        
+        
+        // TODO: deprecated
         // upload
         Job uploadWorkflow = this.getWorkflow().createBashJob("uploadDKFZ");
         uploadWorkflow.getCommand().addArgument(
@@ -335,5 +393,82 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                         + "#bin/bash -c 'cd /result_data/ && run_upload.pl ... '\");\n");
         uploadWorkflow.addParent(runWorkflow);
         return uploadWorkflow;
+        
+        
+        
+        
+        // upload the EMBL results
+        String[] emblTypes = { "sv" };
+
+        List<String> vcfs = new ArrayList<>();
+        List<String> tbis = new ArrayList<>();
+        List<String> tars = new ArrayList<>();
+        List<String> vcfmd5s = new ArrayList<>();
+        List<String> tbimd5s = new ArrayList<>();
+        List<String> tarmd5s = new ArrayList<>();
+
+        for (String emblType : emblTypes) {
+            for (String tumorAliquotId : tumorAliquotIds) {
+
+              // TODO: this isn't following the naming convention
+              // should be "f393bb07-270c-2c93-e040-11ac0d484533.embl-delly-prefilter_1-0-0.20150311.somatic.sv.vcf.gz"
+              // String baseFile = "`pwd`/" + SHARED_WORKSPACE + "/" + tumorAliquotId + ".embl-delly-prefilter_1-0-0."
+              //          + this.formattedDate + ".somatic." + emblType;
+                String baseFile = "`pwd`/" + SHARED_WORKSPACE + "/" + tumorAliquotId + ".embl-delly_1-0-0.preFilter.*.somatic";
+
+                vcfs.add(baseFile + ".vcf.gz");
+                vcfmd5s.add(baseFile + ".vcf.gz.md5");
+                tbis.add(baseFile + ".vcf.gz.tbi");
+                tbimd5s.add(baseFile + ".vcf.gz.tbi.md5");
+                
+                tars.add(baseFile + ".readname.txt.tar.gz");
+                tarmd5s.add(baseFile + ".readname.txt.tar.gz.md5");      
+                
+                tars.add(baseFile + "bedpe.txt.tar.gz");
+                tarmd5s.add(baseFile + "bedpe.txt.tar.gz.md5");
+            }
+        }
+
+        // FIXME: hardcoded versions, URLs, etc
+        Job uploadJob = this.getWorkflow().createBashJob("uploadEMBL");
+        StringBuffer overrideTxt = new StringBuffer();
+        if (this.studyRefnameOverride != null) {
+          overrideTxt.append(" --study-refname-override " + this.studyRefnameOverride);
+        }
+        if (this.analysisCenterOverride != null) {
+          overrideTxt.append(" --analysis-center-override " + this.analysisCenterOverride);
+        }
+        uploadJob.getCommand().addArgument(
+                "docker run "
+                // link in the input directory
+                        + "-v `pwd`/"
+                        + SHARED_WORKSPACE
+                        + ":/workflow_data "
+                        // link in the pem kee
+                        + "-v "
+                        + pemFile
+                        + ":/root/gnos_icgc_keyfile.pem "
+                        // looked like a placeholder in the Perl script
+                        // + "-v <embl_output_per_donor>:/result_data "
+                        + "seqware/pancancer_upload_download "
+                        // the command invoked on the container follows
+                        + "/bin/bash -c 'cd /workflow_data && echo '{}' > /tmp/empty.json && mkdir -p uploads && "
+                        + "perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
+                        + "/opt/vcf-uploader/vcf-uploader-1.0.0/gnos_upload_vcf.pl "
+                        // parameters to gnos_upload
+                        + "--metadata-urls "
+                        + this.metadataURLs
+                        + " --vcfs " + Joiner.on(',').join(vcfs) + " --vcf-md5sum-files " + Joiner.on(',').join(vcfmd5s) + " --vcf-idxs "
+                        + Joiner.on(',').join(tbis) + " --vcf-idx-md5sum-files " + Joiner.on(',').join(tbimd5s) + " --tarballs "
+                        + Joiner.on(',').join(tars) + " --tarball-md5sum-files " + Joiner.on(',').join(tarmd5s) + " --outdir uploads" 
+                        + " --key /root/gnos_icgc_keyfile.pem --upload-url " + uploadServer
+                        + " --qc-metrics-json /tmp/empty.json" + " --timing-metrics-json /tmp/empty.json"
+                        + " --workflow-src-url https://bitbucket.org/weischen/pcawg-delly-workflow" + "--workflow-url https://registry.hub.docker.com/u/pancancer/pcawg-delly-workflow" + " --workflow-name EMBL-Delly"
+                        + " --workflow-version 1.0.0" + " --seqware-version " + this.getSeqware_version() + " --vm-instance-type "
+                        + this.vmInstanceType + " --vm-instance-cores " + this.vmInstanceCores + " --vm-instance-mem-gb "
+                        + this.vmInstanceMemGb + " --vm-location-code " + this.vmLocationCode + overrideTxt);
+        uploadJob.addParent(previousJobPointer);
+        // for now, make these sequential
+        return uploadJob;
     }
 }
