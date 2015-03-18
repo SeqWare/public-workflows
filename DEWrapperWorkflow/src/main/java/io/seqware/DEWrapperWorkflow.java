@@ -108,20 +108,16 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
      */
     public void buildWorkflow() {
 
-        // before this workflow is created, the q2seqware component will read the workflow.ini "order" and launch this workflow
-        // NOTE: we should disable cron as well (crontab -r) since these containers will only exist for the purpose of running this
-        // workflow
-
         // create a shared directory in /datastore on the host in order to download reference data
         Job createSharedWorkSpaceJob = this.getWorkflow().createBashJob("create_dirs");
         createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + " \n");
-        // setup directories from Perl script
         createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/settings \n");
         createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/results \n");
         createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/working \n");
         createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/downloads/dkfz \n");
         createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/downloads/embl \n");
         createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/inputs \n");
+        createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/testdata \n");
         createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/uploads \n");
         createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/data \n"); //deprecated, using data dirs below
         createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + commonDataDir + "/dkfz \n");
@@ -130,9 +126,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         // create reference EMBL data by calling download_data (currently a stub in the Perl version)
         Job getReferenceDataJob = this.getWorkflow().createBashJob("getEMBLDataFiles");
         getReferenceDataJob.getCommand().addArgument("cd " + commonDataDir + "/embl \n");
-        getReferenceDataJob.getCommand().addArgument("if [ ! -f genome.fa ]; then wget http://s3.amazonaws.com/pan-cancer-data/pan-cancer-reference/genome.fa.gz \n fi \n");
-        // this file has some garbage in it, so we cannot rely on the return code
-        getReferenceDataJob.getCommand().addArgument("gunzip genome.fa.gz || true \n");
+        getReferenceDataJob.getCommand().addArgument("if [ ! -f genome.fa ]; then wget http://s3.amazonaws.com/pan-cancer-data/pan-cancer-reference/genome.fa.gz \n gunzip genome.fa.gz || true \n fi \n");
         // upload this to S3 after testing
         getReferenceDataJob.getCommand().addArgument(
                 "if [ ! -f hs37d5_1000GP.gc ]; then wget https://s3.amazonaws.com/pan-cancer-data/pan-cancer-reference/hs37d5_1000GP.gc \n fi \n");
@@ -154,9 +148,9 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                                     // here is the command that is fed to gtdownload
                                     + "--command \"gtdownload -c /root/gnos_icgc_keyfile.pem -k 60 -vv " + dkfzDataBundleServer
                                     + "/cghub/data/analysis/download/" + dkfzDataBundleUUID + "\" --file " + dkfzDataBundleUUID + "/"
-                                    + dkfzDataBundleFile + " --retries 10 --sleep-min 1 --timeout-min 60' \n "
-                                    + "cd " + dkfzDataBundleUUID + " \n "
-                                    + "tar zxf " + dkfzDataBundleFile + " \n fi \n ");
+                                    + dkfzDataBundleFile + " --retries 10 --sleep-min 1 --timeout-min 60 && "
+                                    + "cd " + dkfzDataBundleUUID + " && "
+                                    + "tar zxf " + dkfzDataBundleFile + "' \n fi \n ");
         getDKFZReferenceDataJob.addParent(getReferenceDataJob);
         
         // create inputs
@@ -220,6 +214,8 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                                 + SHARED_WORKSPACE + "/settings/embl.ini \n"); 
             }
         }
+        // now supply date
+        emblJob.getCommand().addArgument("echo \"date="+formattedDate+"\" >> `pwd`/"+SHARED_WORKSPACE + "/settings/embl.ini \n");
 
         emblJob.getCommand()
                 .addArgument(
@@ -251,12 +247,15 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
 
         for (String emblType : emblTypes) {
             for (String tumorAliquotId : tumorAliquotIds) {
+              
+              for (String varType : new String[]{"somatic", "germline"}) {
 
               // TODO: this isn't following the naming convention
               // should be "f393bb07-270c-2c93-e040-11ac0d484533.embl-delly-prefilter_1-0-0.20150311.somatic.sv.vcf.gz"
               // String baseFile = "`pwd`/" + SHARED_WORKSPACE + "/" + tumorAliquotId + ".embl-delly-prefilter_1-0-0."
               //          + this.formattedDate + ".somatic." + emblType;
-                String baseFile = "`pwd`/" + SHARED_WORKSPACE + "/" + tumorAliquotId + ".embl-delly_1-0-0.preFilter.*.somatic";
+                //String baseFile = "`pwd`/" + SHARED_WORKSPACE + "/" + tumorAliquotId + ".embl-delly_1-0-0-preFilter."+formattedDate+"."+varType;
+                String baseFile = "/workflow_data/" + tumorAliquotId + ".embl-delly_1-0-0-preFilter."+formattedDate+"."+varType;
 
                 vcfs.add(baseFile + ".vcf.gz");
                 vcfmd5s.add(baseFile + ".vcf.gz.md5");
@@ -268,6 +267,35 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                 
                 tars.add(baseFile + "bedpe.txt.tar.gz");
                 tarmd5s.add(baseFile + "bedpe.txt.tar.gz.md5");
+                
+                // need to upload cov.plots*
+                /*
+-rw-r--r-- 1   1001   1001 2.5M Mar 12 05:41 test_run.embl-delly_1-0-0.preFilter.20150311.germline.readname.txt.tar.gz
+-rw-r--r-- 1   1001   1001   33 Mar 12 05:41 test_run.embl-delly_1-0-0.preFilter.20150311.germline.readname.txt.tar.gz.md5
+-rw-r--r-- 1   1001   1001 434K Mar 12 01:11 test_run.embl-delly_1-0-0.preFilter.20150311.germline.bedpe.txt
+-rw-r--r-- 1   1001   1001   33 Mar 12 01:11 test_run.embl-delly_1-0-0.preFilter.20150311.germline.bedpe.txt.md5
+-rw-r--r-- 1   1001   1001 103K Mar 12 01:11 test_run.embl-delly_1-0-0.preFilter.20150311.germline.bedpe.txt.tar.gz
+-rw-r--r-- 1   1001   1001   33 Mar 12 01:11 test_run.embl-delly_1-0-0.preFilter.20150311.germline.bedpe.txt.tar.gz.md5
+-rw-r--r-- 1   1001   1001 173K Mar 12 01:11 test_run.embl-delly_1-0-0.preFilter.20150311.germline.vcf.gz
+-rw-r--r-- 1   1001   1001   33 Mar 12 01:11 test_run.embl-delly_1-0-0.preFilter.20150311.germline.vcf.gz.md5
+-rw-r--r-- 1   1001   1001  20K Mar 12 01:11 test_run.embl-delly_1-0-0.preFilter.20150311.germline.vcf.gz.tbi
+-rw-r--r-- 1   1001   1001   33 Mar 12 01:11 test_run.embl-delly_1-0-0.preFilter.20150311.germline.vcf.gz.tbi.md5
+-rw-r--r-- 1   1001   1001  15M Mar 12 01:11 test_run.embl-delly_1-0-0.preFilter.20150311.cov.plots.tar.gz
+-rw-r--r-- 1   1001   1001   33 Mar 12 01:11 test_run.embl-delly_1-0-0.preFilter.20150311.cov.plots.tar.gz.md5
+-rw-r--r-- 1   1001   1001  60M Mar 12 01:10 test_run.embl-delly_1-0-0.preFilter.20150311.cov.tar.gz
+-rw-r--r-- 1   1001   1001   33 Mar 12 01:10 test_run.embl-delly_1-0-0.preFilter.20150311.cov.tar.gz.md5
+-rw-r--r-- 1   1001   1001 168K Mar 12 01:10 test_run.embl-delly_1-0-0.preFilter.20150311.somatic.readname.txt.tar.gz
+-rw-r--r-- 1   1001   1001   33 Mar 12 01:10 test_run.embl-delly_1-0-0.preFilter.20150311.somatic.readname.txt.tar.gz.md5
+-rw-r--r-- 1   1001   1001 141K Mar 12 00:59 test_run.embl-delly_1-0-0.preFilter.20150311.somatic.bedpe.txt
+-rw-r--r-- 1   1001   1001   33 Mar 12 00:59 test_run.embl-delly_1-0-0.preFilter.20150311.somatic.bedpe.txt.md5
+-rw-r--r-- 1   1001   1001  34K Mar 12 00:59 test_run.embl-delly_1-0-0.preFilter.20150311.somatic.bedpe.txt.tar.gz
+-rw-r--r-- 1   1001   1001   33 Mar 12 00:59 test_run.embl-delly_1-0-0.preFilter.20150311.somatic.bedpe.txt.tar.gz.md5
+-rw-r--r-- 1   1001   1001  57K Mar 12 00:59 test_run.embl-delly_1-0-0.preFilter.20150311.somatic.vcf.gz
+-rw-r--r-- 1   1001   1001   33 Mar 12 00:59 test_run.embl-delly_1-0-0.preFilter.20150311.somatic.vcf.gz.md5
+-rw-r--r-- 1   1001   1001 8.9K Mar 12 00:59 test_run.embl-delly_1-0-0.preFilter.20150311.somatic.vcf.gz.tbi
+-rw-r--r-- 1   1001   1001   33 Mar 12 00:59 test_run.embl-delly_1-0-0.preFilter.20150311.somatic.vcf.gz.tbi.md5
+                */
+              }
             }
         }
 
@@ -294,8 +322,9 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                         // + "-v <embl_output_per_donor>:/result_data "
                         + "seqware/pancancer_upload_download "
                         // the command invoked on the container follows
-                        + "/bin/bash -c 'cd /workflow_data && echo '{}' > /tmp/empty.json && mkdir -p uploads && "
-                        + "perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
+                        + "/bin/bash -c 'cd /workflow_data && echo '{}' > /tmp/empty.json && mkdir -p uploads && dmesg "
+                        // FIXME: testing, remove the skip
+                        + "# perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
                         + "/opt/vcf-uploader/vcf-uploader-1.0.0/gnos_upload_vcf.pl "
                         // parameters to gnos_upload
                         + "--metadata-urls "
@@ -308,7 +337,10 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                         + " --workflow-src-url https://bitbucket.org/weischen/pcawg-delly-workflow" + "--workflow-url https://registry.hub.docker.com/u/pancancer/pcawg-delly-workflow" + " --workflow-name EMBL-Delly"
                         + " --workflow-version 1.0.0" + " --seqware-version " + this.getSeqware_version() + " --vm-instance-type "
                         + this.vmInstanceType + " --vm-instance-cores " + this.vmInstanceCores + " --vm-instance-mem-gb "
-                        + this.vmInstanceMemGb + " --vm-location-code " + this.vmLocationCode + overrideTxt);
+                        + this.vmInstanceMemGb + " --vm-location-code " + this.vmLocationCode + overrideTxt
+                        // FIXME: testing, remove the skip
+                        + " --skip-upload --skip-validate "
+                        );
         uploadJob.addParent(previousJobPointer);
         // for now, make these sequential
         return uploadJob;
@@ -366,38 +398,20 @@ date=20150310" > shared_workspace/settings/dkfz.ini
         runWorkflow.getCommand().addArgument(
                 "docker run "
                         // mount shared directories
-                        + "-v `pwd`/" + SHARED_WORKSPACE
-                        + "/downloads/dkfz/bundledFiles:/mnt/datastore/bundledFiles "
+                        + "-v " + commonDataDir + "/dkfz/" + dkfzDataBundleUUID 
+                        + "/bundledFiles:/mnt/datastore/bundledFiles "
                         // this path does not look right
-                        + "-v `pwd`/" + SHARED_WORKSPACE + ":/mnt/datastore/workflow_data " + "-v `pwd`/" + SHARED_WORKSPACE
-                        + "/settings/dkfz.ini:/mnt/datastore/workflow_data/workflow.ini " + "-v `pwd`/" + SHARED_WORKSPACE
-                        + "/results:/mnt/datastore/result_data "
+                        + "-v `pwd`/" + SHARED_WORKSPACE + "/inputs:/mnt/datastore/workflow_data/inputdata "
+                        + "-v `pwd`/" + SHARED_WORKSPACE + "/testdata:/mnt/datastore/testdata "
+                        + "-v `pwd`/" + SHARED_WORKSPACE
+                        + "/settings/dkfz.ini:/mnt/datastore/workflow_data/workflow.ini "
+                        + "-v `pwd`/" + SHARED_WORKSPACE
+                        + "/results:/mnt/datastore/resultdata "
                         // the DKFZ image and the command we feed into it follow
                         + "dkfz_dockered_workflows /bin/bash -c '/root/bin/runwrapper.sh' ");
         runWorkflow.addParent(generateIni);
         
-        
-        // TODO: deprecated
-        // upload
-        Job uploadWorkflow = this.getWorkflow().createBashJob("uploadDKFZ");
-        uploadWorkflow.getCommand().addArgument(
-                "docker run -v `pwd`/" + SHARED_WORKSPACE + "/workflow_data:/workflow_data " + "-v " + uploadPemFile
-                        + ":/root/gnos_icgc_keyfile.pem "
-                        // uncomment this when we get the real paths
-                        // + "-v <dkfz_output_per_donor>:/result_data
-                        // this is the container we're using
-                        + "seqware/pancancer_upload_download "
-                        // this is the placeholder command
-                        + "dmesg\n"
-                        // the real command follows
-                        + "#bin/bash -c 'cd /result_data/ && run_upload.pl ... '\");\n");
-        uploadWorkflow.addParent(runWorkflow);
-        return uploadWorkflow;
-        
-        
-        
-        
-        // upload the EMBL results
+        // upload the DKFZ results
         String[] emblTypes = { "sv" };
 
         List<String> vcfs = new ArrayList<>();
@@ -407,27 +421,62 @@ date=20150310" > shared_workspace/settings/dkfz.ini
         List<String> tbimd5s = new ArrayList<>();
         List<String> tarmd5s = new ArrayList<>();
 
-        for (String emblType : emblTypes) {
-            for (String tumorAliquotId : tumorAliquotIds) {
 
-              // TODO: this isn't following the naming convention
-              // should be "f393bb07-270c-2c93-e040-11ac0d484533.embl-delly-prefilter_1-0-0.20150311.somatic.sv.vcf.gz"
-              // String baseFile = "`pwd`/" + SHARED_WORKSPACE + "/" + tumorAliquotId + ".embl-delly-prefilter_1-0-0."
-              //          + this.formattedDate + ".somatic." + emblType;
-                String baseFile = "`pwd`/" + SHARED_WORKSPACE + "/" + tumorAliquotId + ".embl-delly_1-0-0.preFilter.*.somatic";
+        for (String tumorAliquotId : tumorAliquotIds) {
 
-                vcfs.add(baseFile + ".vcf.gz");
-                vcfmd5s.add(baseFile + ".vcf.gz.md5");
-                tbis.add(baseFile + ".vcf.gz.tbi");
-                tbimd5s.add(baseFile + ".vcf.gz.tbi.md5");
-                
-                tars.add(baseFile + ".readname.txt.tar.gz");
-                tarmd5s.add(baseFile + ".readname.txt.tar.gz.md5");      
-                
-                tars.add(baseFile + "bedpe.txt.tar.gz");
-                tarmd5s.add(baseFile + "bedpe.txt.tar.gz.md5");
-            }
+          // TODO: this isn't following the naming convention
+          // should be "f393bb07-270c-2c93-e040-11ac0d484533.embl-delly-prefilter_1-0-0.20150311.somatic.sv.vcf.gz"
+          // String baseFile = "`pwd`/" + SHARED_WORKSPACE + "/" + tumorAliquotId + ".embl-delly-prefilter_1-0-0."
+          //          + this.formattedDate + ".somatic." + emblType;
+            //String baseFile = "`pwd`/" + SHARED_WORKSPACE + "/results/" + tumorAliquotId + ".dkfz-";
+            String baseFile = "/workflow_data/" + tumorAliquotId + ".dkfz-";
+
+            // FIXME: not following the conventions
+            vcfs.add(baseFile + "indelCalling_1-0-114."+formattedDate+".somatic.germline.indel.vcf.gz");
+            vcfs.add(baseFile + "indelCalling_1-0-114."+formattedDate+".somatic.somatic.indel.vcf.gz");
+            vcfs.add(baseFile + "snvCalling_1-0-114."+formattedDate+".germline.snv_mnv.vcf.gz");
+            vcfs.add(baseFile + "snvCalling_1-0-114."+formattedDate+".somatic.snv_mnv.vcf.gz");
+            
+            // FIXME: all are missing!
+            vcfs.add(baseFile + "indelCalling_1-0-114."+formattedDate+".somatic.germline.indel.vcf.gz.md5");
+            vcfs.add(baseFile + "indelCalling_1-0-114."+formattedDate+".somatic.somatic.indel.vcf.gz.md5");
+            vcfs.add(baseFile + "snvCalling_1-0-114."+formattedDate+".germline.snv_mnv.vcf.gz.md5");
+            vcfs.add(baseFile + "snvCalling_1-0-114."+formattedDate+".somatic.snv_mnv.vcf.gz.md5");
+            
+            // FIXME: not following the conventions
+            vcfs.add(baseFile + "indelCalling_1-0-114."+formattedDate+".somatic.germline.indel.vcf.gz.tbi");
+            vcfs.add(baseFile + "indelCalling_1-0-114."+formattedDate+".somatic.somatic.indel.vcf.gz.tbi");
+            vcfs.add(baseFile + "snvCalling_1-0-114."+formattedDate+".germline.snv_mnv.vcf.gz.tbi");
+            vcfs.add(baseFile + "snvCalling_1-0-114."+formattedDate+".somatic.snv_mnv.vcf.gz.tbi");
+            
+            // FIXME: all are missing
+            vcfs.add(baseFile + "indelCalling_1-0-114."+formattedDate+".somatic.germline.indel.vcf.gz.tbi.md5");
+            vcfs.add(baseFile + "indelCalling_1-0-114."+formattedDate+".somatic.somatic.indel.vcf.gz.tbi.md5");
+            vcfs.add(baseFile + "snvCalling_1-0-114."+formattedDate+".germline.snv_mnv.vcf.gz.tbi.md5");
+            vcfs.add(baseFile + "snvCalling_1-0-114."+formattedDate+".somatic.snv_mnv.vcf.gz.tbi.md5");
+
+            tars.add(baseFile + ".readname.txt.tar.gz");
+            tarmd5s.add(baseFile + ".readname.txt.tar.gz.md5");      
+
+            tars.add(baseFile + "bedpe.txt.tar.gz");
+            tarmd5s.add(baseFile + "bedpe.txt.tar.gz.md5");
         }
+        
+/*
+ubuntu@ip-10-168-120-35:/datastore/oozie-1ed05159-7233-4e64-9e8f-8d9e9ba73f5f/shared_workspace$ ls -lth results/
+total 3.2G
+-rw-rw-rw-  1 root root 2.5G Mar 18 11:45 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-copyNumberEstimation_1-0-114.20150310.somatic_all.somatic.cnv.tar.gz
+-rw-rw-rw-  1 root root 441M Mar 18 11:43 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150310.somatic_all.somatic.indel.tar.gz
+-rw-rw-rw-  1 root root 101M Mar 18 11:43 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150310_all.somatic.snv_mnv.tar.gz
+-rw-rw-rw-  1 root root 217K Mar 18 11:43 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150310.somatic.somatic.indel.vcf.gz.tbi
+-rw-rw-rw-  1 root root 1.4M Mar 18 11:43 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150310.somatic.germline.indel.vcf.gz.tbi
+-rw-rw-rw-  1 root root 687K Mar 18 11:43 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150310.somatic.snv_mnv.vcf.gz.tbi
+-rw-rw-rw-  1 root root 1.5M Mar 18 11:43 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150310.germline.snv_mnv.vcf.gz.tbi
+-rw-rw-rw-  1 root root  73M Mar 18 11:43 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150310.somatic.germline.indel.vcf.gz
+-rw-rw-rw-  1 root root 1.9M Mar 18 11:43 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150310.somatic.somatic.indel.vcf.gz
+-rw-rw-rw-  1 root root  93M Mar 18 11:43 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150310.germline.snv_mnv.vcf.gz
+-rw-rw-rw-  1 root root 3.2M Mar 18 11:43 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150310.somatic.snv_mnv.vcf.gz      
+*/
 
         // FIXME: hardcoded versions, URLs, etc
         Job uploadJob = this.getWorkflow().createBashJob("uploadEMBL");
@@ -443,7 +492,7 @@ date=20150310" > shared_workspace/settings/dkfz.ini
                 // link in the input directory
                         + "-v `pwd`/"
                         + SHARED_WORKSPACE
-                        + ":/workflow_data "
+                        + "/results:/workflow_data "
                         // link in the pem kee
                         + "-v "
                         + pemFile
@@ -452,8 +501,9 @@ date=20150310" > shared_workspace/settings/dkfz.ini
                         // + "-v <embl_output_per_donor>:/result_data "
                         + "seqware/pancancer_upload_download "
                         // the command invoked on the container follows
-                        + "/bin/bash -c 'cd /workflow_data && echo '{}' > /tmp/empty.json && mkdir -p uploads && "
-                        + "perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
+                        + "/bin/bash -c 'cd /workflow_data && echo '{}' > /tmp/empty.json && mkdir -p uploads && dmesg "
+                        // FIXME: testing, remove the skip
+                        + "# perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
                         + "/opt/vcf-uploader/vcf-uploader-1.0.0/gnos_upload_vcf.pl "
                         // parameters to gnos_upload
                         + "--metadata-urls "
@@ -463,11 +513,14 @@ date=20150310" > shared_workspace/settings/dkfz.ini
                         + Joiner.on(',').join(tars) + " --tarball-md5sum-files " + Joiner.on(',').join(tarmd5s) + " --outdir uploads" 
                         + " --key /root/gnos_icgc_keyfile.pem --upload-url " + uploadServer
                         + " --qc-metrics-json /tmp/empty.json" + " --timing-metrics-json /tmp/empty.json"
-                        + " --workflow-src-url https://bitbucket.org/weischen/pcawg-delly-workflow" + "--workflow-url https://registry.hub.docker.com/u/pancancer/pcawg-delly-workflow" + " --workflow-name EMBL-Delly"
+                        + " --workflow-src-url https://github.com/SeqWare/docker/tree/develop/dkfz_dockered_workflows" + "--workflow-url https://github.com/SeqWare/docker/tree/develop/dkfz_dockered_workflows" + " --workflow-name DKFZ-Variant"
                         + " --workflow-version 1.0.0" + " --seqware-version " + this.getSeqware_version() + " --vm-instance-type "
                         + this.vmInstanceType + " --vm-instance-cores " + this.vmInstanceCores + " --vm-instance-mem-gb "
-                        + this.vmInstanceMemGb + " --vm-location-code " + this.vmLocationCode + overrideTxt);
-        uploadJob.addParent(previousJobPointer);
+                        + this.vmInstanceMemGb + " --vm-location-code " + this.vmLocationCode + overrideTxt
+                        // FIXME: testing, remove the skip
+                        + " --skip-upload --skip-validate "
+        );
+        uploadJob.addParent(runWorkflow);
         // for now, make these sequential
         return uploadJob;
     }
