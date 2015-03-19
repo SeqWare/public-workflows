@@ -222,7 +222,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                 // this is the actual command we run inside the container, which is to launch a workflow
                         "docker run --rm -h master -v `pwd`/" + SHARED_WORKSPACE + ":/datastore "
                                 // data files
-                                + "-v " + commonDataDir + "/embl:/data "
+                                + "-v " + commonDataDir + "/embl:/datafiles "
                                 // mount the workflow.ini
                                 + "-v `pwd`/" + SHARED_WORKSPACE
                                 + "/settings/embl.ini:/workflow.ini "
