@@ -366,6 +366,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         generateIni.getCommand().addArgument(
                         "echo \"#!/bin/bash\n" 
                         + "tumorBams=( "+Joiner.on(" ").join(tumorBams)+" )\n"
+                        + "aliquotIDs=( "+Joiner.on(" ").join(tumorAliquotIds)+" )"
                         + "controlBam=/mnt/datastore/workflow_data/inputdata/"+controlAnalysisId+"/"+controlBam+"\n" 
                         + "dellyFiles=( "+Joiner.on(" ").join(tumorDelly)+" )\n"
                         + "runACEeq=true\n"
