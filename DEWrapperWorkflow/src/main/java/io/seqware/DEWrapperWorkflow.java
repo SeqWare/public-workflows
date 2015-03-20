@@ -27,6 +27,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
 
     public static final String SHARED_WORKSPACE = "shared_workspace";
     private ArrayList<String> analysisIds = null;
+    private ArrayList<String> tumorAnalysisIds = null;
     private ArrayList<String> bams = null;
     private String gnosServer = null;
     private String pemFile = null;
@@ -56,6 +57,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             String controlAnalysisId = getProperty("controlAnalysisId");
             this.analysisIds = Lists.newArrayList(getProperty("tumourAnalysisIds").split(","));
             analysisIds.add(controlAnalysisId);
+            this.tumorAnalysisIds = Lists.newArrayList(getProperty("tumourAnalysisIds").split(","));
             this.bams = Lists.newArrayList(getProperty("tumourBams").split(","));
             bams.add(getProperty("controlBam"));
             this.gnosServer = getProperty("gnosServer");
@@ -351,13 +353,13 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
       
         // generate the tumor array
         ArrayList<String> tumorBams = new ArrayList<String>();
-        for  (int i=0; i<analysisIds.size(); i++) {
-          tumorBams.add("/mnt/datastore/workflow_data/inputdata/"+analysisIds.get(i)+"/"+bams.get(i));
+        for  (int i=0; i<tumorAnalysisIds.size(); i++) {
+          tumorBams.add("/mnt/datastore/workflow_data/inputdata/"+tumorAnalysisIds.get(i)+"/"+bams.get(i));
         }
         // tumor delly files
         ArrayList<String> tumorDelly = new ArrayList<String>();
         for  (int i=0; i<tumorAliquotIds.size(); i++) {
-          tumorBams.add("/mnt/datastore/workflow_data/inputdata/"+tumorAliquotIds.get(i)+".embl-delly_1-0-0-preFilter."+formattedDate+".germline.bedpe.txt");
+          tumorDelly.add("/mnt/datastore/workflow_data/inputdata/"+tumorAliquotIds.get(i)+".embl-delly_1-0-0-preFilter."+formattedDate+".germline.bedpe.txt");
         }
       
         Job generateIni = this.getWorkflow().createBashJob("generateDKFZ_ini");
