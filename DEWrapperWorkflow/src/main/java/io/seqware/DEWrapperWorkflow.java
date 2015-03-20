@@ -357,7 +357,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         // tumor delly files
         ArrayList<String> tumorDelly = new ArrayList<String>();
         for  (int i=0; i<tumorAliquotIds.size(); i++) {
-          tumorBams.add("/mnt/datastore/workflow_data/inputdata/"+tumorAliquotIds.get(i)+".embl-delly_1-0-0.preFilter.20150311.germline.bedpe.txt");
+          tumorBams.add("/mnt/datastore/workflow_data/inputdata/"+tumorAliquotIds.get(i)+".embl-delly_1-0-0-preFilter."+formattedDate+".germline.bedpe.txt");
         }
       
         Job generateIni = this.getWorkflow().createBashJob("generateDKFZ_ini");
