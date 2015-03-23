@@ -170,8 +170,9 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             Job downloadJob = this.getWorkflow().createBashJob("download" + i);
             
             if (localFileMode) {
+              // using hard links so it spans multiple exported filesystems to Docker
               downloadJob.getCommand()
-              .addArgument("mkdir -p " + analysisIds.get(i) + " && ln -s "+bams.get(i)+" "+analysisIds.get(i)+"/ && ln -s "+bams.get(i)+".bai "+analysisIds.get(i)+"/");
+              .addArgument("mkdir -p " + analysisIds.get(i) + " && ln "+bams.get(i)+" "+analysisIds.get(i)+"/ && ln "+bams.get(i)+".bai "+analysisIds.get(i)+"/");
             } else {
               downloadJob
                       .getCommand()
