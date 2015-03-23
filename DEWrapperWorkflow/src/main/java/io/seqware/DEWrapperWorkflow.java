@@ -172,7 +172,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             if (localFileMode) {
               // using hard links so it spans multiple exported filesystems to Docker
               downloadJob.getCommand()
-              .addArgument("mkdir -p " + analysisIds.get(i) + " && ln "+bams.get(i)+" "+analysisIds.get(i)+"/ && ln "+bams.get(i)+".bai "+analysisIds.get(i)+"/");
+              .addArgument("mkdir -p " + analysisIds.get(i) + " && sudo ln "+bams.get(i)+" "+analysisIds.get(i)+"/ && sudo ln "+bams.get(i)+".bai "+analysisIds.get(i)+"/");
             } else {
               downloadJob
                       .getCommand()
