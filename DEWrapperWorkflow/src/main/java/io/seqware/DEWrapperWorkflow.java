@@ -49,6 +49,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
     private static final String EMBL_PREFIX = "EMBL.";
     private String controlBam = null;
     private String controlAnalysisId = null;
+    private boolean localFileMode = false;
     
     @Override
     public void setupWorkflow() {
@@ -97,7 +98,15 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
             Calendar cal = Calendar.getInstance();
             this.formattedDate = dateFormat.format(cal.getTime());
-
+            
+            // local file mode
+            if(hasPropertyAndNotNull("localFileMode")) {
+              localFileMode=Boolean.valueOf(getProperty("localFileMode"));
+            }
+            if (localFileMode) {
+              System.err.println("WARNING\n\tRunning in direct file mode, direct access BAM files will be used and assumed to be full paths, change 'localFileMode' in ini file to disable\n");
+            }
+    
         } catch (Exception e) {
             throw new RuntimeException("Could not read property from ini", e);
         }
@@ -159,25 +168,31 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         Job previousJobPointer = getReferenceDataJob;
         for (int i = 0; i < analysisIds.size(); i++) {
             Job downloadJob = this.getWorkflow().createBashJob("download" + i);
-            downloadJob
-                    .getCommand()
-                    .addArgument(
-                            "docker run "
-                                    // link in the input directory
-                                    + "-v `pwd`/"
-                                    + SHARED_WORKSPACE
-                                    + "/inputs:/workflow_data "
-                                    // link in the pem kee
-                                    + "-v "
-                                    + pemFile
-                                    + ":/root/gnos_icgc_keyfile.pem seqware/pancancer_upload_download"
-                                    // here is the Bash command to be run
-                                    + " /bin/bash -c 'cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
-                                    + "/opt/vcf-uploader/vcf-uploader-1.0.0/gnos_download_file.pl "
-                                    // here is the command that is fed to gtdownload
-                                    + "--command \"gtdownload -c /root/gnos_icgc_keyfile.pem -k 60 -vv " + gnosServer
-                                    + "/cghub/data/analysis/download/" + analysisIds.get(i) + "\" --file " + analysisIds.get(i) + "/"
-                                    + bams.get(i) + " --retries 10 --sleep-min 1 --timeout-min 60' \n");
+            
+            if (localFileMode) {
+              downloadJob.getCommand()
+              .addArgument("mkdir -p " + analysisIds.get(i) + " && ln -s "+bams.get(i)+" "+analysisIds.get(i)+"/ && ln -s "+bams.get(i)+".bai "+analysisIds.get(i)+"/");
+            } else {
+              downloadJob
+                      .getCommand()
+                      .addArgument(
+                              "docker run "
+                                      // link in the input directory
+                                      + "-v `pwd`/"
+                                      + SHARED_WORKSPACE
+                                      + "/inputs:/workflow_data "
+                                      // link in the pem kee
+                                      + "-v "
+                                      + pemFile
+                                      + ":/root/gnos_icgc_keyfile.pem seqware/pancancer_upload_download"
+                                      // here is the Bash command to be run
+                                      + " /bin/bash -c 'cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
+                                      + "/opt/vcf-uploader/vcf-uploader-1.0.0/gnos_download_file.pl "
+                                      // here is the command that is fed to gtdownload
+                                      + "--command \"gtdownload -c /root/gnos_icgc_keyfile.pem -k 60 -vv " + gnosServer
+                                      + "/cghub/data/analysis/download/" + analysisIds.get(i) + "\" --file " + analysisIds.get(i) + "/"
+                                      + bams.get(i) + " --retries 10 --sleep-min 1 --timeout-min 60' \n");
+            }
             downloadJob.addParent(previousJobPointer);
             // for now, make these sequential
             previousJobPointer = downloadJob;
@@ -336,7 +351,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                         + Joiner.on(',').join(tars) + " --tarball-md5sum-files " + Joiner.on(',').join(tarmd5s) + " --outdir uploads" 
                         + " --key /root/gnos_icgc_keyfile.pem --upload-url " + uploadServer
                         + " --qc-metrics-json /tmp/empty.json" + " --timing-metrics-json /tmp/empty.json"
-                        + " --workflow-src-url https://bitbucket.org/weischen/pcawg-delly-workflow" + "--workflow-url https://registry.hub.docker.com/u/pancancer/pcawg-delly-workflow" + " --workflow-name EMBL-Delly"
+                        + " --workflow-src-url https://bitbucket.org/weischen/pcawg-delly-workflow" + "--workflow-url https://registry.hub.docker.com/u/pancancer/pcawg-delly-workflow" + " --workflow-name EmblPancancerStr "
                         + " --workflow-version 1.0.0" + " --seqware-version " + this.getSeqware_version() + " --vm-instance-type "
                         + this.vmInstanceType + " --vm-instance-cores " + this.vmInstanceCores + " --vm-instance-mem-gb "
                         + this.vmInstanceMemGb + " --vm-location-code " + this.vmLocationCode + overrideTxt
@@ -434,51 +449,86 @@ date=20150310" > shared_workspace/settings/dkfz.ini
             //String baseFile = "`pwd`/" + SHARED_WORKSPACE + "/results/" + tumorAliquotId + ".dkfz-";
             String baseFile = "/workflow_data/" + tumorAliquotId + ".dkfz-";
 
-            // FIXME: not following the conventions
-            vcfs.add(baseFile + "indelCalling_1-0-114."+formattedDate+".somatic.germline.indel.vcf.gz");
-            vcfs.add(baseFile + "indelCalling_1-0-114."+formattedDate+".somatic.somatic.indel.vcf.gz");
+            // VCF
+            vcfs.add(baseFile + "indelCalling_1-0-114."+formattedDate+".germline.indel.vcf.gz");
+            vcfs.add(baseFile + "indelCalling_1-0-114."+formattedDate+".somatic.indel.vcf.gz");
             vcfs.add(baseFile + "snvCalling_1-0-114."+formattedDate+".germline.snv_mnv.vcf.gz");
             vcfs.add(baseFile + "snvCalling_1-0-114."+formattedDate+".somatic.snv_mnv.vcf.gz");
+            vcfs.add(baseFile + "copyNumberEstimation_1-0-114."+formattedDate+".somatic.cnv.vcf.gz");
             
-            // FIXME: all are missing!
-            vcfs.add(baseFile + "indelCalling_1-0-114."+formattedDate+".somatic.germline.indel.vcf.gz.md5");
-            vcfs.add(baseFile + "indelCalling_1-0-114."+formattedDate+".somatic.somatic.indel.vcf.gz.md5");
-            vcfs.add(baseFile + "snvCalling_1-0-114."+formattedDate+".germline.snv_mnv.vcf.gz.md5");
-            vcfs.add(baseFile + "snvCalling_1-0-114."+formattedDate+".somatic.snv_mnv.vcf.gz.md5");
-            
-            // FIXME: not following the conventions
-            vcfs.add(baseFile + "indelCalling_1-0-114."+formattedDate+".somatic.germline.indel.vcf.gz.tbi");
-            vcfs.add(baseFile + "indelCalling_1-0-114."+formattedDate+".somatic.somatic.indel.vcf.gz.tbi");
-            vcfs.add(baseFile + "snvCalling_1-0-114."+formattedDate+".germline.snv_mnv.vcf.gz.tbi");
-            vcfs.add(baseFile + "snvCalling_1-0-114."+formattedDate+".somatic.snv_mnv.vcf.gz.tbi");
-            
-            // FIXME: all are missing
-            vcfs.add(baseFile + "indelCalling_1-0-114."+formattedDate+".somatic.germline.indel.vcf.gz.tbi.md5");
-            vcfs.add(baseFile + "indelCalling_1-0-114."+formattedDate+".somatic.somatic.indel.vcf.gz.tbi.md5");
-            vcfs.add(baseFile + "snvCalling_1-0-114."+formattedDate+".germline.snv_mnv.vcf.gz.tbi.md5");
-            vcfs.add(baseFile + "snvCalling_1-0-114."+formattedDate+".somatic.snv_mnv.vcf.gz.tbi.md5");
+            // VCF MD5
+            vcfmd5s.add(baseFile + "indelCalling_1-0-114."+formattedDate+".germline.indel.vcf.gz.md5");
+            vcfmd5s.add(baseFile + "indelCalling_1-0-114."+formattedDate+".somatic.indel.vcf.gz.md5");
+            vcfmd5s.add(baseFile + "snvCalling_1-0-114."+formattedDate+".germline.snv_mnv.vcf.gz.md5");
+            vcfmd5s.add(baseFile + "snvCalling_1-0-114."+formattedDate+".somatic.snv_mnv.vcf.gz.md5");
+            vcfmd5s.add(baseFile + "copyNumberEstimation_1-0-114."+formattedDate+".somatic.cnv.vcf.gz.md5");
 
-            tars.add(baseFile + ".readname.txt.tar.gz");
-            tarmd5s.add(baseFile + ".readname.txt.tar.gz.md5");      
+            // Tabix
+            tbis.add(baseFile + "indelCalling_1-0-114."+formattedDate+".somatic.germline.indel.vcf.gz.tbi");
+            tbis.add(baseFile + "indelCalling_1-0-114."+formattedDate+".somatic.somatic.indel.vcf.gz.tbi");
+            tbis.add(baseFile + "snvCalling_1-0-114."+formattedDate+".germline.snv_mnv.vcf.gz.tbi");
+            tbis.add(baseFile + "snvCalling_1-0-114."+formattedDate+".somatic.snv_mnv.vcf.gz.tbi");
+            tbis.add(baseFile + "copyNumberEstimation_1-0-114."+formattedDate+".somatic.cnv.vcf.gz.tbi");
+            
+            // Tabix MD5
+            tbimd5s.add(baseFile + "indelCalling_1-0-114."+formattedDate+".somatic.germline.indel.vcf.gz.tbi.md5");
+            tbimd5s.add(baseFile + "indelCalling_1-0-114."+formattedDate+".somatic.somatic.indel.vcf.gz.tbi.md5");
+            tbimd5s.add(baseFile + "snvCalling_1-0-114."+formattedDate+".germline.snv_mnv.vcf.gz.tbi.md5");
+            tbimd5s.add(baseFile + "snvCalling_1-0-114."+formattedDate+".somatic.snv_mnv.vcf.gz.tbi.md5");
+            tbimd5s.add(baseFile + "copyNumberEstimation_1-0-114."+formattedDate+".somatic.cnv.vcf.gz.tbi.md5");
 
-            tars.add(baseFile + "bedpe.txt.tar.gz");
-            tarmd5s.add(baseFile + "bedpe.txt.tar.gz.md5");
+            // Tarballs LEFT OFF HERE
+            tars.add(baseFile + "-copyNumberEstimation_1-0-114."+formattedDate+".somatic.cnv.tar.gz");
+            tars.add(baseFile + "-indelCalling_1-0-114."+formattedDate+".somatic.indel.tar.gz");
+            tars.add(baseFile + "-snvCalling_1-0-114."+formattedDate+".somatic.snv_mnv.tar.gz");
+            
+            // Tarballs MD5
+            tarmd5s.add(baseFile + "-copyNumberEstimation_1-0-114."+formattedDate+".somatic.cnv.tar.gz.md5");
+            tarmd5s.add(baseFile + "-indelCalling_1-0-114."+formattedDate+".somatic.indel.tar.gz.md5");
+            tarmd5s.add(baseFile + "-snvCalling_1-0-114."+formattedDate+".somatic.snv_mnv.tar.gz.md5");
+
         }
         
 /*
-ubuntu@ip-10-168-120-35:/datastore/oozie-1ed05159-7233-4e64-9e8f-8d9e9ba73f5f/shared_workspace$ ls -lth results/
-total 3.2G
--rw-rw-rw-  1 root root 2.5G Mar 18 11:45 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-copyNumberEstimation_1-0-114.20150310.somatic_all.somatic.cnv.tar.gz
--rw-rw-rw-  1 root root 441M Mar 18 11:43 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150310.somatic_all.somatic.indel.tar.gz
--rw-rw-rw-  1 root root 101M Mar 18 11:43 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150310_all.somatic.snv_mnv.tar.gz
--rw-rw-rw-  1 root root 217K Mar 18 11:43 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150310.somatic.somatic.indel.vcf.gz.tbi
--rw-rw-rw-  1 root root 1.4M Mar 18 11:43 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150310.somatic.germline.indel.vcf.gz.tbi
--rw-rw-rw-  1 root root 687K Mar 18 11:43 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150310.somatic.snv_mnv.vcf.gz.tbi
--rw-rw-rw-  1 root root 1.5M Mar 18 11:43 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150310.germline.snv_mnv.vcf.gz.tbi
--rw-rw-rw-  1 root root  73M Mar 18 11:43 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150310.somatic.germline.indel.vcf.gz
--rw-rw-rw-  1 root root 1.9M Mar 18 11:43 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150310.somatic.somatic.indel.vcf.gz
--rw-rw-rw-  1 root root  93M Mar 18 11:43 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150310.germline.snv_mnv.vcf.gz
--rw-rw-rw-  1 root root 3.2M Mar 18 11:43 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150310.somatic.snv_mnv.vcf.gz      
+-rw-rw-rw- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318_all.somatic.snv_mnv.tar.gz.md5
+-rw-r--r-- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318_all.somatic.snv_mnv.tar.gz.md5.md5
+-rw-rw-rw- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318.somatic.snv_mnv.vcf.gz.tbi.md5
+-rw-r--r-- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318.somatic.snv_mnv.vcf.gz.tbi.md5.md5
+-rw-rw-rw- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318.somatic.snv_mnv.vcf.gz.md5
+-rw-r--r-- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318.somatic.snv_mnv.vcf.gz.md5.md5
+-rw-rw-rw- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318.germline.snv_mnv.vcf.gz.tbi.md5
+-rw-r--r-- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318.germline.snv_mnv.vcf.gz.tbi.md5.md5
+-rw-rw-rw- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318.germline.snv_mnv.vcf.gz.md5
+-rw-r--r-- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318.germline.snv_mnv.vcf.gz.md5.md5
+-rw-rw-rw- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318_all.somatic.indel.tar.gz.md5
+-rw-r--r-- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318_all.somatic.indel.tar.gz.md5.md5
+-rw-rw-rw- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318.somatic.indel.vcf.gz.tbi.md5
+-rw-r--r-- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318.somatic.indel.vcf.gz.tbi.md5.md5
+-rw-rw-rw- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318.somatic.indel.vcf.gz.md5
+-rw-r--r-- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318.somatic.indel.vcf.gz.md5.md5
+-rw-r--r-- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318.germline.indel.vcf.gz.tbi.md5.md5
+-rw-rw-rw- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318.germline.indel.vcf.gz.tbi.md5
+-rw-rw-rw- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318.germline.indel.vcf.gz.md5
+-rw-r--r-- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318.germline.indel.vcf.gz.md5.md5
+-rw-rw-rw- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-copyNumberEstimation_1-0-114.20150318_all.somatic.cnv.tar.gz.md5
+-rw-r--r-- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-copyNumberEstimation_1-0-114.20150318_all.somatic.cnv.tar.gz.md5.md5
+-rw-r--r-- 1 root root    34 Mar 23 16:19 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-copyNumberEstimation_1-0-114.20150318.somatic.cnv.vcf.gz.tbi.md5
+-rw-r--r-- 1 root root    34 Mar 23 16:19 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-copyNumberEstimation_1-0-114.20150318.somatic.cnv.vcf.gz.tbi.md5.md5
+-rw-r--r-- 1 root root    34 Mar 23 16:19 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-copyNumberEstimation_1-0-114.20150318.somatic.cnv.vcf.gz.md5
+-rw-r--r-- 1 root root    34 Mar 23 16:19 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-copyNumberEstimation_1-0-114.20150318.somatic.cnv.vcf.gz.md5.md5
+-rw-rw-rw- 1 root root  2.5G Mar 23 16:19 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-copyNumberEstimation_1-0-114.20150318_all.somatic.cnv.tar.gz
+-rw-rw-rw- 1 root root 1010M Mar 23 16:18 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318_all.somatic.snv_mnv.tar.gz
+-rw-rw-rw- 1 root root  643M Mar 23 16:18 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318_all.somatic.indel.tar.gz
+-rw-r--r-- 1 root root   26K Mar 23 16:17 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-copyNumberEstimation_1-0-114.20150318.somatic.cnv.vcf.gz.tbi
+-rw-r--r-- 1 root root   85K Mar 23 16:17 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-copyNumberEstimation_1-0-114.20150318.somatic.cnv.vcf.gz
+-rw-rw-rw- 1 root root  202K Mar 23 16:17 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318.somatic.indel.vcf.gz.tbi
+-rw-rw-rw- 1 root root  1.4M Mar 23 16:17 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318.germline.indel.vcf.gz.tbi
+-rw-rw-rw- 1 root root  687K Mar 23 16:17 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318.somatic.snv_mnv.vcf.gz.tbi
+-rw-rw-rw- 1 root root  1.5M Mar 23 16:17 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318.germline.snv_mnv.vcf.gz.tbi
+-rw-rw-rw- 1 root root   68M Mar 23 16:17 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318.germline.indel.vcf.gz
+-rw-rw-rw- 1 root root  1.8M Mar 23 16:17 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318.somatic.indel.vcf.gz
+-rw-rw-rw- 1 root root   93M Mar 23 16:17 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318.germline.snv_mnv.vcf.gz
+-rw-rw-rw- 1 root root  3.2M Mar 23 16:17 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318.somatic.snv_mnv.vcf.gz 
 */
 
         // FIXME: hardcoded versions, URLs, etc
@@ -516,7 +566,7 @@ total 3.2G
                         + Joiner.on(',').join(tars) + " --tarball-md5sum-files " + Joiner.on(',').join(tarmd5s) + " --outdir uploads" 
                         + " --key /root/gnos_icgc_keyfile.pem --upload-url " + uploadServer
                         + " --qc-metrics-json /tmp/empty.json" + " --timing-metrics-json /tmp/empty.json"
-                        + " --workflow-src-url https://github.com/SeqWare/docker/tree/develop/dkfz_dockered_workflows" + "--workflow-url https://github.com/SeqWare/docker/tree/develop/dkfz_dockered_workflows" + " --workflow-name DKFZ-Variant"
+                        + " --workflow-src-url https://github.com/SeqWare/docker/tree/develop/dkfz_dockered_workflows" + "--workflow-url https://github.com/SeqWare/docker/tree/develop/dkfz_dockered_workflows" + " --workflow-name DkfzPancancerCnIndelSnv "
                         + " --workflow-version 1.0.0" + " --seqware-version " + this.getSeqware_version() + " --vm-instance-type "
                         + this.vmInstanceType + " --vm-instance-cores " + this.vmInstanceCores + " --vm-instance-mem-gb "
                         + this.vmInstanceMemGb + " --vm-location-code " + this.vmLocationCode + overrideTxt
