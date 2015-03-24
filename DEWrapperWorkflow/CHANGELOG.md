@@ -1,3 +1,9 @@
+# 1.1.x (Future Release)
+
+## TODO
+
+* incorporate the Sanger and Broad workflows so all four run together
+
 # 1.0.0
 
 ## TODO
@@ -5,6 +11,7 @@
 * need to at least get the input JSON filled in, ideally QC and timing as well
 * need to swap out the download/upload docker to use the most recent wrapper code from Adam
 * need local file mode for output too
+* in addition to local file mode, also a option to read/write to S3
 
 ## Examples
 
