@@ -263,7 +263,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         List<String> tbimd5s = new ArrayList<>();
         List<String> tarmd5s = new ArrayList<>();
 
-        for (String emblType : emblTypes) {
+        /*for (String emblType : emblTypes) {
             for (String tumorAliquotId : tumorAliquotIds) {
               
               for (String varType : new String[]{"somatic", "germline"}) {
@@ -273,7 +273,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
               // String baseFile = "`pwd`/" + SHARED_WORKSPACE + "/" + tumorAliquotId + ".embl-delly-prefilter_1-0-0."
               //          + this.formattedDate + ".somatic." + emblType;
                 //String baseFile = "`pwd`/" + SHARED_WORKSPACE + "/" + tumorAliquotId + ".embl-delly_1-0-0-preFilter."+formattedDate+"."+varType;
-                String baseFile = "/workflow_data/" + tumorAliquotId + ".embl-delly_1-0-0-preFilter."+formattedDate+"."+varType;
+                String baseFile = "/workflow_data/" + tumorAliquotId + ".embl-delly_1-0-0-preFilter."+formattedDate+"."+varType+"."+emblType;
 
                 vcfs.add(baseFile + ".vcf.gz");
                 vcfmd5s.add(baseFile + ".vcf.gz.md5");
@@ -289,8 +289,51 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                 // need to upload cov.plots*
               }
             }
-        }
+        }*/
+        
+        // FIXME: these don't quite follow the naming convention
+        for (String tumorAliquotId : tumorAliquotIds) {
+        
+          String baseFile = "/workflow_data/" + tumorAliquotId + ".embl-delly_1-0-0-preFilter."+formattedDate;
 
+          vcfs.add(baseFile + ".germline.vcf.gz");
+          vcfs.add(baseFile + ".sv.vcf.gz");
+          vcfs.add(baseFile + ".somatic.sv.vcf.gz");
+          
+          vcfmd5s.add(baseFile + ".germline.vcf.gz.md5");
+          vcfmd5s.add(baseFile + ".sv.vcf.gz.md5");
+          vcfmd5s.add(baseFile + ".somatic.sv.vcf.gz.md5");
+          
+          tbis.add(baseFile + ".germline.vcf.gz.tbi");
+          tbis.add(baseFile + ".sv.vcf.gz.tbi");
+          tbis.add(baseFile + ".somatic.sv.vcf.gz.tbi");
+          
+          tbimd5s.add(baseFile + ".germline.vcf.gz.tbi.md5");
+          tbimd5s.add(baseFile + ".sv.vcf.gz.tbi.md5");
+          tbimd5s.add(baseFile + ".somatic.sv.vcf.gz.tbi.md5");
+
+          tars.add(baseFile + ".germline.readname.txt.tar.gz");
+          tarmd5s.add(baseFile + ".germline.readname.txt.tar.gz.md5");      
+
+          tars.add(baseFile + ".germline.bedpe.txt.tar.gz");
+          tarmd5s.add(baseFile + ".germline.bedpe.txt.tar.gz.md5");
+          
+          tars.add(baseFile + ".somatic.sv.readname.txt.tar.gz");
+          tarmd5s.add(baseFile + ".somatic.sv.readname.txt.tar.gz.md5");      
+
+          tars.add(baseFile + ".somatic.sv.bedpe.txt.tar.gz");
+          tarmd5s.add(baseFile + ".somatic.sv.bedpe.txt.tar.gz.md5");
+          
+          tars.add(baseFile + ".cov.plots.tar.gz");
+          tarmd5s.add(baseFile + ".cov.plots.tar.gz.md5");
+          
+          tars.add(baseFile + ".cov.tar.gz");
+          tarmd5s.add(baseFile + ".cov.tar.gz.md5");
+
+        }
+        
+        //LEFT OFF WITH: fixing upload
+               
         // FIXME: hardcoded versions, URLs, etc
         Job uploadJob = this.getWorkflow().createBashJob("uploadEMBL");
         StringBuffer overrideTxt = new StringBuffer();
@@ -471,7 +514,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         }
 
         // FIXME: hardcoded versions, URLs, etc
-        Job uploadJob = this.getWorkflow().createBashJob("uploadEMBL");
+        Job uploadJob = this.getWorkflow().createBashJob("uploadDKFZ");
         StringBuffer overrideTxt = new StringBuffer();
         if (this.studyRefnameOverride != null) {
           overrideTxt.append(" --study-refname-override " + this.studyRefnameOverride);
