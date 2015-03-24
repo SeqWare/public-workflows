@@ -407,26 +407,14 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                         + "/settings/dkfz.ini \n");
         generateIni.addParent(previousJobPointer);
         
-        // LEFT OFF HERE: need to refactor the below using the "working" example here:
-        /*
-        export SEQWARE_SETTINGS=/home/seqware/.seqware/settings
-cd /datastore/oozie-1ed05159-7233-4e64-9e8f-8d9e9ba73f5f
-echo "#!/bin/bash
-tumorBams=( /mnt/datastore/workflow_data/inputdata/ef26d046-e88a-4f21-a232-16ccb43637f2/7723a85b59ebce340fe43fc1df504b35.bam )
-aliquotIDs=( f393bb07-270c-2c93-e040-11ac0d484533 )
-controlBam=/mnt/datastore/workflow_data/inputdata/1b9215ab-3634-4108-9db7-7e63139ef7e9/8f957ddae66343269cb9b854c02eee2f.bam
-dellyFiles=( /mnt/datastore/workflow_data/inputdata/test_run.embl-delly_1-0-0.preFilter.20150311.germline.bedpe.txt )
-runACEeq=true
-runSNVCalling=true
-runIndelCalling=true
-date=20150310" > shared_workspace/settings/dkfz.ini
+        // prepare file mount paths
+        StringBuffer mounts = new StringBuffer();
+        for (String aliquotId : tumorAliquotIds) {
+          mounts.append(" -v `pwd`/" + SHARED_WORKSPACE + "/inputs/"+aliquotId+":/mnt/datastore/workflow_data/inputdata/"+aliquotId+" ");
+          mounts.append(" -v `pwd`/" + SHARED_WORKSPACE + "/"+aliquotId+".embl-delly_1-0-0-preFilter."+formattedDate+".germline.bedpe.txt:/mnt/datastore/workflow_data/inputdata/"+aliquotId+".embl-delly_1-0-0-preFilter."+formattedDate+".germline.bedpe.txt ");
+        }
         
-        docker run -v `pwd`/shared_workspace/downloads/dkfz/bundledFiles:/mnt/datastore/bundledFiles -v `pwd`/shared_workspace/inputs:/mnt/datastore/workflow_data/inputdata -v `pwd`/shared_workspace/testdata:/mnt/datastore/testdata  -v `pwd`/shared_workspace/settings/dkfz.ini:/mnt/datastore/workflow_data/workflow.ini -v `pwd`/shared_workspace/results:/mnt/datastore/resultdata dkfz_dockered_workflows /bin/bash -c '/root/bin/runwrapper.sh'
-~                                                     
-        
-        */
-        
-        // cleanup
+        // run the docker for DKFZ
         Job runWorkflow = this.getWorkflow().createBashJob("runDKFZ");
         runWorkflow.getCommand().addArgument(
                 "docker run "
@@ -434,7 +422,7 @@ date=20150310" > shared_workspace/settings/dkfz.ini
                         + "-v " + commonDataDir + "/dkfz/" + dkfzDataBundleUUID 
                         + "/bundledFiles:/mnt/datastore/bundledFiles "
                         // this path does not look right
-                        + "-v `pwd`/" + SHARED_WORKSPACE + "/inputs:/mnt/datastore/workflow_data/inputdata "
+                        + mounts
                         + "-v `pwd`/" + SHARED_WORKSPACE + "/testdata:/mnt/datastore/testdata "
                         + "-v `pwd`/" + SHARED_WORKSPACE
                         + "/settings/dkfz.ini:/mnt/datastore/workflow_data/workflow.ini "
