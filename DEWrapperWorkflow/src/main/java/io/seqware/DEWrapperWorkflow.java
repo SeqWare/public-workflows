@@ -409,10 +409,14 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         
         // prepare file mount paths
         StringBuffer mounts = new StringBuffer();
-        for (String aliquotId : tumorAliquotIds) {
-          mounts.append(" -v `pwd`/" + SHARED_WORKSPACE + "/inputs/"+aliquotId+":/mnt/datastore/workflow_data/inputdata/"+aliquotId+" ");
+        for (int i=0; i<tumorAliquotIds.size(); i++) {
+          String aliquotId = tumorAliquotIds.get(i);
+          String analysisId = tumorAnalysisIds.get(i);
+          mounts.append(" -v `pwd`/" + SHARED_WORKSPACE + "/inputs/"+analysisId+":/mnt/datastore/workflow_data/inputdata/"+analysisId+" ");
           mounts.append(" -v `pwd`/" + SHARED_WORKSPACE + "/"+aliquotId+".embl-delly_1-0-0-preFilter."+formattedDate+".germline.bedpe.txt:/mnt/datastore/workflow_data/inputdata/"+aliquotId+".embl-delly_1-0-0-preFilter."+formattedDate+".germline.bedpe.txt ");
         }
+        // now deal with the control
+        mounts.append(" -v `pwd`/" + SHARED_WORKSPACE + "/inputs/"+controlAnalysisId+":/mnt/datastore/workflow_data/inputdata/"+controlAnalysisId+" ");
         
         // run the docker for DKFZ
         Job runWorkflow = this.getWorkflow().createBashJob("runDKFZ");
