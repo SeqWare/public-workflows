@@ -287,32 +287,6 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                 tarmd5s.add(baseFile + "bedpe.txt.tar.gz.md5");
                 
                 // need to upload cov.plots*
-                /*
--rw-r--r-- 1   1001   1001 2.5M Mar 12 05:41 test_run.embl-delly_1-0-0.preFilter.20150311.germline.readname.txt.tar.gz
--rw-r--r-- 1   1001   1001   33 Mar 12 05:41 test_run.embl-delly_1-0-0.preFilter.20150311.germline.readname.txt.tar.gz.md5
--rw-r--r-- 1   1001   1001 434K Mar 12 01:11 test_run.embl-delly_1-0-0.preFilter.20150311.germline.bedpe.txt
--rw-r--r-- 1   1001   1001   33 Mar 12 01:11 test_run.embl-delly_1-0-0.preFilter.20150311.germline.bedpe.txt.md5
--rw-r--r-- 1   1001   1001 103K Mar 12 01:11 test_run.embl-delly_1-0-0.preFilter.20150311.germline.bedpe.txt.tar.gz
--rw-r--r-- 1   1001   1001   33 Mar 12 01:11 test_run.embl-delly_1-0-0.preFilter.20150311.germline.bedpe.txt.tar.gz.md5
--rw-r--r-- 1   1001   1001 173K Mar 12 01:11 test_run.embl-delly_1-0-0.preFilter.20150311.germline.vcf.gz
--rw-r--r-- 1   1001   1001   33 Mar 12 01:11 test_run.embl-delly_1-0-0.preFilter.20150311.germline.vcf.gz.md5
--rw-r--r-- 1   1001   1001  20K Mar 12 01:11 test_run.embl-delly_1-0-0.preFilter.20150311.germline.vcf.gz.tbi
--rw-r--r-- 1   1001   1001   33 Mar 12 01:11 test_run.embl-delly_1-0-0.preFilter.20150311.germline.vcf.gz.tbi.md5
--rw-r--r-- 1   1001   1001  15M Mar 12 01:11 test_run.embl-delly_1-0-0.preFilter.20150311.cov.plots.tar.gz
--rw-r--r-- 1   1001   1001   33 Mar 12 01:11 test_run.embl-delly_1-0-0.preFilter.20150311.cov.plots.tar.gz.md5
--rw-r--r-- 1   1001   1001  60M Mar 12 01:10 test_run.embl-delly_1-0-0.preFilter.20150311.cov.tar.gz
--rw-r--r-- 1   1001   1001   33 Mar 12 01:10 test_run.embl-delly_1-0-0.preFilter.20150311.cov.tar.gz.md5
--rw-r--r-- 1   1001   1001 168K Mar 12 01:10 test_run.embl-delly_1-0-0.preFilter.20150311.somatic.readname.txt.tar.gz
--rw-r--r-- 1   1001   1001   33 Mar 12 01:10 test_run.embl-delly_1-0-0.preFilter.20150311.somatic.readname.txt.tar.gz.md5
--rw-r--r-- 1   1001   1001 141K Mar 12 00:59 test_run.embl-delly_1-0-0.preFilter.20150311.somatic.bedpe.txt
--rw-r--r-- 1   1001   1001   33 Mar 12 00:59 test_run.embl-delly_1-0-0.preFilter.20150311.somatic.bedpe.txt.md5
--rw-r--r-- 1   1001   1001  34K Mar 12 00:59 test_run.embl-delly_1-0-0.preFilter.20150311.somatic.bedpe.txt.tar.gz
--rw-r--r-- 1   1001   1001   33 Mar 12 00:59 test_run.embl-delly_1-0-0.preFilter.20150311.somatic.bedpe.txt.tar.gz.md5
--rw-r--r-- 1   1001   1001  57K Mar 12 00:59 test_run.embl-delly_1-0-0.preFilter.20150311.somatic.vcf.gz
--rw-r--r-- 1   1001   1001   33 Mar 12 00:59 test_run.embl-delly_1-0-0.preFilter.20150311.somatic.vcf.gz.md5
--rw-r--r-- 1   1001   1001 8.9K Mar 12 00:59 test_run.embl-delly_1-0-0.preFilter.20150311.somatic.vcf.gz.tbi
--rw-r--r-- 1   1001   1001   33 Mar 12 00:59 test_run.embl-delly_1-0-0.preFilter.20150311.somatic.vcf.gz.tbi.md5
-                */
               }
             }
         }
@@ -495,48 +469,6 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             tarmd5s.add(baseFile + "-snvCalling_1-0-114."+formattedDate+".somatic.snv_mnv.tar.gz.md5");
 
         }
-        
-/*
--rw-rw-rw- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318_all.somatic.snv_mnv.tar.gz.md5
--rw-r--r-- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318_all.somatic.snv_mnv.tar.gz.md5.md5
--rw-rw-rw- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318.somatic.snv_mnv.vcf.gz.tbi.md5
--rw-r--r-- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318.somatic.snv_mnv.vcf.gz.tbi.md5.md5
--rw-rw-rw- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318.somatic.snv_mnv.vcf.gz.md5
--rw-r--r-- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318.somatic.snv_mnv.vcf.gz.md5.md5
--rw-rw-rw- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318.germline.snv_mnv.vcf.gz.tbi.md5
--rw-r--r-- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318.germline.snv_mnv.vcf.gz.tbi.md5.md5
--rw-rw-rw- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318.germline.snv_mnv.vcf.gz.md5
--rw-r--r-- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318.germline.snv_mnv.vcf.gz.md5.md5
--rw-rw-rw- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318_all.somatic.indel.tar.gz.md5
--rw-r--r-- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318_all.somatic.indel.tar.gz.md5.md5
--rw-rw-rw- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318.somatic.indel.vcf.gz.tbi.md5
--rw-r--r-- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318.somatic.indel.vcf.gz.tbi.md5.md5
--rw-rw-rw- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318.somatic.indel.vcf.gz.md5
--rw-r--r-- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318.somatic.indel.vcf.gz.md5.md5
--rw-r--r-- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318.germline.indel.vcf.gz.tbi.md5.md5
--rw-rw-rw- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318.germline.indel.vcf.gz.tbi.md5
--rw-rw-rw- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318.germline.indel.vcf.gz.md5
--rw-r--r-- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318.germline.indel.vcf.gz.md5.md5
--rw-rw-rw- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-copyNumberEstimation_1-0-114.20150318_all.somatic.cnv.tar.gz.md5
--rw-r--r-- 1 root root    34 Mar 23 16:20 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-copyNumberEstimation_1-0-114.20150318_all.somatic.cnv.tar.gz.md5.md5
--rw-r--r-- 1 root root    34 Mar 23 16:19 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-copyNumberEstimation_1-0-114.20150318.somatic.cnv.vcf.gz.tbi.md5
--rw-r--r-- 1 root root    34 Mar 23 16:19 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-copyNumberEstimation_1-0-114.20150318.somatic.cnv.vcf.gz.tbi.md5.md5
--rw-r--r-- 1 root root    34 Mar 23 16:19 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-copyNumberEstimation_1-0-114.20150318.somatic.cnv.vcf.gz.md5
--rw-r--r-- 1 root root    34 Mar 23 16:19 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-copyNumberEstimation_1-0-114.20150318.somatic.cnv.vcf.gz.md5.md5
--rw-rw-rw- 1 root root  2.5G Mar 23 16:19 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-copyNumberEstimation_1-0-114.20150318_all.somatic.cnv.tar.gz
--rw-rw-rw- 1 root root 1010M Mar 23 16:18 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318_all.somatic.snv_mnv.tar.gz
--rw-rw-rw- 1 root root  643M Mar 23 16:18 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318_all.somatic.indel.tar.gz
--rw-r--r-- 1 root root   26K Mar 23 16:17 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-copyNumberEstimation_1-0-114.20150318.somatic.cnv.vcf.gz.tbi
--rw-r--r-- 1 root root   85K Mar 23 16:17 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-copyNumberEstimation_1-0-114.20150318.somatic.cnv.vcf.gz
--rw-rw-rw- 1 root root  202K Mar 23 16:17 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318.somatic.indel.vcf.gz.tbi
--rw-rw-rw- 1 root root  1.4M Mar 23 16:17 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318.germline.indel.vcf.gz.tbi
--rw-rw-rw- 1 root root  687K Mar 23 16:17 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318.somatic.snv_mnv.vcf.gz.tbi
--rw-rw-rw- 1 root root  1.5M Mar 23 16:17 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318.germline.snv_mnv.vcf.gz.tbi
--rw-rw-rw- 1 root root   68M Mar 23 16:17 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318.germline.indel.vcf.gz
--rw-rw-rw- 1 root root  1.8M Mar 23 16:17 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-indelCalling_1-0-114.20150318.somatic.indel.vcf.gz
--rw-rw-rw- 1 root root   93M Mar 23 16:17 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318.germline.snv_mnv.vcf.gz
--rw-rw-rw- 1 root root  3.2M Mar 23 16:17 f393bb07-270c-2c93-e040-11ac0d484533.dkfz-snvCalling_1-0-114.20150318.somatic.snv_mnv.vcf.gz 
-*/
 
         // FIXME: hardcoded versions, URLs, etc
         Job uploadJob = this.getWorkflow().createBashJob("uploadEMBL");
