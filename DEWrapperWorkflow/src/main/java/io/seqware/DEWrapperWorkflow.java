@@ -370,8 +370,22 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         // generate the tumor array
         ArrayList<String> tumorBams = new ArrayList<String>();
         for  (int i=0; i<tumorAnalysisIds.size(); i++) {
-          tumorBams.add("/mnt/datastore/workflow_data/inputdata/"+tumorAnalysisIds.get(i)+"/"+bams.get(i));
+          if (localFileMode) {
+            String[] tokens = bams.get(i).split("/");
+            String bamFile = tokens[tokens.length - 1];
+            tumorBams.add("/mnt/datastore/workflow_data/inputdata/"+tumorAnalysisIds.get(i)+"/"+bamFile);
+          } else {
+            tumorBams.add("/mnt/datastore/workflow_data/inputdata/"+tumorAnalysisIds.get(i)+"/"+bams.get(i));            
+          }
         }
+        
+        // generate control bam
+        String controlBamStr = "/mnt/datastore/workflow_data/inputdata/"+controlAnalysisId+"/"+controlBam;
+        if (localFileMode) {
+          String[] tokens = controlBam.split("/");
+          controlBam = tokens[tokens.length - 1];
+        }
+        
         // tumor delly files
         ArrayList<String> tumorDelly = new ArrayList<String>();
         for  (int i=0; i<tumorAliquotIds.size(); i++) {
@@ -382,7 +396,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         generateIni.getCommand().addArgument(
                         "echo \"#!/bin/bash\n" 
                         + "tumorBams=( "+Joiner.on(" ").join(tumorBams)+" )\n"
-                        + "aliquotIDs=( "+Joiner.on(" ").join(tumorAliquotIds)+" )"
+                        + "aliquotIDs=( "+Joiner.on(" ").join(tumorAliquotIds)+" )\n"
                         + "controlBam=/mnt/datastore/workflow_data/inputdata/"+controlAnalysisId+"/"+controlBam+"\n" 
                         + "dellyFiles=( "+Joiner.on(" ").join(tumorDelly)+" )\n"
                         + "runACEeq=true\n"
