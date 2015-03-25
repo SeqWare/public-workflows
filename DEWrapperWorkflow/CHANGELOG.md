@@ -12,6 +12,7 @@
 * need to swap out the download/upload docker to use the most recent wrapper code from Adam
 * need local file mode for output too
 * in addition to local file mode, also a option to read/write to S3
+* Michael/Ivicia work on QC/Timing, Brian for inputs/outputs
 
 ## Examples
 
