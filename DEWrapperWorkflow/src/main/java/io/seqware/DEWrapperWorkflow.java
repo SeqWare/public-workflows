@@ -54,6 +54,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
     @Override
     public void setupWorkflow() {
         try {
+          
             // these variables are for download of inputs
             String controlAnalysisId = getProperty("controlAnalysisId");
             this.analysisIds = Lists.newArrayList(getProperty("tumourAnalysisIds").split(","));
@@ -90,9 +91,9 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             commonDataDir = getProperty("common_data_dir");
             
             // DKFZ bundle info 
-            dkfzDataBundleServer = getProperty("dkfzDataBundleServer");
-            dkfzDataBundleUUID = getProperty("dkfzDataBundleUUID");
-            dkfzDataBundleFile = getProperty("dkfzDataBundleFile");
+            dkfzDataBundleServer = getProperty("DKFZ.dkfzDataBundleServer");
+            dkfzDataBundleUUID = getProperty("DKFZ.dkfzDataBundleUUID");
+            dkfzDataBundleFile = getProperty("DKFZ.dkfzDataBundleFile");
 
             // record the date
             DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
@@ -120,97 +121,35 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
     public void buildWorkflow() {
 
         // create a shared directory in /datastore on the host in order to download reference data
-        Job createSharedWorkSpaceJob = this.getWorkflow().createBashJob("create_dirs");
-        createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + " \n");
-        createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/settings \n");
-        createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/results \n");
-        createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/working \n");
-        createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/downloads/dkfz \n");
-        createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/downloads/embl \n");
-        createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/inputs \n");
-        createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/testdata \n");
-        createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/uploads \n");
-        createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/data \n"); //deprecated, using data dirs below
-        createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + commonDataDir + "/dkfz \n");
-        createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + commonDataDir + "/embl \n");
-
+        Job createSharedWorkSpaceJob = createDirectoriesJob();
+                
         // create reference EMBL data by calling download_data (currently a stub in the Perl version)
-        Job getReferenceDataJob = this.getWorkflow().createBashJob("getEMBLDataFiles");
-        getReferenceDataJob.getCommand().addArgument("cd " + commonDataDir + "/embl \n");
-        getReferenceDataJob.getCommand().addArgument("if [ ! -f genome.fa ]; then wget http://s3.amazonaws.com/pan-cancer-data/pan-cancer-reference/genome.fa.gz \n gunzip genome.fa.gz || true \n fi \n");
-        // upload this to S3 after testing
-        getReferenceDataJob.getCommand().addArgument(
-                "if [ ! -f hs37d5_1000GP.gc ]; then wget https://s3.amazonaws.com/pan-cancer-data/pan-cancer-reference/hs37d5_1000GP.gc \n fi \n");
-        getReferenceDataJob.addParent(createSharedWorkSpaceJob);
+        Job getReferenceDataJob = createReferenceDataJob(createSharedWorkSpaceJob);
         
         // download DKFZ data from GNOS
-        Job getDKFZReferenceDataJob = this.getWorkflow().createBashJob("getDKFZDataFiles");
-        getDKFZReferenceDataJob.getCommand().addArgument("cd " + commonDataDir + "/dkfz \n");
-        getDKFZReferenceDataJob.getCommand().addArgument("if [ ! -d " + dkfzDataBundleUUID + "/bundledFiles ]; then docker run "
-                                    // link in the input directory
-                                    + "-v `pwd`:/workflow_data "
-                                    // link in the pem key
-                                    + "-v "
-                                    + pemFile
-                                    + ":/root/gnos_icgc_keyfile.pem seqware/pancancer_upload_download"
-                                    // here is the Bash command to be run
-                                    + " /bin/bash -c 'cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
-                                    + "/opt/vcf-uploader/vcf-uploader-1.0.0/gnos_download_file.pl "
-                                    // here is the command that is fed to gtdownload
-                                    + "--command \"gtdownload -c /root/gnos_icgc_keyfile.pem -k 60 -vv " + dkfzDataBundleServer
-                                    + "/cghub/data/analysis/download/" + dkfzDataBundleUUID + "\" --file " + dkfzDataBundleUUID + "/"
-                                    + dkfzDataBundleFile + " --retries 10 --sleep-min 1 --timeout-min 60 && "
-                                    + "cd " + dkfzDataBundleUUID + " && "
-                                    + "tar zxf " + dkfzDataBundleFile + "' \n fi \n ");
-        getDKFZReferenceDataJob.addParent(getReferenceDataJob);
+        Job getDKFZReferenceDataJob = createDkfzReferenceDataJob(getReferenceDataJob);
         
         // create inputs
-        Job previousJobPointer = getReferenceDataJob;
-        for (int i = 0; i < analysisIds.size(); i++) {
-            Job downloadJob = this.getWorkflow().createBashJob("download" + i);
-            
-            if (localFileMode) {
-              // using hard links so it spans multiple exported filesystems to Docker
-              downloadJob.getCommand()
-              .addArgument("mkdir -p `pwd`/"+SHARED_WORKSPACE+"/inputs/" + analysisIds.get(i) + " && sudo ln "+bams.get(i)+" `pwd`/"+SHARED_WORKSPACE+"/inputs/"+analysisIds.get(i)+"/ && sudo ln "+bams.get(i)+".bai `pwd`/"+SHARED_WORKSPACE+"/inputs/"+analysisIds.get(i)+"/");
-            } else {
-              downloadJob
-                      .getCommand()
-                      .addArgument(
-                              "docker run "
-                                      // link in the input directory
-                                      + "-v `pwd`/"
-                                      + SHARED_WORKSPACE
-                                      + "/inputs:/workflow_data "
-                                      // link in the pem kee
-                                      + "-v "
-                                      + pemFile
-                                      + ":/root/gnos_icgc_keyfile.pem seqware/pancancer_upload_download"
-                                      // here is the Bash command to be run
-                                      + " /bin/bash -c 'cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
-                                      + "/opt/vcf-uploader/vcf-uploader-1.0.0/gnos_download_file.pl "
-                                      // here is the command that is fed to gtdownload
-                                      + "--command \"gtdownload -c /root/gnos_icgc_keyfile.pem -k 60 -vv " + gnosServer
-                                      + "/cghub/data/analysis/download/" + analysisIds.get(i) + "\" --file " + analysisIds.get(i) + "/"
-                                      + bams.get(i) + " --retries 10 --sleep-min 1 --timeout-min 60' \n");
-            }
-            downloadJob.addParent(previousJobPointer);
-            // for now, make these sequential
-            previousJobPointer = downloadJob;
-        }
+        Job lastDownloadDataJob = createDownloadDataJobs(getDKFZReferenceDataJob);
 
         // call the EMBL workflow
-        previousJobPointer = runEMBLWorkflow(previousJobPointer);
+        Job emblJob = runEMBLWorkflow(lastDownloadDataJob);
         
         // call the DKFZ workflow
-        previousJobPointer = runDKFZWorkflow(previousJobPointer);
+        Job dkfzJob = runDKFZWorkflow(emblJob);
 
         // cleanup
         // TODO: turn on cleanup
         Job cleanup = this.getWorkflow().createBashJob("cleanup");
         cleanup.getCommand().addArgument("#rf -Rf " + SHARED_WORKSPACE + " \n");
-        cleanup.addParent(previousJobPointer);
+        cleanup.addParent(dkfzJob);
     }
+    
+    
+    /*
+     JOB BUILDING METHODS
+    */
+    
 
     /**
      *
@@ -263,34 +202,6 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         List<String> tbimd5s = new ArrayList<>();
         List<String> tarmd5s = new ArrayList<>();
 
-        /*for (String emblType : emblTypes) {
-            for (String tumorAliquotId : tumorAliquotIds) {
-              
-              for (String varType : new String[]{"somatic", "germline"}) {
-
-              // TODO: this isn't following the naming convention
-              // should be "f393bb07-270c-2c93-e040-11ac0d484533.embl-delly-prefilter_1-0-0.20150311.somatic.sv.vcf.gz"
-              // String baseFile = "`pwd`/" + SHARED_WORKSPACE + "/" + tumorAliquotId + ".embl-delly-prefilter_1-0-0."
-              //          + this.formattedDate + ".somatic." + emblType;
-                //String baseFile = "`pwd`/" + SHARED_WORKSPACE + "/" + tumorAliquotId + ".embl-delly_1-0-0-preFilter."+formattedDate+"."+varType;
-                String baseFile = "/workflow_data/" + tumorAliquotId + ".embl-delly_1-0-0-preFilter."+formattedDate+"."+varType+"."+emblType;
-
-                vcfs.add(baseFile + ".vcf.gz");
-                vcfmd5s.add(baseFile + ".vcf.gz.md5");
-                tbis.add(baseFile + ".vcf.gz.tbi");
-                tbimd5s.add(baseFile + ".vcf.gz.tbi.md5");
-                
-                tars.add(baseFile + ".readname.txt.tar.gz");
-                tarmd5s.add(baseFile + ".readname.txt.tar.gz.md5");      
-                
-                tars.add(baseFile + "bedpe.txt.tar.gz");
-                tarmd5s.add(baseFile + "bedpe.txt.tar.gz.md5");
-                
-                // need to upload cov.plots*
-              }
-            }
-        }*/
-        
         // FIXME: these don't quite follow the naming convention
         for (String tumorAliquotId : tumorAliquotIds) {
         
@@ -559,4 +470,97 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         // for now, make these sequential
         return uploadJob;
     }
+
+  private Job createDirectoriesJob() {
+    Job createSharedWorkSpaceJob = this.getWorkflow().createBashJob("create_dirs");
+    createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + " \n");
+    createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/settings \n");
+    createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/results \n");
+    createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/working \n");
+    createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/downloads/dkfz \n");
+    createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/downloads/embl \n");
+    createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/inputs \n");
+    createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/testdata \n");
+    createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/uploads \n");
+    createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/data \n"); //deprecated, using data dirs below
+    createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + commonDataDir + "/dkfz \n");
+    createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + commonDataDir + "/embl \n");
+
+    return(createSharedWorkSpaceJob);
+  }
+
+  private Job createReferenceDataJob(Job createSharedWorkSpaceJob) {
+    
+    Job getReferenceDataJob = this.getWorkflow().createBashJob("getEMBLDataFiles");
+    getReferenceDataJob.getCommand().addArgument("cd " + commonDataDir + "/embl \n");
+    getReferenceDataJob.getCommand().addArgument("if [ ! -f genome.fa ]; then wget http://s3.amazonaws.com/pan-cancer-data/pan-cancer-reference/genome.fa.gz \n gunzip genome.fa.gz || true \n fi \n");
+    // upload this to S3 after testing
+    getReferenceDataJob.getCommand().addArgument(
+            "if [ ! -f hs37d5_1000GP.gc ]; then wget https://s3.amazonaws.com/pan-cancer-data/pan-cancer-reference/hs37d5_1000GP.gc \n fi \n");
+    getReferenceDataJob.addParent(createSharedWorkSpaceJob);
+    return(getReferenceDataJob);
+    
+  }
+
+  private Job createDkfzReferenceDataJob(Job getReferenceDataJob) {
+    Job getDKFZReferenceDataJob = this.getWorkflow().createBashJob("getDKFZDataFiles");
+    getDKFZReferenceDataJob.getCommand().addArgument("cd " + commonDataDir + "/dkfz \n");
+    getDKFZReferenceDataJob.getCommand().addArgument("if [ ! -d " + dkfzDataBundleUUID + "/bundledFiles ]; then docker run "
+                                // link in the input directory
+                                + "-v `pwd`:/workflow_data "
+                                // link in the pem key
+                                + "-v "
+                                + pemFile
+                                + ":/root/gnos_icgc_keyfile.pem seqware/pancancer_upload_download"
+                                // here is the Bash command to be run
+                                + " /bin/bash -c 'cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
+                                + "/opt/vcf-uploader/vcf-uploader-1.0.0/gnos_download_file.pl "
+                                // here is the command that is fed to gtdownload
+                                + "--command \"gtdownload -c /root/gnos_icgc_keyfile.pem -k 60 -vv " + dkfzDataBundleServer
+                                + "/cghub/data/analysis/download/" + dkfzDataBundleUUID + "\" --file " + dkfzDataBundleUUID + "/"
+                                + dkfzDataBundleFile + " --retries 10 --sleep-min 1 --timeout-min 60 && "
+                                + "cd " + dkfzDataBundleUUID + " && "
+                                + "tar zxf " + dkfzDataBundleFile + "' \n fi \n ");
+    getDKFZReferenceDataJob.addParent(getReferenceDataJob);
+    return(getDKFZReferenceDataJob);
+  }
+
+  private Job createDownloadDataJobs(Job previousJob) {
+    
+    Job previousJobPointer = previousJob;
+    
+    for (int i = 0; i < analysisIds.size(); i++) {
+      Job downloadJob = this.getWorkflow().createBashJob("download" + i);
+
+      if (localFileMode) {
+        // using hard links so it spans multiple exported filesystems to Docker
+        downloadJob.getCommand()
+        .addArgument("mkdir -p `pwd`/"+SHARED_WORKSPACE+"/inputs/" + analysisIds.get(i) + " && sudo ln "+bams.get(i)+" `pwd`/"+SHARED_WORKSPACE+"/inputs/"+analysisIds.get(i)+"/ && sudo ln "+bams.get(i)+".bai `pwd`/"+SHARED_WORKSPACE+"/inputs/"+analysisIds.get(i)+"/");
+      } else {
+        downloadJob
+                .getCommand()
+                .addArgument(
+                        "docker run "
+                                // link in the input directory
+                                + "-v `pwd`/"
+                                + SHARED_WORKSPACE
+                                + "/inputs:/workflow_data "
+                                // link in the pem kee
+                                + "-v "
+                                + pemFile
+                                + ":/root/gnos_icgc_keyfile.pem seqware/pancancer_upload_download"
+                                // here is the Bash command to be run
+                                + " /bin/bash -c 'cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
+                                + "/opt/vcf-uploader/vcf-uploader-1.0.0/gnos_download_file.pl "
+                                // here is the command that is fed to gtdownload
+                                + "--command \"gtdownload -c /root/gnos_icgc_keyfile.pem -k 60 -vv " + gnosServer
+                                + "/cghub/data/analysis/download/" + analysisIds.get(i) + "\" --file " + analysisIds.get(i) + "/"
+                                + bams.get(i) + " --retries 10 --sleep-min 1 --timeout-min 60' \n");
+      }
+      downloadJob.addParent(previousJobPointer);
+      // for now, make these sequential
+      previousJobPointer = downloadJob;
+    }
+    return(previousJobPointer);
+  }
 }
