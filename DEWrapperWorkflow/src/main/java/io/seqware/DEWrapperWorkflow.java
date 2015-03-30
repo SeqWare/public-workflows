@@ -157,9 +157,11 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
      * @return a pointer to the last job created
      */
     private Job runEMBLWorkflow(Job previousJobPointer) {
+      
         // call the EMBL workflow
-        Job emblJob = this.getWorkflow().createBashJob("embl workflow");
-        // we have to use a nested container here because of the seqware_lock
+        Job emblJob = this.getWorkflow().createBashJob("embl_workflow");
+        
+        // make config
         boolean count = true;
         for (Entry<String, String> entry : this.getConfigs().entrySet()) {
             if (entry.getKey().startsWith(EMBL_PREFIX)) {
@@ -174,6 +176,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         // now supply date
         emblJob.getCommand().addArgument("echo \"date="+formattedDate+"\" >> `pwd`/"+SHARED_WORKSPACE + "/settings/embl.ini \n");
 
+        // the actual docker command
         emblJob.getCommand()
                 .addArgument(
                 // this is the actual command we run inside the container, which is to launch a workflow
@@ -243,8 +246,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
 
         }
         
-        //LEFT OFF WITH: fixing upload
-               
+        // perform upload to GNOS
         // FIXME: hardcoded versions, URLs, etc
         Job uploadJob = this.getWorkflow().createBashJob("uploadEMBL");
         StringBuffer overrideTxt = new StringBuffer();
@@ -290,6 +292,10 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         uploadJob.addParent(previousJobPointer);
         // for now, make these sequential
         return uploadJob;
+        
+        // next step is to optionally upload to S3
+        // LEFT OFF WITH: upload to S3, also download too
+        
     }
 
 
