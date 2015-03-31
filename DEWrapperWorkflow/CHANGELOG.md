@@ -14,6 +14,10 @@
 * need to swap out the download/upload docker to use the most recent wrapper code from Adam -- TODO, Solomon
 * need local file mode for output too -- TODO
 * in addition to local file mode, also a option to read/write to S3 -- TODO
+* upload/download options
+    * GNOS - upload Y - download Y
+    * S3 - upload - download
+    * local file - upload - download
 
 
 ## Examples
