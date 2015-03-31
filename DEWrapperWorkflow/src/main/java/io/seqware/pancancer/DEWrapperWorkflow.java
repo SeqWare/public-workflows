@@ -1,4 +1,4 @@
-package io.seqware;
+package io.seqware.pancancer;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
