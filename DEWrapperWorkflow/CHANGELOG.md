@@ -4,6 +4,7 @@
 
 * I think both the Delly and DKFZ docker containers will need to be revised to deal with multiple tumors
 * incorporate the Sanger and Broad workflows so all four run together
+* on first run, the workflow pulls reference files from S3 and GNOS, we need a better alternative 
 
 # 1.0.0
 
@@ -20,7 +21,7 @@
     * local file - upload - download
 * move code to utilities class... eventually this should be an artifact
 * use particular versions of the docker containers in my calls
-* do I need to setup a dockerhub user to pull from private repos?
+* do I need to setup a dockerhub user credentials to pull from private repos? If so, need to pass in dockerhub credentials.
 
 
 ## Examples
