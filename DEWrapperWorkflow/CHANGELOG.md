@@ -18,6 +18,9 @@
     * GNOS - upload Y - download Y
     * S3 - upload - download
     * local file - upload - download
+* move code to utilities class... eventually this should be an artifact
+* use particular versions of the docker containers in my calls
+* do I need to setup a dockerhub user to pull from private repos?
 
 
 ## Examples
