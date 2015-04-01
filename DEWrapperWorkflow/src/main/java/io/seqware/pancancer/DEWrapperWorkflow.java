@@ -30,6 +30,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
 
     // variables
     private static final String SHARED_WORKSPACE = "shared_workspace";
+    private static final String EMBL_PREFIX = "EMBL.";
     private ArrayList<String> analysisIds = null;
     private ArrayList<String> tumorAnalysisIds = null;
     private ArrayList<String> bams = null;
@@ -50,11 +51,13 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
     private String dkfzDataBundleServer = "";
     private String dkfzDataBundleUUID = "";
     private String dkfzDataBundleFile = "";
-    private static final String EMBL_PREFIX = "EMBL.";
     private String controlBam = null;
     private String controlAnalysisId = null;
     private String downloadSource = null;
     private String uploadDestination = null;
+    // cleanup
+    private Boolean cleanup = false;
+    private Boolean cleanupBams = false;
     // S3
     private String controlS3URL = null;
     private ArrayList<String> tumourBamS3Urls = null;
@@ -140,6 +143,14 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             } else if ("S3".equals(uploadDestination)) {
               System.err.println("WARNING\n\tRunning in S3 upload mode, analyzed results files will be written to an S3 bucket, you will need to upload to GNOS yourself\n");
             }
+            
+            // cleanup
+            if(hasPropertyAndNotNull("cleanup")) {
+              cleanup=Boolean.valueOf(getProperty("cleanup"));
+            }
+            if(hasPropertyAndNotNull("cleanupBams")) {
+              cleanupBams=Boolean.valueOf(getProperty("cleanupBams"));
+            }
     
         } catch (Exception e) {
             throw new RuntimeException("Could not read property from ini", e);
@@ -173,12 +184,9 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         
         // call the DKFZ workflow
         Job dkfzJob = runDKFZWorkflow(emblJob);
-
-        // cleanup
-        // TODO: turn on cleanup
-        Job cleanup = this.getWorkflow().createBashJob("cleanup");
-        cleanup.getCommand().addArgument("#rf -Rf " + SHARED_WORKSPACE + " \n");
-        cleanup.addParent(dkfzJob);
+        
+        cleanupWorkflow(dkfzJob);
+        
     }
     
     
@@ -186,6 +194,21 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
      JOB BUILDING METHODS
     */
     
+    
+    
+    private void cleanupWorkflow(Job dkfzJob) {
+        if (cleanup) {
+          Job cleanup = this.getWorkflow().createBashJob("cleanup");
+          cleanup.getCommand().addArgument("echo rf -Rf * \n");
+          cleanup.addParent(dkfzJob);
+        } else if (cleanupBams) {
+          Job cleanup = this.getWorkflow().createBashJob("cleanupBams");
+          cleanup.getCommand()
+                  .addArgument("rm -f ./*/*.bam && ")
+                  .addArgument("rm -f ./shared_workspace/*/*.bam; ");
+          cleanup.addParent(dkfzJob);
+        }
+    }
 
     /**
      *
@@ -593,4 +616,5 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
     }
     return(previousJobPointer);
   }
+
 }
