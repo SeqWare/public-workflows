@@ -491,43 +491,32 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         if (this.analysisCenterOverride != null) {
           overrideTxt.append(" --analysis-center-override " + this.analysisCenterOverride);
         }
-        uploadJob.getCommand().addArgument(
-                "docker run "
-                // link in the input directory
-                        + "-v `pwd`/"
-                        + SHARED_WORKSPACE
-                        + "/results:/workflow_data "
-                        // link in the pem kee
-                        + "-v "
-                        + pemFile
-                        + ":/root/gnos_icgc_keyfile.pem "
-                        // looked like a placeholder in the Perl script
-                        // + "-v <embl_output_per_donor>:/result_data "
-                        + "seqware/pancancer_upload_download "
-                        // the command invoked on the container follows
-                        + "/bin/bash -c 'cd /workflow_data && echo '{}' > /tmp/empty.json && mkdir -p uploads && dmesg "
-                        // FIXME: testing, remove the skip
-                        + "# perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
-                        + "/opt/vcf-uploader/vcf-uploader-1.0.0/gnos_upload_vcf.pl "
-                        // parameters to gnos_upload
-                        + "--metadata-urls "
-                        + this.metadataURLs
-                        + " --vcfs " + Joiner.on(',').join(vcfs) + " --vcf-md5sum-files " + Joiner.on(',').join(vcfmd5s) + " --vcf-idxs "
-                        + Joiner.on(',').join(tbis) + " --vcf-idx-md5sum-files " + Joiner.on(',').join(tbimd5s) + " --tarballs "
-                        + Joiner.on(',').join(tars) + " --tarball-md5sum-files " + Joiner.on(',').join(tarmd5s) + " --outdir uploads" 
-                        + " --key /root/gnos_icgc_keyfile.pem --upload-url " + uploadServer
-                        + " --qc-metrics-json /tmp/empty.json" + " --timing-metrics-json /tmp/empty.json"
-                        + " --workflow-src-url https://github.com/SeqWare/docker/tree/develop/dkfz_dockered_workflows" + "--workflow-url https://github.com/SeqWare/docker/tree/develop/dkfz_dockered_workflows" + " --workflow-name DkfzPancancerCnIndelSnv "
-                        + " --workflow-version 1.0.0" + " --seqware-version " + this.getSeqware_version() + " --vm-instance-type "
-                        + this.vmInstanceType + " --vm-instance-cores " + this.vmInstanceCores + " --vm-instance-mem-gb "
-                        + this.vmInstanceMemGb + " --vm-location-code " + this.vmLocationCode + overrideTxt
-                        // FIXME: testing, remove the skip
-                        + " --skip-upload --skip-validate "
-        );
-        uploadJob.addParent(runWorkflow);
-        // for now, make these sequential
         
-        // TODO: local file mode!  S3 mode!
+        // Now do the upload based on the destination chosen
+        if ("local".equals(uploadDestination)) {
+
+          // using hard links so it spans multiple exported filesystems to Docker
+          uploadJob = utils.localUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
+          vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
+          vmInstanceType, vmLocationCode, overrideTxt.toString(), uploadLocalPath, "/tmp/");
+
+        } else if ("GNOS".equals(uploadDestination)) {
+
+          uploadJob = utils.gnosUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
+          vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
+          vmInstanceType, vmLocationCode, overrideTxt.toString());
+
+        } else if ("S3".equals(uploadDestination)) {
+
+          uploadJob = utils.s3UploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
+          vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
+          vmInstanceType, vmLocationCode, overrideTxt.toString(), "/tmp/", s3Key, s3SecretKey, uploadS3BucketPath);
+
+        } else {
+          throw new RuntimeException("Don't know what download Type "+downloadSource+" is!");
+        }
+
+        uploadJob.addParent(runWorkflow);
         
         return uploadJob;
     }
