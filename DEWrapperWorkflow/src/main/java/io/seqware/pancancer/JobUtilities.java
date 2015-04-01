@@ -63,8 +63,8 @@ public class JobUtilities {
   
   
   public Job localUploadJob(Job uploadJob, String workflowDataDir, String pemFile, String metadataURLs,
-          ArrayList<String> vcfs, ArrayList<String> vcfmd5s, ArrayList<String> tbis, ArrayList<String> tbimd5s,
-          ArrayList<String> tars, ArrayList<String> tarmd5s, String uploadServer, String seqwareVersion,
+          List<String> vcfs, List<String> vcfmd5s, List<String> tbis, List<String> tbimd5s,
+          List<String> tars, List<String> tarmd5s, String uploadServer, String seqwareVersion,
           String vmInstanceType, String vmLocationCode, String overrideTxt, String uploadLocalPath, String temp) {
     
     StringBuffer sb = new StringBuffer(overrideTxt);
@@ -81,8 +81,8 @@ public class JobUtilities {
   }
   
   public Job gnosUploadJob(Job uploadJob, String workflowDataDir, String pemFile, String metadataURLs,
-          ArrayList<String> vcfs, ArrayList<String> vcfmd5s, ArrayList<String> tbis, ArrayList<String> tbimd5s,
-          ArrayList<String> tars, ArrayList<String> tarmd5s, String uploadServer, String seqwareVersion,
+          List<String> vcfs, List<String> vcfmd5s, List<String> tbis, List<String> tbimd5s,
+          List<String> tars, List<String> tarmd5s, String uploadServer, String seqwareVersion,
           String vmInstanceType, String vmLocationCode, String overrideTxt) {
     
     return(vcfUpload(uploadJob, workflowDataDir, pemFile, metadataURLs,
@@ -95,8 +95,8 @@ public class JobUtilities {
    *  FIXME: need to know the archive filename
    */
   public Job s3UploadJob(Job uploadJob, String workflowDataDir, String pemFile, String metadataURLs,
-          ArrayList<String> vcfs, ArrayList<String> vcfmd5s, ArrayList<String> tbis, ArrayList<String> tbimd5s,
-          ArrayList<String> tars, ArrayList<String> tarmd5s, String uploadServer, String seqwareVersion,
+          List<String> vcfs, List<String> vcfmd5s, List<String> tbis, List<String> tbimd5s,
+          List<String> tars, List<String> tarmd5s, String uploadServer, String seqwareVersion,
           String vmInstanceType, String vmLocationCode, String overrideTxt, String temp,
           String S3UploadArchiveKey, String S3UploadArchiveSecretKey, String uploadS3Bucket) {
 
@@ -121,8 +121,8 @@ public class JobUtilities {
    * TODO: need to include the JSON timing/qc files, remove the hard-coded URLs
    */
   public Job vcfUpload(Job uploadJob, String workflowDataDir, String pemFile, String metadataURLs,
-          ArrayList<String> vcfs, ArrayList<String> vcfmd5s, ArrayList<String> tbis, ArrayList<String> tbimd5s,
-          ArrayList<String> tars, ArrayList<String> tarmd5s, String uploadServer, String seqwareVersion,
+          List<String> vcfs, List<String> vcfmd5s, List<String> tbis, List<String> tbimd5s,
+          List<String> tars, List<String> tarmd5s, String uploadServer, String seqwareVersion,
           String vmInstanceType, String vmLocationCode, String overrideTxt) {
     
     uploadJob.getCommand().addArgument(

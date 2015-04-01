@@ -302,19 +302,19 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
           // using hard links so it spans multiple exported filesystems to Docker
           uploadJob = utils.localUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
-          vmInstanceType, vmLocationCode, overrideTxt, uploadLocalPath, "/tmp/");
+          vmInstanceType, vmLocationCode, overrideTxt.toString(), uploadLocalPath, "/tmp/");
 
         } else if ("GNOS".equals(uploadDestination)) {
 
           uploadJob = utils.gnosUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
-          vmInstanceType, vmLocationCode, overrideTxt);
+          vmInstanceType, vmLocationCode, overrideTxt.toString());
 
         } else if ("S3".equals(uploadDestination)) {
 
           uploadJob = utils.s3UploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
-          vmInstanceType, vmLocationCode, overrideTxt, "/tmp/", s3Key, s3SecretKey, uploadS3BucketPath);
+          vmInstanceType, vmLocationCode, overrideTxt.toString(), "/tmp/", s3Key, s3SecretKey, uploadS3BucketPath);
 
         } else {
           throw new RuntimeException("Don't know what download Type "+downloadSource+" is!");
