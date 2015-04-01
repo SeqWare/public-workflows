@@ -185,16 +185,17 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         // call the DKFZ workflow
         Job dkfzJob = runDKFZWorkflow(emblJob);
         
+        // now cleanup
         cleanupWorkflow(dkfzJob);
         
     }
     
     
+    
+    
     /*
      JOB BUILDING METHODS
     */
-    
-    
     
     private void cleanupWorkflow(Job dkfzJob) {
         if (cleanup) {
