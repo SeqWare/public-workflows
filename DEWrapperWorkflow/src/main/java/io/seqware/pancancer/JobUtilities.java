@@ -137,7 +137,6 @@ public class JobUtilities {
                         + "seqware/pancancer_upload_download "
                         // the command invoked on the container follows
                         + "/bin/bash -c 'cd /workflow_data && echo '{}' > /tmp/empty.json && mkdir -p uploads && "
-                        // FIXME: testing, remove the skip
                         + "perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
                         + "/opt/vcf-uploader/vcf-uploader-1.0.0/gnos_upload_vcf.pl "
                         // parameters to gnos_upload
@@ -153,9 +152,6 @@ public class JobUtilities {
                         + vmInstanceType + " --vm-instance-cores `nproc` --vm-instance-mem-gb "
                         + "`free | grep 'Mem:' | awk '{print $2 / 1000000 }'` " 
                         + " --vm-location-code " + vmLocationCode + overrideTxt
-                        // FIXME: testing, remove the skip
-                        + " --skip-upload --skip-validate "
-                        // FIXME: what about archive file?
                         );
     
     return(uploadJob);
