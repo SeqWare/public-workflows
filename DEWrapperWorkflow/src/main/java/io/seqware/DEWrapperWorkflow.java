@@ -154,12 +154,10 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                                     + pemFile
                                     + ":/root/gnos_icgc_keyfile.pem seqware/pancancer_upload_download"
                                     // here is the Bash command to be run
-                                    + " /bin/bash -c 'cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
-                                    + "/opt/vcf-uploader/vcf-uploader-1.0.0/gnos_download_file.pl "
-                                    // here is the command that is fed to gtdownload
-                                    + "--command \"gtdownload -c /root/gnos_icgc_keyfile.pem -k 60 -vv " + dkfzDataBundleServer
-                                    + "/cghub/data/analysis/download/" + dkfzDataBundleUUID + "\" --file " + dkfzDataBundleUUID + "/"
-                                    + dkfzDataBundleFile + " --retries 10 --sleep-min 1 --timeout-min 60 && "
+                                    + " /bin/bash -c 'cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-2.0.3/lib "
+                                    + "/opt/vcf-uploader/vcf-uploader-2.0.1/gnos_download_file.pl "
+                                    + " -pem /root/gnos_icgc_keyfile.pem --file " + dkfzDataBundleUUID + "/"
+                                    + dkfzDataBundleFile + " --retries 10 --timeout-min 60 && "
                                     + "cd " + dkfzDataBundleUUID + " && "
                                     + "tar zxf " + dkfzDataBundleFile + "' \n fi \n ");
         getDKFZReferenceDataJob.addParent(getReferenceDataJob);
@@ -187,12 +185,10 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                                       + pemFile
                                       + ":/root/gnos_icgc_keyfile.pem seqware/pancancer_upload_download"
                                       // here is the Bash command to be run
-                                      + " /bin/bash -c 'cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
-                                      + "/opt/vcf-uploader/vcf-uploader-1.0.0/gnos_download_file.pl "
-                                      // here is the command that is fed to gtdownload
-                                      + "--command \"gtdownload -c /root/gnos_icgc_keyfile.pem -k 60 -vv " + gnosServer
-                                      + "/cghub/data/analysis/download/" + analysisIds.get(i) + "\" --file " + analysisIds.get(i) + "/"
-                                      + bams.get(i) + " --retries 10 --sleep-min 1 --timeout-min 60' \n");
+                                      + " /bin/bash -c 'cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-2.0.3/lib "
+                                      + "/opt/vcf-uploader/vcf-uploader-2.0.1/gnos_download_file.pl "
+                                      + " -pem /root/gnos_icgc_keyfile.pem --file " + analysisIds.get(i) + "/"
+                                      + bams.get(i) + " --retries 10 --timeout-min 60' \n");
             }
             downloadJob.addParent(previousJobPointer);
             // for now, make these sequential
@@ -359,8 +355,8 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                         // the command invoked on the container follows
                         + "/bin/bash -c 'cd /workflow_data && echo '{}' > /tmp/empty.json && mkdir -p uploads && dmesg "
                         // FIXME: testing, remove the skip
-                        + "# perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
-                        + "/opt/vcf-uploader/vcf-uploader-1.0.0/gnos_upload_vcf.pl "
+                        + "# perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-2.0.3/lib "
+                        + "/opt/vcf-uploader/vcf-uploader-2.0.1/gnos_upload_vcf.pl "
                         // parameters to gnos_upload
                         + "--metadata-urls "
                         + this.metadataURLs
@@ -375,6 +371,9 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                         + this.vmInstanceMemGb + " --vm-location-code " + this.vmLocationCode + overrideTxt
                         // FIXME: testing, remove the skip
                         + " --skip-upload --skip-validate "
+                        /* Some new arguments you can add: --timeout-min, --retries, --metadata-paths, --center-override, --ref-center-override,
+                           --upload-archive, --uuid
+                        */
                         );
         uploadJob.addParent(previousJobPointer);
         // for now, make these sequential
@@ -538,8 +537,8 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                         // the command invoked on the container follows
                         + "/bin/bash -c 'cd /workflow_data && echo '{}' > /tmp/empty.json && mkdir -p uploads && dmesg "
                         // FIXME: testing, remove the skip
-                        + "# perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
-                        + "/opt/vcf-uploader/vcf-uploader-1.0.0/gnos_upload_vcf.pl "
+                        + "# perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-2.0.3/lib "
+                        + "/opt/vcf-uploader/vcf-uploader-2.0.1/gnos_upload_vcf.pl "
                         // parameters to gnos_upload
                         + "--metadata-urls "
                         + this.metadataURLs
@@ -554,6 +553,10 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                         + this.vmInstanceMemGb + " --vm-location-code " + this.vmLocationCode + overrideTxt
                         // FIXME: testing, remove the skip
                         + " --skip-upload --skip-validate "
+                        /* Some new arguments you can add: --timeout-min, --retries, --metadata-paths, --center-override, --ref-center-override,
+			  --upload-archive, --uuid
+ 	                */
+
         );
         uploadJob.addParent(runWorkflow);
         // for now, make these sequential
