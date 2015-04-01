@@ -4,6 +4,7 @@
 
 * I think both the Delly and DKFZ docker containers will need to be revised to deal with multiple tumors
 * incorporate the Sanger and Broad workflows so all four run together
+      * will want to have a way to select which workflow to run, for the DKFZ workflow it will need to download Delly results if they are already submitted to GNOS
 * on first run, the workflow pulls reference files from S3 and GNOS, we need a better alternative so that we don't eventually refer to broken links which would decrease the longevity of the workflow
 
 # 1.0.0
