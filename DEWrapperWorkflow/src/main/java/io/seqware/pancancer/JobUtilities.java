@@ -31,7 +31,7 @@ public class JobUtilities {
                 // here is the Bash command to be run
                 + " /bin/bash -c 'cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-2.0.3/lib "
                 + "/opt/vcf-uploader/vcf-uploader-2.0.1/gnos_download_file.pl "
-                // here is the command that is fed to gtdownload
+                + "--url "+gnosServer+"/cghub/data/analysis/download/"+analysisId+" "
                 + "--pem /root/gnos_icgc_keyfile.pem --file " + analysisId + "/"
                 + bam + " --retries "+retries+" --timeout-min "+timeout+"' \n");
     
