@@ -30,7 +30,7 @@
 
 Final checklist
 
-* check code, have Solomon make his changes
+* check code, have Solomon make his changes, merge pull request, start release branch
 * update AWS host
      * check DKFZ and build docker
      * check EMBL and see that it was built
