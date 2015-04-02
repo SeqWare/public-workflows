@@ -9,7 +9,7 @@
       * will want to have a way to select which workflow to run, for the DKFZ workflow it will need to download Delly results if they are already submitted to GNOS
 * on first run, the workflow pulls reference files from S3 and GNOS, we need a better alternative so that we don't eventually refer to broken links which would decrease the longevity of the workflow
 * artifact for shared workflow modules that we can use for Sanger, DKFZ, EMBL, and maybe BWA workflows... specifically modules for upload download
-* include bootstrap code to auto-provision work from central decider or /workflow.ini
+* include bootstrap code to auto-provision work from central decider or /workflow.ini depending on ENV-Vars
 
 # 1.0.0
 
