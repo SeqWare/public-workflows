@@ -31,6 +31,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
     // variables
     private static final String SHARED_WORKSPACE = "shared_workspace";
     private static final String EMBL_PREFIX = "EMBL.";
+    private static final String DKFZ_PREFIX = "EMBL.";
     private ArrayList<String> analysisIds = null;
     private ArrayList<String> tumorAnalysisIds = null;
     private ArrayList<String> bams = null;
@@ -66,6 +67,9 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
     private String s3SecretKey = null;
     private String uploadLocalPath = null;
     private String uploadS3BucketPath = null;
+    // workflows to run
+    private Boolean runEmbl = true;
+    private Boolean runDkfz = true;
     
     @Override
     public void setupWorkflow() {
@@ -151,6 +155,14 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             if(hasPropertyAndNotNull("cleanupBams")) {
               cleanupBams=Boolean.valueOf(getProperty("cleanupBams"));
             }
+            
+            // workflow options
+            if(hasPropertyAndNotNull("runDkfz")) {
+              runDkfz=Boolean.valueOf(getProperty("runDkfz"));
+            }
+            /* if(hasPropertyAndNotNull("runEmbl")) {
+              runEmbl=Boolean.valueOf(getProperty("runEmbl"));
+            } */
     
         } catch (Exception e) {
             throw new RuntimeException("Could not read property from ini", e);
@@ -163,7 +175,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
 
     @Override
     /**
-     * The core of the workflow
+     * The core of the overall workflow
      */
     public void buildWorkflow() {
 
@@ -181,12 +193,16 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
 
         // call the EMBL workflow
         Job emblJob = runEMBLWorkflow(lastDownloadDataJob);
+        Job lastWorkflow = emblJob;
         
-        // call the DKFZ workflow
-        Job dkfzJob = runDKFZWorkflow(emblJob);
+        if (runDkfz) {
+          // call the DKFZ workflow
+          Job dkfzJob = runDKFZWorkflow(emblJob);
+          lastWorkflow = dkfzJob;
+        }
         
         // now cleanup
-        cleanupWorkflow(dkfzJob);
+        cleanupWorkflow(lastWorkflow);
         
     }
     
@@ -197,17 +213,17 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
      JOB BUILDING METHODS
     */
     
-    private void cleanupWorkflow(Job dkfzJob) {
+    private void cleanupWorkflow(Job lastJob) {
         if (cleanup) {
           Job cleanup = this.getWorkflow().createBashJob("cleanup");
           cleanup.getCommand().addArgument("echo rf -Rf * \n");
-          cleanup.addParent(dkfzJob);
+          cleanup.addParent(lastJob);
         } else if (cleanupBams) {
           Job cleanup = this.getWorkflow().createBashJob("cleanupBams");
           cleanup.getCommand()
                   .addArgument("rm -f ./*/*.bam && ")
                   .addArgument("rm -f ./shared_workspace/*/*.bam; ");
-          cleanup.addParent(dkfzJob);
+          cleanup.addParent(lastJob);
         }
     }
 
@@ -435,11 +451,6 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
 
         for (String tumorAliquotId : tumorAliquotIds) {
 
-          // TODO: this isn't following the naming convention
-          // should be "f393bb07-270c-2c93-e040-11ac0d484533.embl-delly-prefilter_1-0-0.20150311.somatic.sv.vcf.gz"
-          // String baseFile = "`pwd`/" + SHARED_WORKSPACE + "/" + tumorAliquotId + ".embl-delly-prefilter_1-0-0."
-          //          + this.formattedDate + ".somatic." + emblType;
-            //String baseFile = "`pwd`/" + SHARED_WORKSPACE + "/results/" + tumorAliquotId + ".dkfz-";
             String baseFile = "/workflow_data/" + tumorAliquotId + ".dkfz-";
 
             // VCF
@@ -482,7 +493,6 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
 
         }
 
-        // FIXME: hardcoded versions, URLs, etc
         Job uploadJob = this.getWorkflow().createBashJob("uploadDKFZ");
         StringBuffer overrideTxt = new StringBuffer();
         if (this.studyRefnameOverride != null) {
