@@ -32,9 +32,8 @@ public class JobUtilities {
                 + " /bin/bash -c 'cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-2.0.3/lib "
                 + "/opt/vcf-uploader/vcf-uploader-2.0.1/gnos_download_file.pl "
                 // here is the command that is fed to gtdownload
-                + "--command \"gtdownload -c /root/gnos_icgc_keyfile.pem -k 60 -vv " + gnosServer
-                + "/cghub/data/analysis/download/" + analysisId + "\" --file " + analysisId + "/"
-                + bam + " --retries "+retries+" --sleep-min 1 --timeout-min "+timeout+"' \n");
+                + "--pem /root/gnos_icgc_keyfile.pem --file " + analysisId + "/"
+                + bam + " --retries "+retries+" --timeout-min "+timeout+"' \n");
     
     return thisJob;
   }
@@ -65,14 +64,14 @@ public class JobUtilities {
   public Job localUploadJob(Job uploadJob, String workflowDataDir, String pemFile, String metadataURLs,
           List<String> vcfs, List<String> vcfmd5s, List<String> tbis, List<String> tbimd5s,
           List<String> tars, List<String> tarmd5s, String uploadServer, String seqwareVersion,
-          String vmInstanceType, String vmLocationCode, String overrideTxt, String uploadLocalPath, String temp) {
+          String vmInstanceType, String vmLocationCode, String overrideTxt, String uploadLocalPath, String temp, int timeout, int retries) {
     
     StringBuffer sb = new StringBuffer(overrideTxt);
     sb.append(" --upload-archive "+temp+" --skip-upload --skip-validate ");
     
     uploadJob = vcfUpload(uploadJob, workflowDataDir, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, seqwareVersion,
-          vmInstanceType, vmLocationCode, sb.toString());
+          vmInstanceType, vmLocationCode, sb.toString(), timeout, retries);
     
     uploadJob.getCommand().addArgument(" && rsync -rauv "+temp+"/*.tar.gz "+uploadLocalPath+"/");
     
@@ -83,11 +82,11 @@ public class JobUtilities {
   public Job gnosUploadJob(Job uploadJob, String workflowDataDir, String pemFile, String metadataURLs,
           List<String> vcfs, List<String> vcfmd5s, List<String> tbis, List<String> tbimd5s,
           List<String> tars, List<String> tarmd5s, String uploadServer, String seqwareVersion,
-          String vmInstanceType, String vmLocationCode, String overrideTxt) {
+          String vmInstanceType, String vmLocationCode, String overrideTxt, int timeout, int retries) {
     
     return(vcfUpload(uploadJob, workflowDataDir, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, seqwareVersion,
-          vmInstanceType, vmLocationCode, overrideTxt));
+          vmInstanceType, vmLocationCode, overrideTxt, timeout, retries));
     
   }
   
@@ -98,14 +97,14 @@ public class JobUtilities {
           List<String> vcfs, List<String> vcfmd5s, List<String> tbis, List<String> tbimd5s,
           List<String> tars, List<String> tarmd5s, String uploadServer, String seqwareVersion,
           String vmInstanceType, String vmLocationCode, String overrideTxt, String temp,
-          String S3UploadArchiveKey, String S3UploadArchiveSecretKey, String uploadS3Bucket) {
+          String S3UploadArchiveKey, String S3UploadArchiveSecretKey, String uploadS3Bucket, int timeout, int retries) {
 
       StringBuffer sb = new StringBuffer(overrideTxt);
       sb.append(" --upload-archive "+temp+" --skip-upload --skip-validate ");
     
       uploadJob = vcfUpload(uploadJob, workflowDataDir, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, seqwareVersion,
-          vmInstanceType, vmLocationCode, sb.toString());
+          vmInstanceType, vmLocationCode, sb.toString(), timeout, retries);
     
       uploadJob.getCommand()
         .addArgument(" && mkdir -p ~/.aws/; ")
@@ -123,7 +122,7 @@ public class JobUtilities {
   public Job vcfUpload(Job uploadJob, String workflowDataDir, String pemFile, String metadataURLs,
           List<String> vcfs, List<String> vcfmd5s, List<String> tbis, List<String> tbimd5s,
           List<String> tars, List<String> tarmd5s, String uploadServer, String seqwareVersion,
-          String vmInstanceType, String vmLocationCode, String overrideTxt) {
+          String vmInstanceType, String vmLocationCode, String overrideTxt, int timeout, int retries) {
     
     uploadJob.getCommand().addArgument(
                 "docker run "
@@ -152,6 +151,7 @@ public class JobUtilities {
                         + vmInstanceType + " --vm-instance-cores `nproc` --vm-instance-mem-gb "
                         + "`free | grep 'Mem:' | awk '{print $2 / 1000000 }'` " 
                         + " --vm-location-code " + vmLocationCode + overrideTxt
+                        + " --timeout-min "+timeout+" --retries "+retries+" "
                         );
     
     return(uploadJob);
