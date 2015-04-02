@@ -59,6 +59,9 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
     // cleanup
     private Boolean cleanup = false;
     private Boolean cleanupBams = false;
+    // GNOS timeout
+    private int gnosTimeoutMin = 20;
+    private int gnosRetries = 3;
     // S3
     private String controlS3URL = null;
     private ArrayList<String> tumourBamS3Urls = null;
@@ -147,6 +150,10 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             } else if ("S3".equals(uploadDestination)) {
               System.err.println("WARNING\n\tRunning in S3 upload mode, analyzed results files will be written to an S3 bucket, you will need to upload to GNOS yourself\n");
             }
+            
+            // timeout
+            gnosTimeoutMin = Integer.parseInt(getProperty("gnosTimeoutMin"));
+            gnosRetries = Integer.parseInt(getProperty("gnosRetries"));
             
             // cleanup
             if(hasPropertyAndNotNull("cleanup")) {
@@ -342,19 +349,22 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
           // using hard links so it spans multiple exported filesystems to Docker
           uploadJob = utils.localUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
-          vmInstanceType, vmLocationCode, overrideTxt.toString(), uploadLocalPath, "/tmp/");
+          vmInstanceType, vmLocationCode, overrideTxt.toString(), uploadLocalPath, "/tmp/",
+          gnosTimeoutMin, gnosRetries);
 
         } else if ("GNOS".equals(uploadDestination)) {
 
           uploadJob = utils.gnosUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
-          vmInstanceType, vmLocationCode, overrideTxt.toString());
+          vmInstanceType, vmLocationCode, overrideTxt.toString(),
+          gnosTimeoutMin, gnosRetries);
 
         } else if ("S3".equals(uploadDestination)) {
 
           uploadJob = utils.s3UploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
-          vmInstanceType, vmLocationCode, overrideTxt.toString(), "/tmp/", s3Key, s3SecretKey, uploadS3BucketPath);
+          vmInstanceType, vmLocationCode, overrideTxt.toString(), "/tmp/", s3Key, s3SecretKey,
+          uploadS3BucketPath, gnosTimeoutMin, gnosRetries);
 
         } else {
           throw new RuntimeException("Don't know what download Type "+downloadSource+" is!");
@@ -508,19 +518,22 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
           // using hard links so it spans multiple exported filesystems to Docker
           uploadJob = utils.localUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
-          vmInstanceType, vmLocationCode, overrideTxt.toString(), uploadLocalPath, "/tmp/");
+          vmInstanceType, vmLocationCode, overrideTxt.toString(), uploadLocalPath, "/tmp/",
+          gnosTimeoutMin, gnosRetries);
 
         } else if ("GNOS".equals(uploadDestination)) {
 
           uploadJob = utils.gnosUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
-          vmInstanceType, vmLocationCode, overrideTxt.toString());
+          vmInstanceType, vmLocationCode, overrideTxt.toString(),
+          gnosTimeoutMin, gnosRetries);
 
         } else if ("S3".equals(uploadDestination)) {
 
           uploadJob = utils.s3UploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
-          vmInstanceType, vmLocationCode, overrideTxt.toString(), "/tmp/", s3Key, s3SecretKey, uploadS3BucketPath);
+          vmInstanceType, vmLocationCode, overrideTxt.toString(), "/tmp/", s3Key, s3SecretKey,
+          uploadS3BucketPath, gnosTimeoutMin, gnosRetries);
 
         } else {
           throw new RuntimeException("Don't know what download Type "+downloadSource+" is!");
@@ -578,7 +591,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                                 // here is the command that is fed to gtdownload
                                 + "--command \"gtdownload -c /root/gnos_icgc_keyfile.pem -k 60 -vv " + dkfzDataBundleServer
                                 + "/cghub/data/analysis/download/" + dkfzDataBundleUUID + "\" --file " + dkfzDataBundleUUID + "/"
-                                + dkfzDataBundleFile + " --retries 10 --sleep-min 1 --timeout-min 60 && "
+                                + dkfzDataBundleFile + " --retries "+gnosRetries+" --sleep-min 1 --timeout-min "+gnosTimeoutMin+" && "
                                 + "cd " + dkfzDataBundleUUID + " && "
                                 + "tar zxf " + dkfzDataBundleFile + "' \n fi \n ");
     getDKFZReferenceDataJob.addParent(getReferenceDataJob);
@@ -600,7 +613,9 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         
       } else if ("GNOS".equals(downloadSource)) {
         
-        downloadJob = utils.gnosDownloadJob(downloadJob, "`pwd`/"+SHARED_WORKSPACE+"/inputs", pemFile, 1, 1, gnosServer, analysisIds.get(i), bams.get(i) );
+        // GET FROM INI
+        
+        downloadJob = utils.gnosDownloadJob(downloadJob, "`pwd`/"+SHARED_WORKSPACE+"/inputs", pemFile, gnosTimeoutMin, gnosRetries, gnosServer, analysisIds.get(i), bams.get(i) );
         
       } else if ("S3".equals(downloadSource)) {
         

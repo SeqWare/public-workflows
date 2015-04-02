@@ -14,13 +14,13 @@
 
 ## TODO
 
-* timeout and retries variables -- TODO
 * use particular versions of the docker containers in my calls -- TODO
 * need to integrate the above change into the workflow (e.g. point to the correct file) -- TODO
 * DKFZ docker was updated again, need to rebuild as of 4/2/2015 -- TODO
 * need to swap out the download/upload docker to use the most recent wrapper code from Adam -- TODO, Solomon
 * need to switch to --uuid for uploader so I know the output archive file name -- TODO
 * I may want to rethink the upload options so that you can upload to both S3 and GNOS at the same time, for example -- TODO
+* timeout and retries variables -- DONE
 * need to at least get the QC and timing as well -- DONE, Michael and Ivica updated their docker images to produce these
 * upload/download options -- DONE
     * GNOS - upload DONE - download DONE
@@ -28,14 +28,6 @@
     * local file - upload DONE - download DONE
 * move code to utilities class... eventually this should be an artifact -- DONE
 
-Final checklist
-
-* check code
-* update AWS host
-* check DKFZ and build docker
-* check EMBL and see that it was built
-* fire off example run on AWS with GNOS download and local upload
-* run again with local input, local upload, etc to test with various combinations
 
 ## Examples
 
