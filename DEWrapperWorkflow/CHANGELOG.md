@@ -32,10 +32,11 @@ Final checklist
 
 * check code, have Solomon make his changes
 * update AWS host
-* check DKFZ and build docker
-* check EMBL and see that it was built
-* fire off example run on AWS with GNOS download and local upload
-* run again with local input, local upload, etc to test with various combinations
+     * check DKFZ and build docker
+     * check EMBL and see that it was built
+* fire off example run on AWS with GNOS download and GNOS upload, try to do the upload, fix bugs
+     * run again with local input, local upload
+     * run again with S3 download/upload
 
 ## Examples
 
