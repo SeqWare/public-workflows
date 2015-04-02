@@ -30,7 +30,7 @@
 
 Final checklist
 
-* check code
+* check code, have Solomon make his changes
 * update AWS host
 * check DKFZ and build docker
 * check EMBL and see that it was built
