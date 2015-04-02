@@ -8,6 +8,7 @@
 
 ## TODO
 
+* DKFZ docker was updated again, need to rebuild as of 4/2/2015 -- TODO
 * need to at least get the input JSON filled in, ideally QC and timing as well -- DONE, Michael and Ivica updated their docker images to produce these
 * need to swap out the download/upload docker to use the most recent wrapper code from Adam -- TODO, Solomon
 * need local file mode for output too
