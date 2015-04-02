@@ -14,13 +14,13 @@
 
 ## TODO
 
-* timeout and retries variables -- TODO
 * use particular versions of the docker containers in my calls -- TODO
 * need to integrate the above change into the workflow (e.g. point to the correct file) -- TODO
 * DKFZ docker was updated again, need to rebuild as of 4/2/2015 -- TODO
 * need to swap out the download/upload docker to use the most recent wrapper code from Adam -- TODO, Solomon
 * need to switch to --uuid for uploader so I know the output archive file name -- TODO
 * I may want to rethink the upload options so that you can upload to both S3 and GNOS at the same time, for example -- TODO
+* timeout and retries variables -- DONE
 * need to at least get the QC and timing as well -- DONE, Michael and Ivica updated their docker images to produce these
 * upload/download options -- DONE
     * GNOS - upload DONE - download DONE
