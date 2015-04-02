@@ -14,6 +14,7 @@
 
 ## TODO
 
+* timeout and retries variables -- TODO
 * use particular versions of the docker containers in my calls -- TODO
 * need to integrate the above change into the workflow (e.g. point to the correct file) -- TODO
 * DKFZ docker was updated again, need to rebuild as of 4/2/2015 -- TODO
