@@ -32,7 +32,8 @@ Final checklist
 * update AWS host
 * check DKFZ and build docker
 * check EMBL and see that it was built
-* fire off example run on AWS
+* fire off example run on AWS with GNOS download and local upload
+* run again with local input, local upload, etc to test with various combinations
 
 ## Examples
 
