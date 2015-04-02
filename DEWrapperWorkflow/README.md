@@ -45,7 +45,7 @@ Next, setup your environment with your workflow and a shared datastore directory
 Next, you will need to grab a copy of the workflow wrappering the DKFZ and EMBL pipelines.
 
         git clone git clone git@github.com:SeqWare/public-workflows.git
-        git checkout feature/workflow-DKFZ-EMBL-wrap-workflow
+        # git checkout feature/workflow-DKFZ-EMBL-wrap-workflow # TODO: replace with release string
         cd DEWrapperWorkflow/
         mvn clean install
         rsync -rauvL target/Workflow_Bundle_DEWrapperWorkflow_1.0.0_SeqWare_1.1.0 /workflows/
@@ -62,13 +62,15 @@ Copy your pem key to:
 
 Finally, you can run your workflow with a small launcher script that can be modified for different workflows
 
-        wget https://raw.githubusercontent.com/SeqWare/public-workflows/feature/workflow-DKFZ-EMBL-wrap-workflow/DEWrapperWorkflow/launchWorkflow.sh
+        wget https://raw.githubusercontent.com/SeqWare/public-workflows/develop/DEWrapperWorkflow/launchWorkflow.sh
+        # edit the above script if you need to
         docker run --rm -h master -t -v /var/run/docker.sock:/var/run/docker.sock -v /datastore:/datastore -v /workflows:/workflows -v `pwd`/launchWorkflow.sh:/launchWorkflow.sh  -i seqware/seqware_full /start.sh "bash /launchWorkflow.sh"        
         
 Note that you can also launch using the whitestar workflow engine which is much faster but lacks the more advanced features that are normally present in SeqWare. See [Developing in Partial SeqWare Environments with Whitestar](https://seqware.github.io/docs/6-pipeline/partial_environments/) for details. 
 
-        wget https://raw.githubusercontent.com/SeqWare/public-workflows/feature/workflow-DKFZ-EMBL-wrap-workflow/DEWrapperWorkflow/launchWorkflowDev.sh
-        docker run --rm -h master -t -v /var/run/docker.sock:/var/run/docker.sock -v /datastore:/datastore -v /workflows:/workflows -v `pwd`/launchWorkflowDev.sh:/launchWorkflowDev.sh  -i seqware/seqware_whitestar bash /launchWorkflowDev.sh
+        wget https://raw.githubusercontent.com/SeqWare/public-workflows/develop/DEWrapperWorkflow/launchWorkflowDev.sh
+        # edit the above script if you need to
+        docker run --rm -h master -t -v /var/run/docker.sock:/var/run/docker.sock -v /datastore:/datastore -v /workflows:/workflows -v `pwd`/launchWorkflowDev.sh:/launchWorkflowDev.sh -i seqware/seqware_whitestar bash /launchWorkflowDev.sh
 
 Look in your datastore for the two working directories generated per run (one for the overall workflow and one for the embedded workflow, currently HelloWorld)
 
@@ -82,7 +84,9 @@ Refer to https://github.com/SeqWare/docker/commit/9b98f6ec47f0acc4545fd0d6243a76
 
 ### DKFZ
 
+Code is located at: https://github.com/SeqWare/docker/tree/develop/dkfz_dockered_workflows
 
+You will need to build this one yourself since it cannot currently be distributed on DockerHub.
 
 ### EMBL
 
@@ -117,5 +121,6 @@ Third, pull from bitbucket and push to Github
 
 This project uses components from the following projects
 
-* [pcawg_delly_workflow](https://github.com/ICGC-TCGA-PanCancer/pcawg_delly_workflow)
+* [pcawg_embl_workflow](https://github.com/ICGC-TCGA-PanCancer/pcawg_delly_workflow)
+* [pcawg_dkfz_workflow](https://github.com/SeqWare/docker/tree/develop/dkfz_dockered_workflows)
 * [genetorrent](https://cghub.ucsc.edu/software/downloads.html)
