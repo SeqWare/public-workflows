@@ -21,3 +21,4 @@
 /workflow-DKFZ-bundle/target/
 /workflow-DKFZ-bundle/workflow/scripts/gnoskey.txt
 /DEWrapperWorkflow/target/
+/DEWrapperWorkflow/src/main/java/io/seqware/pancancer/Version.java

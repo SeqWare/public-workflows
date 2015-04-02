@@ -1,4 +1,4 @@
-package io.seqware;
+package io.seqware.pancancer;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
@@ -24,8 +24,14 @@ import net.sourceforge.seqware.pipeline.workflowV2.model.Job;
  * >AbstractWorkflowDataModel</a> for more information.
  */
 public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
+  
+    // job utilities
+    private JobUtilities utils = new JobUtilities();
 
-    public static final String SHARED_WORKSPACE = "shared_workspace";
+    // variables
+    private static final String SHARED_WORKSPACE = "shared_workspace";
+    private static final String EMBL_PREFIX = "EMBL.";
+    private static final String DKFZ_PREFIX = "EMBL.";
     private ArrayList<String> analysisIds = null;
     private ArrayList<String> tumorAnalysisIds = null;
     private ArrayList<String> bams = null;
@@ -46,14 +52,32 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
     private String dkfzDataBundleServer = "";
     private String dkfzDataBundleUUID = "";
     private String dkfzDataBundleFile = "";
-    private static final String EMBL_PREFIX = "EMBL.";
     private String controlBam = null;
     private String controlAnalysisId = null;
-    private boolean localFileMode = false;
+    private String downloadSource = null;
+    private String uploadDestination = null;
+    // cleanup
+    private Boolean cleanup = false;
+    private Boolean cleanupBams = false;
+    // GNOS timeout
+    private int gnosTimeoutMin = 20;
+    private int gnosRetries = 3;
+    // S3
+    private String controlS3URL = null;
+    private ArrayList<String> tumourBamS3Urls = null;
+    private ArrayList<String> allBamS3Urls = null;
+    private String s3Key = null;
+    private String s3SecretKey = null;
+    private String uploadLocalPath = null;
+    private String uploadS3BucketPath = null;
+    // workflows to run
+    private Boolean runEmbl = true;
+    private Boolean runDkfz = true;
     
     @Override
     public void setupWorkflow() {
         try {
+          
             // these variables are for download of inputs
             String controlAnalysisId = getProperty("controlAnalysisId");
             this.analysisIds = Lists.newArrayList(getProperty("tumourAnalysisIds").split(","));
@@ -63,6 +87,15 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             bams.add(getProperty("controlBam"));
             this.gnosServer = getProperty("gnosServer");
             this.pemFile = getProperty("pemFile");
+            
+            // S3 URLs
+            controlS3URL = getProperty("controlBamS3Url");
+            tumourBamS3Urls = Lists.newArrayList(getProperty("tumourBamS3Urls").split(","));
+            allBamS3Urls = Lists.newArrayList(getProperty("tumourBamS3Urls").split(","));
+            allBamS3Urls.add(controlS3URL);
+            s3Key = getProperty("s3Key");
+            s3SecretKey = getProperty("s3SecretKey");
+            uploadS3BucketPath = getProperty("uploadS3BucketPath");
             
             // controls
             this.controlBam = getProperty("controlBam");
@@ -79,10 +112,14 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             this.metadataURLs = metadataURLBuilder.toString();
             this.tumorAliquotIds = Lists.newArrayList(getProperty("tumourAliquotIds").split(","));
 
+            // background information on VMs
+            // TODO: Cores and MemGb can be filled in at runtime
             this.vmInstanceType = getProperty("vmInstanceType");
             this.vmInstanceCores = getProperty("vmInstanceCores");
             this.vmInstanceMemGb = getProperty("vmInstanceMemGb");
             this.vmLocationCode = getProperty("vmLocationCode");
+            
+            // overrides for study name and analysis center
             if (this.hasPropertyAndNotNull("study-refname-override")) { this.studyRefnameOverride = getProperty("study-refname-override"); }
             if (this.hasPropertyAndNotNull("analysis-center-override")) { this.analysisCenterOverride = getProperty("analysis-center-override"); }
             
@@ -90,9 +127,9 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             commonDataDir = getProperty("common_data_dir");
             
             // DKFZ bundle info 
-            dkfzDataBundleServer = getProperty("dkfzDataBundleServer");
-            dkfzDataBundleUUID = getProperty("dkfzDataBundleUUID");
-            dkfzDataBundleFile = getProperty("dkfzDataBundleFile");
+            dkfzDataBundleServer = getProperty("DKFZ.dkfzDataBundleServer");
+            dkfzDataBundleUUID = getProperty("DKFZ.dkfzDataBundleUUID");
+            dkfzDataBundleFile = getProperty("DKFZ.dkfzDataBundleFile");
 
             // record the date
             DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
@@ -100,116 +137,101 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             this.formattedDate = dateFormat.format(cal.getTime());
             
             // local file mode
-            if(hasPropertyAndNotNull("localFileMode")) {
-              localFileMode=Boolean.valueOf(getProperty("localFileMode"));
+            downloadSource = getProperty("downloadSource");
+            uploadDestination = getProperty("uploadDestination");
+            uploadLocalPath = getProperty("uploadLocalPath");
+            if ("local".equals(downloadSource)) {
+              System.err.println("WARNING\n\tRunning in direct file mode, direct access BAM files will be used and assumed to be full paths\n");
+            } else if ("S3".equals(downloadSource)) {
+              System.err.println("WARNING\n\tRunning in S3 file mode, direct access BAM files will be used and assumed to be full paths\n");
             }
-            if (localFileMode) {
-              System.err.println("WARNING\n\tRunning in direct file mode, direct access BAM files will be used and assumed to be full paths, change 'localFileMode' in ini file to disable\n");
+            if ("local".equals(uploadDestination)) {
+              System.err.println("WARNING\n\tRunning in local file upload mode, analyzed results files will be written to a local directory, you will need to upload to GNOS yourself\n");
+            } else if ("S3".equals(uploadDestination)) {
+              System.err.println("WARNING\n\tRunning in S3 upload mode, analyzed results files will be written to an S3 bucket, you will need to upload to GNOS yourself\n");
             }
+            
+            // timeout
+            gnosTimeoutMin = Integer.parseInt(getProperty("gnosTimeoutMin"));
+            gnosRetries = Integer.parseInt(getProperty("gnosRetries"));
+            
+            // cleanup
+            if(hasPropertyAndNotNull("cleanup")) {
+              cleanup=Boolean.valueOf(getProperty("cleanup"));
+            }
+            if(hasPropertyAndNotNull("cleanupBams")) {
+              cleanupBams=Boolean.valueOf(getProperty("cleanupBams"));
+            }
+            
+            // workflow options
+            if(hasPropertyAndNotNull("runDkfz")) {
+              runDkfz=Boolean.valueOf(getProperty("runDkfz"));
+            }
+            /* if(hasPropertyAndNotNull("runEmbl")) {
+              runEmbl=Boolean.valueOf(getProperty("runEmbl"));
+            } */
     
         } catch (Exception e) {
             throw new RuntimeException("Could not read property from ini", e);
         }
     }
+    
+    /*
+     MAIN WORKFLOW METHOD
+    */
 
     @Override
     /**
-     * Note that this assumes that the ini file that was used to schedule is also mounted at /workflow.ini
-     * This is pretty ugly
+     * The core of the overall workflow
      */
     public void buildWorkflow() {
 
         // create a shared directory in /datastore on the host in order to download reference data
-        Job createSharedWorkSpaceJob = this.getWorkflow().createBashJob("create_dirs");
-        createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + " \n");
-        createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/settings \n");
-        createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/results \n");
-        createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/working \n");
-        createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/downloads/dkfz \n");
-        createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/downloads/embl \n");
-        createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/inputs \n");
-        createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/testdata \n");
-        createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/uploads \n");
-        createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/data \n"); //deprecated, using data dirs below
-        createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + commonDataDir + "/dkfz \n");
-        createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + commonDataDir + "/embl \n");
-
+        Job createSharedWorkSpaceJob = createDirectoriesJob();
+                
         // create reference EMBL data by calling download_data (currently a stub in the Perl version)
-        Job getReferenceDataJob = this.getWorkflow().createBashJob("getEMBLDataFiles");
-        getReferenceDataJob.getCommand().addArgument("cd " + commonDataDir + "/embl \n");
-        getReferenceDataJob.getCommand().addArgument("if [ ! -f genome.fa ]; then wget http://s3.amazonaws.com/pan-cancer-data/pan-cancer-reference/genome.fa.gz \n gunzip genome.fa.gz || true \n fi \n");
-        // upload this to S3 after testing
-        getReferenceDataJob.getCommand().addArgument(
-                "if [ ! -f hs37d5_1000GP.gc ]; then wget https://s3.amazonaws.com/pan-cancer-data/pan-cancer-reference/hs37d5_1000GP.gc \n fi \n");
-        getReferenceDataJob.addParent(createSharedWorkSpaceJob);
+        Job getReferenceDataJob = createReferenceDataJob(createSharedWorkSpaceJob);
         
         // download DKFZ data from GNOS
-        Job getDKFZReferenceDataJob = this.getWorkflow().createBashJob("getDKFZDataFiles");
-        getDKFZReferenceDataJob.getCommand().addArgument("cd " + commonDataDir + "/dkfz \n");
-        getDKFZReferenceDataJob.getCommand().addArgument("if [ ! -d " + dkfzDataBundleUUID + "/bundledFiles ]; then docker run "
-                                    // link in the input directory
-                                    + "-v `pwd`:/workflow_data "
-                                    // link in the pem key
-                                    + "-v "
-                                    + pemFile
-                                    + ":/root/gnos_icgc_keyfile.pem seqware/pancancer_upload_download"
-                                    // here is the Bash command to be run
-                                    + " /bin/bash -c 'cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
-                                    + "/opt/vcf-uploader/vcf-uploader-1.0.0/gnos_download_file.pl "
-                                    // here is the command that is fed to gtdownload
-                                    + "--command \"gtdownload -c /root/gnos_icgc_keyfile.pem -k 60 -vv " + dkfzDataBundleServer
-                                    + "/cghub/data/analysis/download/" + dkfzDataBundleUUID + "\" --file " + dkfzDataBundleUUID + "/"
-                                    + dkfzDataBundleFile + " --retries 10 --sleep-min 1 --timeout-min 60 && "
-                                    + "cd " + dkfzDataBundleUUID + " && "
-                                    + "tar zxf " + dkfzDataBundleFile + "' \n fi \n ");
-        getDKFZReferenceDataJob.addParent(getReferenceDataJob);
+        Job getDKFZReferenceDataJob = createDkfzReferenceDataJob(getReferenceDataJob);
         
         // create inputs
-        Job previousJobPointer = getReferenceDataJob;
-        for (int i = 0; i < analysisIds.size(); i++) {
-            Job downloadJob = this.getWorkflow().createBashJob("download" + i);
-            
-            if (localFileMode) {
-              // using hard links so it spans multiple exported filesystems to Docker
-              downloadJob.getCommand()
-              .addArgument("mkdir -p `pwd`/"+SHARED_WORKSPACE+"/inputs/" + analysisIds.get(i) + " && sudo ln "+bams.get(i)+" `pwd`/"+SHARED_WORKSPACE+"/inputs/"+analysisIds.get(i)+"/ && sudo ln "+bams.get(i)+".bai `pwd`/"+SHARED_WORKSPACE+"/inputs/"+analysisIds.get(i)+"/");
-            } else {
-              downloadJob
-                      .getCommand()
-                      .addArgument(
-                              "docker run "
-                                      // link in the input directory
-                                      + "-v `pwd`/"
-                                      + SHARED_WORKSPACE
-                                      + "/inputs:/workflow_data "
-                                      // link in the pem kee
-                                      + "-v "
-                                      + pemFile
-                                      + ":/root/gnos_icgc_keyfile.pem seqware/pancancer_upload_download"
-                                      // here is the Bash command to be run
-                                      + " /bin/bash -c 'cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
-                                      + "/opt/vcf-uploader/vcf-uploader-1.0.0/gnos_download_file.pl "
-                                      // here is the command that is fed to gtdownload
-                                      + "--command \"gtdownload -c /root/gnos_icgc_keyfile.pem -k 60 -vv " + gnosServer
-                                      + "/cghub/data/analysis/download/" + analysisIds.get(i) + "\" --file " + analysisIds.get(i) + "/"
-                                      + bams.get(i) + " --retries 10 --sleep-min 1 --timeout-min 60' \n");
-            }
-            downloadJob.addParent(previousJobPointer);
-            // for now, make these sequential
-            previousJobPointer = downloadJob;
-        }
+        Job lastDownloadDataJob = createDownloadDataJobs(getDKFZReferenceDataJob);
 
         // call the EMBL workflow
-        previousJobPointer = runEMBLWorkflow(previousJobPointer);
+        Job emblJob = runEMBLWorkflow(lastDownloadDataJob);
+        Job lastWorkflow = emblJob;
         
-        // call the DKFZ workflow
-        previousJobPointer = runDKFZWorkflow(previousJobPointer);
-
-        // cleanup
-        // TODO: turn on cleanup
-        Job cleanup = this.getWorkflow().createBashJob("cleanup");
-        cleanup.getCommand().addArgument("#rf -Rf " + SHARED_WORKSPACE + " \n");
-        cleanup.addParent(previousJobPointer);
+        if (runDkfz) {
+          // call the DKFZ workflow
+          Job dkfzJob = runDKFZWorkflow(emblJob);
+          lastWorkflow = dkfzJob;
+        }
+        
+        // now cleanup
+        cleanupWorkflow(lastWorkflow);
+        
+    }
+    
+    
+    
+    
+    /*
+     JOB BUILDING METHODS
+    */
+    
+    private void cleanupWorkflow(Job lastJob) {
+        if (cleanup) {
+          Job cleanup = this.getWorkflow().createBashJob("cleanup");
+          cleanup.getCommand().addArgument("echo rf -Rf * \n");
+          cleanup.addParent(lastJob);
+        } else if (cleanupBams) {
+          Job cleanup = this.getWorkflow().createBashJob("cleanupBams");
+          cleanup.getCommand()
+                  .addArgument("rm -f ./*/*.bam && ")
+                  .addArgument("rm -f ./shared_workspace/*/*.bam; ");
+          cleanup.addParent(lastJob);
+        }
     }
 
     /**
@@ -218,9 +240,11 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
      * @return a pointer to the last job created
      */
     private Job runEMBLWorkflow(Job previousJobPointer) {
+      
         // call the EMBL workflow
-        Job emblJob = this.getWorkflow().createBashJob("embl workflow");
-        // we have to use a nested container here because of the seqware_lock
+        Job emblJob = this.getWorkflow().createBashJob("embl_workflow");
+        
+        // make config
         boolean count = true;
         for (Entry<String, String> entry : this.getConfigs().entrySet()) {
             if (entry.getKey().startsWith(EMBL_PREFIX)) {
@@ -235,6 +259,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         // now supply date
         emblJob.getCommand().addArgument("echo \"date="+formattedDate+"\" >> `pwd`/"+SHARED_WORKSPACE + "/settings/embl.ini \n");
 
+        // the actual docker command
         emblJob.getCommand()
                 .addArgument(
                 // this is the actual command we run inside the container, which is to launch a workflow
@@ -263,34 +288,6 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         List<String> tbimd5s = new ArrayList<>();
         List<String> tarmd5s = new ArrayList<>();
 
-        /*for (String emblType : emblTypes) {
-            for (String tumorAliquotId : tumorAliquotIds) {
-              
-              for (String varType : new String[]{"somatic", "germline"}) {
-
-              // TODO: this isn't following the naming convention
-              // should be "f393bb07-270c-2c93-e040-11ac0d484533.embl-delly-prefilter_1-0-0.20150311.somatic.sv.vcf.gz"
-              // String baseFile = "`pwd`/" + SHARED_WORKSPACE + "/" + tumorAliquotId + ".embl-delly-prefilter_1-0-0."
-              //          + this.formattedDate + ".somatic." + emblType;
-                //String baseFile = "`pwd`/" + SHARED_WORKSPACE + "/" + tumorAliquotId + ".embl-delly_1-0-0-preFilter."+formattedDate+"."+varType;
-                String baseFile = "/workflow_data/" + tumorAliquotId + ".embl-delly_1-0-0-preFilter."+formattedDate+"."+varType+"."+emblType;
-
-                vcfs.add(baseFile + ".vcf.gz");
-                vcfmd5s.add(baseFile + ".vcf.gz.md5");
-                tbis.add(baseFile + ".vcf.gz.tbi");
-                tbimd5s.add(baseFile + ".vcf.gz.tbi.md5");
-                
-                tars.add(baseFile + ".readname.txt.tar.gz");
-                tarmd5s.add(baseFile + ".readname.txt.tar.gz.md5");      
-                
-                tars.add(baseFile + "bedpe.txt.tar.gz");
-                tarmd5s.add(baseFile + "bedpe.txt.tar.gz.md5");
-                
-                // need to upload cov.plots*
-              }
-            }
-        }*/
-        
         // FIXME: these don't quite follow the naming convention
         for (String tumorAliquotId : tumorAliquotIds) {
         
@@ -332,10 +329,12 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
 
         }
         
-        //LEFT OFF WITH: fixing upload
-               
+        // perform upload to GNOS
         // FIXME: hardcoded versions, URLs, etc
+        // FIXME: temp location problem, see "/tmp/" below
         Job uploadJob = this.getWorkflow().createBashJob("uploadEMBL");
+        
+        // params
         StringBuffer overrideTxt = new StringBuffer();
         if (this.studyRefnameOverride != null) {
           overrideTxt.append(" --study-refname-override " + this.studyRefnameOverride);
@@ -343,42 +342,38 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         if (this.analysisCenterOverride != null) {
           overrideTxt.append(" --analysis-center-override " + this.analysisCenterOverride);
         }
-        uploadJob.getCommand().addArgument(
-                "docker run "
-                // link in the input directory
-                        + "-v `pwd`/"
-                        + SHARED_WORKSPACE
-                        + ":/workflow_data "
-                        // link in the pem kee
-                        + "-v "
-                        + pemFile
-                        + ":/root/gnos_icgc_keyfile.pem "
-                        // looked like a placeholder in the Perl script
-                        // + "-v <embl_output_per_donor>:/result_data "
-                        + "seqware/pancancer_upload_download "
-                        // the command invoked on the container follows
-                        + "/bin/bash -c 'cd /workflow_data && echo '{}' > /tmp/empty.json && mkdir -p uploads && dmesg "
-                        // FIXME: testing, remove the skip
-                        + "# perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
-                        + "/opt/vcf-uploader/vcf-uploader-1.0.0/gnos_upload_vcf.pl "
-                        // parameters to gnos_upload
-                        + "--metadata-urls "
-                        + this.metadataURLs
-                        + " --vcfs " + Joiner.on(',').join(vcfs) + " --vcf-md5sum-files " + Joiner.on(',').join(vcfmd5s) + " --vcf-idxs "
-                        + Joiner.on(',').join(tbis) + " --vcf-idx-md5sum-files " + Joiner.on(',').join(tbimd5s) + " --tarballs "
-                        + Joiner.on(',').join(tars) + " --tarball-md5sum-files " + Joiner.on(',').join(tarmd5s) + " --outdir uploads" 
-                        + " --key /root/gnos_icgc_keyfile.pem --upload-url " + uploadServer
-                        + " --qc-metrics-json /tmp/empty.json" + " --timing-metrics-json /tmp/empty.json"
-                        + " --workflow-src-url https://bitbucket.org/weischen/pcawg-delly-workflow" + "--workflow-url https://registry.hub.docker.com/u/pancancer/pcawg-delly-workflow" + " --workflow-name EmblPancancerStr "
-                        + " --workflow-version 1.0.0" + " --seqware-version " + this.getSeqware_version() + " --vm-instance-type "
-                        + this.vmInstanceType + " --vm-instance-cores " + this.vmInstanceCores + " --vm-instance-mem-gb "
-                        + this.vmInstanceMemGb + " --vm-location-code " + this.vmLocationCode + overrideTxt
-                        // FIXME: testing, remove the skip
-                        + " --skip-upload --skip-validate "
-                        );
+
+        // Now do the upload based on the destination chosen
+        if ("local".equals(uploadDestination)) {
+
+          // using hard links so it spans multiple exported filesystems to Docker
+          uploadJob = utils.localUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
+          vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
+          vmInstanceType, vmLocationCode, overrideTxt.toString(), uploadLocalPath, "/tmp/",
+          gnosTimeoutMin, gnosRetries);
+
+        } else if ("GNOS".equals(uploadDestination)) {
+
+          uploadJob = utils.gnosUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
+          vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
+          vmInstanceType, vmLocationCode, overrideTxt.toString(),
+          gnosTimeoutMin, gnosRetries);
+
+        } else if ("S3".equals(uploadDestination)) {
+
+          uploadJob = utils.s3UploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
+          vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
+          vmInstanceType, vmLocationCode, overrideTxt.toString(), "/tmp/", s3Key, s3SecretKey,
+          uploadS3BucketPath, gnosTimeoutMin, gnosRetries);
+
+        } else {
+          throw new RuntimeException("Don't know what download Type "+downloadSource+" is!");
+        }
+
         uploadJob.addParent(previousJobPointer);
         // for now, make these sequential
         return uploadJob;
+        
     }
 
 
@@ -387,7 +382,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         // generate the tumor array
         ArrayList<String> tumorBams = new ArrayList<String>();
         for  (int i=0; i<tumorAnalysisIds.size(); i++) {
-          if (localFileMode) {
+          if ("local".equals(downloadSource)) {
             String[] tokens = bams.get(i).split("/");
             String bamFile = tokens[tokens.length - 1];
             tumorBams.add("/mnt/datastore/workflow_data/inputdata/"+tumorAnalysisIds.get(i)+"/"+bamFile);
@@ -398,7 +393,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         
         // generate control bam
         String controlBamStr = "/mnt/datastore/workflow_data/inputdata/"+controlAnalysisId+"/"+controlBam;
-        if (localFileMode) {
+        if ("local".equals(downloadSource)) {
           String[] tokens = controlBam.split("/");
           controlBam = tokens[tokens.length - 1];
         }
@@ -466,11 +461,6 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
 
         for (String tumorAliquotId : tumorAliquotIds) {
 
-          // TODO: this isn't following the naming convention
-          // should be "f393bb07-270c-2c93-e040-11ac0d484533.embl-delly-prefilter_1-0-0.20150311.somatic.sv.vcf.gz"
-          // String baseFile = "`pwd`/" + SHARED_WORKSPACE + "/" + tumorAliquotId + ".embl-delly-prefilter_1-0-0."
-          //          + this.formattedDate + ".somatic." + emblType;
-            //String baseFile = "`pwd`/" + SHARED_WORKSPACE + "/results/" + tumorAliquotId + ".dkfz-";
             String baseFile = "/workflow_data/" + tumorAliquotId + ".dkfz-";
 
             // VCF
@@ -513,7 +503,6 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
 
         }
 
-        // FIXME: hardcoded versions, URLs, etc
         Job uploadJob = this.getWorkflow().createBashJob("uploadDKFZ");
         StringBuffer overrideTxt = new StringBuffer();
         if (this.studyRefnameOverride != null) {
@@ -522,41 +511,125 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         if (this.analysisCenterOverride != null) {
           overrideTxt.append(" --analysis-center-override " + this.analysisCenterOverride);
         }
-        uploadJob.getCommand().addArgument(
-                "docker run "
-                // link in the input directory
-                        + "-v `pwd`/"
-                        + SHARED_WORKSPACE
-                        + "/results:/workflow_data "
-                        // link in the pem kee
-                        + "-v "
-                        + pemFile
-                        + ":/root/gnos_icgc_keyfile.pem "
-                        // looked like a placeholder in the Perl script
-                        // + "-v <embl_output_per_donor>:/result_data "
-                        + "seqware/pancancer_upload_download "
-                        // the command invoked on the container follows
-                        + "/bin/bash -c 'cd /workflow_data && echo '{}' > /tmp/empty.json && mkdir -p uploads && dmesg "
-                        // FIXME: testing, remove the skip
-                        + "# perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
-                        + "/opt/vcf-uploader/vcf-uploader-1.0.0/gnos_upload_vcf.pl "
-                        // parameters to gnos_upload
-                        + "--metadata-urls "
-                        + this.metadataURLs
-                        + " --vcfs " + Joiner.on(',').join(vcfs) + " --vcf-md5sum-files " + Joiner.on(',').join(vcfmd5s) + " --vcf-idxs "
-                        + Joiner.on(',').join(tbis) + " --vcf-idx-md5sum-files " + Joiner.on(',').join(tbimd5s) + " --tarballs "
-                        + Joiner.on(',').join(tars) + " --tarball-md5sum-files " + Joiner.on(',').join(tarmd5s) + " --outdir uploads" 
-                        + " --key /root/gnos_icgc_keyfile.pem --upload-url " + uploadServer
-                        + " --qc-metrics-json /tmp/empty.json" + " --timing-metrics-json /tmp/empty.json"
-                        + " --workflow-src-url https://github.com/SeqWare/docker/tree/develop/dkfz_dockered_workflows" + "--workflow-url https://github.com/SeqWare/docker/tree/develop/dkfz_dockered_workflows" + " --workflow-name DkfzPancancerCnIndelSnv "
-                        + " --workflow-version 1.0.0" + " --seqware-version " + this.getSeqware_version() + " --vm-instance-type "
-                        + this.vmInstanceType + " --vm-instance-cores " + this.vmInstanceCores + " --vm-instance-mem-gb "
-                        + this.vmInstanceMemGb + " --vm-location-code " + this.vmLocationCode + overrideTxt
-                        // FIXME: testing, remove the skip
-                        + " --skip-upload --skip-validate "
-        );
+        
+        // Now do the upload based on the destination chosen
+        if ("local".equals(uploadDestination)) {
+
+          // using hard links so it spans multiple exported filesystems to Docker
+          uploadJob = utils.localUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
+          vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
+          vmInstanceType, vmLocationCode, overrideTxt.toString(), uploadLocalPath, "/tmp/",
+          gnosTimeoutMin, gnosRetries);
+
+        } else if ("GNOS".equals(uploadDestination)) {
+
+          uploadJob = utils.gnosUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
+          vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
+          vmInstanceType, vmLocationCode, overrideTxt.toString(),
+          gnosTimeoutMin, gnosRetries);
+
+        } else if ("S3".equals(uploadDestination)) {
+
+          uploadJob = utils.s3UploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
+          vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
+          vmInstanceType, vmLocationCode, overrideTxt.toString(), "/tmp/", s3Key, s3SecretKey,
+          uploadS3BucketPath, gnosTimeoutMin, gnosRetries);
+
+        } else {
+          throw new RuntimeException("Don't know what download Type "+downloadSource+" is!");
+        }
+
         uploadJob.addParent(runWorkflow);
-        // for now, make these sequential
+        
         return uploadJob;
     }
+
+  private Job createDirectoriesJob() {
+    Job createSharedWorkSpaceJob = this.getWorkflow().createBashJob("create_dirs");
+    createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + " \n");
+    createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/settings \n");
+    createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/results \n");
+    createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/working \n");
+    createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/downloads/dkfz \n");
+    createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/downloads/embl \n");
+    createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/inputs \n");
+    createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/testdata \n");
+    createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/uploads \n");
+    createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/data \n"); //deprecated, using data dirs below
+    createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + commonDataDir + "/dkfz \n");
+    createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + commonDataDir + "/embl \n");
+
+    return(createSharedWorkSpaceJob);
+  }
+
+  private Job createReferenceDataJob(Job createSharedWorkSpaceJob) {
+    
+    Job getReferenceDataJob = this.getWorkflow().createBashJob("getEMBLDataFiles");
+    getReferenceDataJob.getCommand().addArgument("cd " + commonDataDir + "/embl \n");
+    getReferenceDataJob.getCommand().addArgument("if [ ! -f genome.fa ]; then wget http://s3.amazonaws.com/pan-cancer-data/pan-cancer-reference/genome.fa.gz \n gunzip genome.fa.gz || true \n fi \n");
+    // upload this to S3 after testing
+    getReferenceDataJob.getCommand().addArgument(
+            "if [ ! -f hs37d5_1000GP.gc ]; then wget https://s3.amazonaws.com/pan-cancer-data/pan-cancer-reference/hs37d5_1000GP.gc \n fi \n");
+    getReferenceDataJob.addParent(createSharedWorkSpaceJob);
+    return(getReferenceDataJob);
+    
+  }
+
+  private Job createDkfzReferenceDataJob(Job getReferenceDataJob) {
+    Job getDKFZReferenceDataJob = this.getWorkflow().createBashJob("getDKFZDataFiles");
+    getDKFZReferenceDataJob.getCommand().addArgument("cd " + commonDataDir + "/dkfz \n");
+    getDKFZReferenceDataJob.getCommand().addArgument("if [ ! -d " + dkfzDataBundleUUID + "/bundledFiles ]; then docker run "
+                                // link in the input directory
+                                + "-v `pwd`:/workflow_data "
+                                // link in the pem key
+                                + "-v "
+                                + pemFile
+                                + ":/root/gnos_icgc_keyfile.pem seqware/pancancer_upload_download"
+                                // here is the Bash command to be run
+                                + " /bin/bash -c 'cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
+                                + "/opt/vcf-uploader/vcf-uploader-1.0.0/gnos_download_file.pl "
+                                // here is the command that is fed to gtdownload
+                                + "--command \"gtdownload -c /root/gnos_icgc_keyfile.pem -k 60 -vv " + dkfzDataBundleServer
+                                + "/cghub/data/analysis/download/" + dkfzDataBundleUUID + "\" --file " + dkfzDataBundleUUID + "/"
+                                + dkfzDataBundleFile + " --retries "+gnosRetries+" --sleep-min 1 --timeout-min "+gnosTimeoutMin+" && "
+                                + "cd " + dkfzDataBundleUUID + " && "
+                                + "tar zxf " + dkfzDataBundleFile + "' \n fi \n ");
+    getDKFZReferenceDataJob.addParent(getReferenceDataJob);
+    return(getDKFZReferenceDataJob);
+  }
+
+  private Job createDownloadDataJobs(Job previousJob) {
+    
+    Job previousJobPointer = previousJob;
+    
+    for (int i = 0; i < analysisIds.size(); i++) {
+      
+      Job downloadJob = this.getWorkflow().createBashJob("download_" + i);
+      
+      if ("local".equals(downloadSource)) {
+        
+        // using hard links so it spans multiple exported filesystems to Docker
+        downloadJob = utils.localDownloadJob(downloadJob, "`pwd`/"+SHARED_WORKSPACE+"/inputs/"+analysisIds.get(i), bams.get(i));
+        
+      } else if ("GNOS".equals(downloadSource)) {
+        
+        // GET FROM INI
+        
+        downloadJob = utils.gnosDownloadJob(downloadJob, "`pwd`/"+SHARED_WORKSPACE+"/inputs", pemFile, gnosTimeoutMin, gnosRetries, gnosServer, analysisIds.get(i), bams.get(i) );
+        
+      } else if ("S3".equals(downloadSource)) {
+        
+        downloadJob = utils.s3DownloadJob(downloadJob, analysisIds.get(i), bams.get(i), allBamS3Urls.get(i), s3Key, s3SecretKey);
+        
+      } else {
+        throw new RuntimeException("Don't know what download Type "+downloadSource+" is!");
+      }
+      
+      downloadJob.addParent(previousJobPointer);
+      // for now, make these sequential
+      previousJobPointer = downloadJob;
+    }
+    return(previousJobPointer);
+  }
+
 }

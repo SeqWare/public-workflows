@@ -2,18 +2,32 @@
 
 ## TODO
 
-* incorporate the Sanger and Broad workflows so all four run together
+* I think both the Delly and DKFZ docker containers will need to be revised to deal with multiple tumors
+* create an uber-workflow
+      * incorporate the Sanger and Broad workflows so all four run together
+      * start with BWA workflow 
+      * will want to have a way to select which workflow to run, for the DKFZ workflow it will need to download Delly results if they are already submitted to GNOS
+* on first run, the workflow pulls reference files from S3 and GNOS, we need a better alternative so that we don't eventually refer to broken links which would decrease the longevity of the workflow
+* artifact for shared workflow modules that we can use for Sanger, DKFZ, EMBL, and maybe BWA workflows... specifically modules for upload download
 
 # 1.0.0
 
 ## TODO
 
+* use particular versions of the docker containers in my calls -- TODO
+* need to integrate the above change into the workflow (e.g. point to the correct file) -- TODO
 * DKFZ docker was updated again, need to rebuild as of 4/2/2015 -- TODO
-* need to at least get the input JSON filled in, ideally QC and timing as well -- DONE, Michael and Ivica updated their docker images to produce these
 * need to swap out the download/upload docker to use the most recent wrapper code from Adam -- TODO, Solomon
-* need local file mode for output too
-* in addition to local file mode, also a option to read/write to S3
-* Michael/Ivicia work on QC/Timing, Brian for inputs/outputs -- DONE
+* need to switch to --uuid for uploader so I know the output archive file name -- TODO
+* I may want to rethink the upload options so that you can upload to both S3 and GNOS at the same time, for example -- TODO
+* timeout and retries variables -- DONE
+* need to at least get the QC and timing as well -- DONE, Michael and Ivica updated their docker images to produce these
+* upload/download options -- DONE
+    * GNOS - upload DONE - download DONE
+    * S3 - upload DONE - download DONE
+    * local file - upload DONE - download DONE
+* move code to utilities class... eventually this should be an artifact -- DONE
+
 
 ## Examples
 
