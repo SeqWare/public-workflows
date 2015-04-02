@@ -26,12 +26,12 @@ See https://github.com/SeqWare/docker/tree/develop/dkfz_dockered_workflows for d
 
         cd ~/gitroot/docker/dkfz_dockered_workflows/
         # you need to download the Roddy binary, untar/gz, and move the Roddy directory into the current git checkout dir
-        docker build -t dkfz_dockered_workflows .
+        docker build -t pancancer/dkfz_dockered_workflows .
         Successfully built 0805f987f138
         # you can list it out using...
         ubuntu@ip-10-169-171-198:~/gitroot/docker/dkfz_dockered_workflows$ docker images
         REPOSITORY                          TAG                 IMAGE ID            CREATED             VIRTUAL SIZE
-        dkfz_dockered_workflows             latest              0805f987f138        8 seconds ago       1.63 GB
+        pancancer/dkfz_dockered_workflows   latest              0805f987f138        8 seconds ago       1.63 GB
 
 Next, setup your environment with your workflow and a shared datastore directory
 
