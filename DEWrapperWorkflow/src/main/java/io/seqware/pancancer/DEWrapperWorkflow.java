@@ -42,8 +42,6 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
     private String metadataURLs = null;
     private List<String> tumorAliquotIds = null;
     private String vmInstanceType;
-    private String vmInstanceCores;
-    private String vmInstanceMemGb;
     private String vmLocationCode;
     private String studyRefnameOverride = null;
     private String analysisCenterOverride = null;
@@ -52,6 +50,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
     private String dkfzDataBundleServer = "";
     private String dkfzDataBundleUUID = "";
     private String dkfzDataBundleFile = "";
+    private String dkfzDataBundleDownloadKey = "";
     private String controlBam = null;
     private String controlAnalysisId = null;
     private String downloadSource = null;
@@ -115,8 +114,6 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             // background information on VMs
             // TODO: Cores and MemGb can be filled in at runtime
             this.vmInstanceType = getProperty("vmInstanceType");
-            this.vmInstanceCores = getProperty("vmInstanceCores");
-            this.vmInstanceMemGb = getProperty("vmInstanceMemGb");
             this.vmLocationCode = getProperty("vmLocationCode");
             
             // overrides for study name and analysis center
@@ -130,6 +127,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             dkfzDataBundleServer = getProperty("DKFZ.dkfzDataBundleServer");
             dkfzDataBundleUUID = getProperty("DKFZ.dkfzDataBundleUUID");
             dkfzDataBundleFile = getProperty("DKFZ.dkfzDataBundleFile");
+            dkfzDataBundleDownloadKey = getProperty("dkfzDataBundleDownloadKey");
 
             // record the date
             DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
@@ -583,7 +581,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                                 + "-v `pwd`:/workflow_data "
                                 // link in the pem key
                                 + "-v "
-                                + pemFile
+                                + dkfzDataBundleDownloadKey
                                 + ":/root/gnos_icgc_keyfile.pem seqware/pancancer_upload_download"
                                 // here is the Bash command to be run
                                 + " /bin/bash -c 'cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
