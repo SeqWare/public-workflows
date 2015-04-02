@@ -127,7 +127,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             dkfzDataBundleServer = getProperty("DKFZ.dkfzDataBundleServer");
             dkfzDataBundleUUID = getProperty("DKFZ.dkfzDataBundleUUID");
             dkfzDataBundleFile = getProperty("DKFZ.dkfzDataBundleFile");
-            dkfzDataBundleDownloadKey = getProperty("dkfzDataBundleDownloadKey");
+            dkfzDataBundleDownloadKey = getProperty("DKFZ.dkfzDataBundleDownloadKey");
 
             // record the date
             DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
