@@ -445,7 +445,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                         + "-v `pwd`/" + SHARED_WORKSPACE
                         + "/results:/mnt/datastore/resultdata "
                         // the DKFZ image and the command we feed into it follow
-                        + "dkfz_dockered_workflows /bin/bash -c '/root/bin/runwrapper.sh' ");
+                        + "pancancer/dkfz_dockered_workflows /bin/bash -c '/root/bin/runwrapper.sh' ");
         runWorkflow.addParent(generateIni);
         
         // upload the DKFZ results
