@@ -76,6 +76,12 @@ Look in your datastore for the two working directories generated per run (one fo
 
         ls -alhtr /datastore
 
+If you want to run with a specific INI:
+
+        # edit the ini
+        vim workflow.ini
+        docker run --rm -h master -t -v /var/run/docker.sock:/var/run/docker.sock -v /datastore:/datastore -v /workflows:/workflows -v `pwd`/workflow.ini:/workflow.ini -i seqware/seqware_whitestar bash -c 'seqware bundle launch --dir /workflows/Workflow_Bundle_DEWrapperWorkflow_1.0.0_SeqWare_1.1.0 --engine whitestar --no-metadata --ini /workflow.ini'
+
 ## Developers
 
 Refer to https://github.com/SeqWare/docker/commit/9b98f6ec47f0acc4545fd0d6243a7693305da83a to see the Perl script this was derived from. 
