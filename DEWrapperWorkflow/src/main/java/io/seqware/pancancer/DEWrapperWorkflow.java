@@ -286,32 +286,39 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         List<String> tbimd5s = new ArrayList<>();
         List<String> tarmd5s = new ArrayList<>();
 
+        // FIXME: really just need one timing file not broken down by tumorAliquotID!  This will be key for multi-tumor donors
+        String qcJson = null;
+        String timingJson = null;
+
         // FIXME: these don't quite follow the naming convention
         for (String tumorAliquotId : tumorAliquotIds) {
         
           String baseFile = "/workflow_data/" + tumorAliquotId + ".embl-delly_1-0-0-preFilter."+formattedDate;
 
-          vcfs.add(baseFile + ".germline.vcf.gz");
+          qcJson = baseFile + ".sv.qc.json";
+          timingJson = baseFile + ".sv.timing.json";
+
+          vcfs.add(baseFile + ".germline.sv.vcf.gz");
           vcfs.add(baseFile + ".sv.vcf.gz");
           vcfs.add(baseFile + ".somatic.sv.vcf.gz");
           
-          vcfmd5s.add(baseFile + ".germline.vcf.gz.md5");
+          vcfmd5s.add(baseFile + ".germline.sv.vcf.gz.md5");
           vcfmd5s.add(baseFile + ".sv.vcf.gz.md5");
           vcfmd5s.add(baseFile + ".somatic.sv.vcf.gz.md5");
           
-          tbis.add(baseFile + ".germline.vcf.gz.tbi");
+          tbis.add(baseFile + ".germline.sv.vcf.gz.tbi");
           tbis.add(baseFile + ".sv.vcf.gz.tbi");
           tbis.add(baseFile + ".somatic.sv.vcf.gz.tbi");
           
-          tbimd5s.add(baseFile + ".germline.vcf.gz.tbi.md5");
+          tbimd5s.add(baseFile + ".germline.sv.vcf.gz.tbi.md5");
           tbimd5s.add(baseFile + ".sv.vcf.gz.tbi.md5");
           tbimd5s.add(baseFile + ".somatic.sv.vcf.gz.tbi.md5");
 
-          tars.add(baseFile + ".germline.readname.txt.tar.gz");
-          tarmd5s.add(baseFile + ".germline.readname.txt.tar.gz.md5");      
+          tars.add(baseFile + ".germline.sv.readname.txt.tar.gz");
+          tarmd5s.add(baseFile + ".germline.sv.readname.txt.tar.gz.md5");
 
-          tars.add(baseFile + ".germline.bedpe.txt.tar.gz");
-          tarmd5s.add(baseFile + ".germline.bedpe.txt.tar.gz.md5");
+          tars.add(baseFile + ".germline.sv.bedpe.txt.tar.gz");
+          tarmd5s.add(baseFile + ".germline.sv.bedpe.txt.tar.gz.md5");
           
           tars.add(baseFile + ".somatic.sv.readname.txt.tar.gz");
           tarmd5s.add(baseFile + ".somatic.sv.readname.txt.tar.gz.md5");      
@@ -319,11 +326,11 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
           tars.add(baseFile + ".somatic.sv.bedpe.txt.tar.gz");
           tarmd5s.add(baseFile + ".somatic.sv.bedpe.txt.tar.gz.md5");
           
-          tars.add(baseFile + ".cov.plots.tar.gz");
-          tarmd5s.add(baseFile + ".cov.plots.tar.gz.md5");
+          tars.add(baseFile + ".sv.cov.plots.tar.gz");
+          tarmd5s.add(baseFile + ".sv.cov.plots.tar.gz.md5");
           
-          tars.add(baseFile + ".cov.tar.gz");
-          tarmd5s.add(baseFile + ".cov.tar.gz.md5");
+          tars.add(baseFile + ".sv.cov.tar.gz");
+          tarmd5s.add(baseFile + ".sv.cov.tar.gz.md5");
 
         }
         
@@ -348,29 +355,29 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
           uploadJob = utils.localUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(), uploadLocalPath, "/tmp/",
-          gnosTimeoutMin, gnosRetries);
+          gnosTimeoutMin, gnosRetries, qcJson, timingJson);
 
         } else if ("GNOS".equals(uploadDestination)) {
 
           uploadJob = utils.gnosUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(),
-          gnosTimeoutMin, gnosRetries);
+          gnosTimeoutMin, gnosRetries, qcJson, timingJson);
 
         } else if ("S3".equals(uploadDestination)) {
 
           uploadJob = utils.s3UploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(), "/tmp/", s3Key, s3SecretKey,
-          uploadS3BucketPath, gnosTimeoutMin, gnosRetries);
+          uploadS3BucketPath, gnosTimeoutMin, gnosRetries, qcJson, timingJson);
 
         } else {
           throw new RuntimeException("Don't know what download Type "+downloadSource+" is!");
         }
 
         uploadJob.addParent(previousJobPointer);
-        // for now, make these sequential
-        return uploadJob;
+        // I want DKFZ to continue while the upload is going for EMBL
+        return previousJobPointer;
         
     }
 
@@ -456,10 +463,17 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         List<String> tbimd5s = new ArrayList<>();
         List<String> tarmd5s = new ArrayList<>();
 
+        // FIXME: really just need one timing file not broken down by tumorAliquotID!  This will be key for multi-tumor donors
+        String qcJson = null;
+        String timingJson = null;
 
         for (String tumorAliquotId : tumorAliquotIds) {
 
             String baseFile = "/workflow_data/" + tumorAliquotId + ".dkfz-";
+
+            // FIXME: this is the wrong filename!
+            qcJson = baseFile + ".sv.qc.json";
+            timingJson = baseFile + ".sv.timing.json";
 
             // VCF
             vcfs.add(baseFile + "indelCalling_1-0-114."+formattedDate+".germline.indel.vcf.gz");
@@ -517,21 +531,21 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
           uploadJob = utils.localUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(), uploadLocalPath, "/tmp/",
-          gnosTimeoutMin, gnosRetries);
+          gnosTimeoutMin, gnosRetries, qcJson, timingJson);
 
         } else if ("GNOS".equals(uploadDestination)) {
 
           uploadJob = utils.gnosUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(),
-          gnosTimeoutMin, gnosRetries);
+          gnosTimeoutMin, gnosRetries, qcJson, timingJson);
 
         } else if ("S3".equals(uploadDestination)) {
 
           uploadJob = utils.s3UploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(), "/tmp/", s3Key, s3SecretKey,
-          uploadS3BucketPath, gnosTimeoutMin, gnosRetries);
+          uploadS3BucketPath, gnosTimeoutMin, gnosRetries, qcJson, timingJson);
 
         } else {
           throw new RuntimeException("Don't know what download Type "+downloadSource+" is!");

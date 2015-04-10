@@ -13,6 +13,8 @@
 
 # 1.0.0
 
+* Do not schedule 1.0.0 with multiple-tumor donors!!  1.1.x will support this
+
 ## TODO
 
 * use particular versions of the docker containers in my calls -- TODO
