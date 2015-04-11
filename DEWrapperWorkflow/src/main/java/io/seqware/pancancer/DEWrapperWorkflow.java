@@ -292,8 +292,9 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
 
         // FIXME: these don't quite follow the naming convention
         for (String tumorAliquotId : tumorAliquotIds) {
-        
-          String baseFile = "/workflow_data/" + tumorAliquotId + ".embl-delly_1-0-0-preFilter."+formattedDate;
+
+          //String baseFile = "/workflow_data/" + tumorAliquotId + ".embl-delly_1-0-0-preFilter."+formattedDate;
+          String baseFile = tumorAliquotId + ".embl-delly_1-0-0-preFilter."+formattedDate;
 
           qcJson = baseFile + ".sv.qc.json";
           timingJson = baseFile + ".sv.timing.json";
@@ -469,7 +470,8 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
 
         for (String tumorAliquotId : tumorAliquotIds) {
 
-            String baseFile = "/workflow_data/" + tumorAliquotId + ".dkfz-";
+            //String baseFile = "/workflow_data/" + tumorAliquotId + ".dkfz-";
+            String baseFile = tumorAliquotId + ".dkfz-";
 
             // FIXME: this is the wrong filename!
             qcJson = baseFile + ".sv.qc.json";
