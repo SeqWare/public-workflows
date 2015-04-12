@@ -12,6 +12,7 @@ import java.util.List;
 import net.sourceforge.seqware.pipeline.workflowV2.model.Job;
 
 /**
+ * FIXME: the version number for the upload code is hard-coded below!!!
  *
  * @author boconnor
  */
@@ -156,8 +157,7 @@ public class JobUtilities {
                         + " --workflow-version 1.0.0" + " --seqware-version " + seqwareVersion + " --vm-instance-type "
                         + vmInstanceType + " --vm-instance-cores `nproc` --vm-instance-mem-gb "
                         + "`free | grep \"Mem:\" | awk \"{print \\\\$2 / 1000000 }\"` "
-                        + " --vm-location-code " + vmLocationCode + overrideTxt
-                        + " --timeout-min "+timeout+" --retries "+retries+"' "
+                        + " --vm-location-code " + vmLocationCode + overrideTxt + "' "
                         );
     
     return(uploadJob);
