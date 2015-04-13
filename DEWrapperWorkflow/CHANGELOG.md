@@ -17,7 +17,7 @@
 
 ## TODO
 
-* the URLs, description for upload of DKFZ are wrong!
+* link to the changelog.md in the uploaded XML looks wrong!
 * use particular versions of the docker containers in my calls -- TODO
 * need to integrate the above change into the workflow (e.g. point to the correct file) -- TODO
 * DKFZ docker was updated again, need to rebuild as of 4/2/2015 -- TODO
