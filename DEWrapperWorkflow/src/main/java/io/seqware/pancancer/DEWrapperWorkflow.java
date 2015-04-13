@@ -32,7 +32,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
     private static final String SHARED_WORKSPACE = "shared_workspace";
     private static final String EMBL_PREFIX = "EMBL.";
     private static final String DKFZ_PREFIX = "DKFZ.";
-    private static final String DKFZ_VERSION = "1-0-131";
+    private static final String DKFZ_VERSION = Version.DKFZ_WORKFLOW_VERSION_UNDERSCORE;
     private ArrayList<String> analysisIds = null;
     private ArrayList<String> tumorAnalysisIds = null;
     private ArrayList<String> bams = null;
@@ -357,21 +357,24 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
           uploadJob = utils.localUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(), uploadLocalPath, "/tmp/",
-          gnosTimeoutMin, gnosRetries, qcJson, timingJson);
+          gnosTimeoutMin, gnosRetries, qcJson, timingJson,
+          Version.EMBL_WORKFLOW_SRC_URL, Version.EMBL_WORKFLOW_URL, Version.EMBL_WORKFLOW_NAME, Version.EMBL_WORKFLOW_VERSION);
 
         } else if ("GNOS".equals(uploadDestination)) {
 
           uploadJob = utils.gnosUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(),
-          gnosTimeoutMin, gnosRetries, qcJson, timingJson);
+          gnosTimeoutMin, gnosRetries, qcJson, timingJson,
+          Version.EMBL_WORKFLOW_SRC_URL, Version.EMBL_WORKFLOW_URL, Version.EMBL_WORKFLOW_NAME, Version.EMBL_WORKFLOW_VERSION);
 
         } else if ("S3".equals(uploadDestination)) {
 
           uploadJob = utils.s3UploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(), "/tmp/", s3Key, s3SecretKey,
-          uploadS3BucketPath, gnosTimeoutMin, gnosRetries, qcJson, timingJson);
+          uploadS3BucketPath, gnosTimeoutMin, gnosRetries, qcJson, timingJson,
+          Version.EMBL_WORKFLOW_SRC_URL, Version.EMBL_WORKFLOW_URL, Version.EMBL_WORKFLOW_NAME, Version.EMBL_WORKFLOW_VERSION);
 
         } else {
           throw new RuntimeException("Don't know what download Type "+downloadSource+" is!");
@@ -534,21 +537,22 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
           uploadJob = utils.localUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE+"/results/", pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(), uploadLocalPath, "/tmp/",
-          gnosTimeoutMin, gnosRetries, qcJson, timingJson);
+          gnosTimeoutMin, gnosRetries, qcJson, timingJson, Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL, Version.DKFZ_WORKFLOW_NAME, Version.DKFZ_WORKFLOW_VERSION);
 
         } else if ("GNOS".equals(uploadDestination)) {
 
           uploadJob = utils.gnosUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE+"/results/", pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(),
-          gnosTimeoutMin, gnosRetries, qcJson, timingJson);
+          gnosTimeoutMin, gnosRetries, qcJson, timingJson, Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL, Version.DKFZ_WORKFLOW_NAME, Version.DKFZ_WORKFLOW_VERSION);
 
         } else if ("S3".equals(uploadDestination)) {
 
           uploadJob = utils.s3UploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE+"/results/", pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(), "/tmp/", s3Key, s3SecretKey,
-          uploadS3BucketPath, gnosTimeoutMin, gnosRetries, qcJson, timingJson);
+          uploadS3BucketPath, gnosTimeoutMin, gnosRetries, qcJson, timingJson,
+          Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL, Version.DKFZ_WORKFLOW_NAME, Version.DKFZ_WORKFLOW_VERSION);
 
         } else {
           throw new RuntimeException("Don't know what download Type "+downloadSource+" is!");

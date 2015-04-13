@@ -66,14 +66,16 @@ public class JobUtilities {
           List<String> vcfs, List<String> vcfmd5s, List<String> tbis, List<String> tbimd5s,
           List<String> tars, List<String> tarmd5s, String uploadServer, String seqwareVersion,
           String vmInstanceType, String vmLocationCode, String overrideTxt, String uploadLocalPath, String temp,
-          int timeout, int retries, String qcJson, String timingJson) {
+          int timeout, int retries, String qcJson, String timingJson, String workflowSrcUrl,
+          String workflowUrl, String workflowName, String workflowVersion) {
     
     StringBuffer sb = new StringBuffer(overrideTxt);
     sb.append(" --upload-archive "+temp+" --skip-upload --skip-validate ");
     
     uploadJob = vcfUpload(uploadJob, workflowDataDir, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, seqwareVersion,
-          vmInstanceType, vmLocationCode, sb.toString(), timeout, retries, qcJson, timingJson);
+          vmInstanceType, vmLocationCode, sb.toString(), timeout, retries, qcJson, timingJson,
+          workflowSrcUrl, workflowUrl, workflowName, workflowVersion);
     
     uploadJob.getCommand().addArgument(" && rsync -rauv "+temp+"/*.tar.gz "+uploadLocalPath+"/");
     
@@ -85,11 +87,13 @@ public class JobUtilities {
           List<String> vcfs, List<String> vcfmd5s, List<String> tbis, List<String> tbimd5s,
           List<String> tars, List<String> tarmd5s, String uploadServer, String seqwareVersion,
           String vmInstanceType, String vmLocationCode, String overrideTxt, int timeout, int retries,
-          String qcJson, String timingJson) {
+          String qcJson, String timingJson, String workflowSrcUrl,
+          String workflowUrl, String workflowName, String workflowVersion) {
     
     return(vcfUpload(uploadJob, workflowDataDir, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, seqwareVersion,
-          vmInstanceType, vmLocationCode, overrideTxt, timeout, retries, qcJson, timingJson));
+          vmInstanceType, vmLocationCode, overrideTxt, timeout, retries, qcJson, timingJson,
+          workflowSrcUrl, workflowUrl, workflowName, workflowVersion));
     
   }
   
@@ -101,14 +105,16 @@ public class JobUtilities {
           List<String> tars, List<String> tarmd5s, String uploadServer, String seqwareVersion,
           String vmInstanceType, String vmLocationCode, String overrideTxt, String temp,
           String S3UploadArchiveKey, String S3UploadArchiveSecretKey, String uploadS3Bucket,
-          int timeout, int retries, String qcJson, String timingJson) {
+          int timeout, int retries, String qcJson, String timingJson, String workflowSrcUrl,
+          String workflowUrl, String workflowName, String workflowVersion) {
 
       StringBuffer sb = new StringBuffer(overrideTxt);
       sb.append(" --upload-archive "+temp+" --skip-upload --skip-validate ");
     
       uploadJob = vcfUpload(uploadJob, workflowDataDir, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, seqwareVersion,
-          vmInstanceType, vmLocationCode, sb.toString(), timeout, retries, qcJson, timingJson);
+          vmInstanceType, vmLocationCode, sb.toString(), timeout, retries, qcJson, timingJson,
+          workflowSrcUrl, workflowUrl, workflowName, workflowVersion);
     
       uploadJob.getCommand()
         .addArgument(" && mkdir -p ~/.aws/; ")
@@ -127,7 +133,8 @@ public class JobUtilities {
           List<String> vcfs, List<String> vcfmd5s, List<String> tbis, List<String> tbimd5s,
           List<String> tars, List<String> tarmd5s, String uploadServer, String seqwareVersion,
           String vmInstanceType, String vmLocationCode, String overrideTxt, int timeout, int retries,
-          String qcJson, String timingJson) {
+          String qcJson, String timingJson, String workflowSrcUrl, String workflowUrl,
+          String workflowName, String workflowVersion) {
     
     uploadJob.getCommand().addArgument(
                 "docker run "
@@ -152,7 +159,7 @@ public class JobUtilities {
                         + " --key /root/gnos_icgc_keyfile.pem --upload-url " + uploadServer
                         + " --qc-metrics-json " + qcJson
                         + " --timing-metrics-json " + timingJson
-                        + " --workflow-src-url https://bitbucket.org/weischen/pcawg-delly-workflow" + "--workflow-url https://registry.hub.docker.com/u/pancancer/pcawg-delly-workflow" + " --workflow-name EmblPancancerStr "
+                        + " --workflow-src-url https://bitbucket.org/weischen/pcawg-delly-workflow" + " --workflow-url https://registry.hub.docker.com/u/pancancer/pcawg-delly-workflow" + " --workflow-name EmblPancancerStr "
                         + " --timeout-min "+timeout+" --retries "+retries+" "
                         + " --workflow-version 1.0.0" + " --seqware-version " + seqwareVersion + " --vm-instance-type "
                         + vmInstanceType + " --vm-instance-cores `nproc` --vm-instance-mem-gb "
