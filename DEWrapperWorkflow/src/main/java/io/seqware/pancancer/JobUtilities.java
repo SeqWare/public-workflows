@@ -30,7 +30,7 @@ public class JobUtilities {
                 + pemFile
                 + ":/root/gnos_icgc_keyfile.pem seqware/pancancer_upload_download"
                 // here is the Bash command to be run
-                + " /bin/bash -c 'cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-2.0.8/lib "
+                + " /bin/bash -c 'cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-2.0.9/lib "
                 + "/opt/vcf-uploader/vcf-uploader-2.0.3/gnos_download_file.pl "
                 + "--url "+gnosServer+"/cghub/data/analysis/download/"+analysisId+" "
                 + "--pem /root/gnos_icgc_keyfile.pem --file " + analysisId + "/"
@@ -148,7 +148,7 @@ public class JobUtilities {
                         + "seqware/pancancer_upload_download "
                         // the command invoked on the container follows
                         + "/bin/bash -c 'cd /workflow_data && mkdir -p uploads && "
-                        + "perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-2.0.8/lib "
+                        + "perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-2.0.9/lib "
                         + "/opt/vcf-uploader/vcf-uploader-2.0.3/gnos_upload_vcf.pl "
                         // parameters to gnos_upload
                         + "--metadata-urls "
