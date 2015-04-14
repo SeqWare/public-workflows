@@ -42,7 +42,7 @@ Next, setup your environment with your workflow and a shared datastore directory
         wget https://seqwaremaven.oicr.on.ca/artifactory/seqware-release/com/github/seqware/seqware-distribution/1.1.0/seqware-distribution-1.1.0-full.jar
         sudo apt-get install openjdk-7-jdk maven
 
-Next, you will need to grab a copy of the workflow wrappering the DKFZ and EMBL pipelines.
+Next, you will need to build a copy of the workflow wrappering the DKFZ and EMBL pipelines.
 
         git clone git clone git@github.com:SeqWare/public-workflows.git
         # git checkout feature/workflow-DKFZ-EMBL-wrap-workflow # TODO: replace with release string
@@ -52,9 +52,11 @@ Next, you will need to grab a copy of the workflow wrappering the DKFZ and EMBL 
 
 This will eventually be uploaded to S3.
 
+<!--
 Do your `mvn clean install`,`seqware bundle package --dir target/Workflow_Bundle_WorkflowOfWorkflows_1.0.0_SeqWare_1.1.0/`, and then scp the bundle in. These next steps assume that you have copied in your bundle. Do the following if you're downloading a zip from S3.
 
         java -cp seqware-distribution-1.1.0-full.jar net.sourceforge.seqware.pipeline.tools.UnZip --input-zip Workflow_Bundle_DEWrapperWorkflow_1.0.0_SeqWare_1.1.0.zip --output-dir Workflow_Bundle_DEWrapperWorkflow_1.0.0_SeqWare_1.1.0
+-->
 
 Copy your pem key to:
 
@@ -82,11 +84,9 @@ If you want to run with a specific INI:
         vim workflow.ini
         docker run --rm -h master -t -v /var/run/docker.sock:/var/run/docker.sock -v /datastore:/datastore -v /workflows:/workflows -v `pwd`/workflow.ini:/workflow.ini -i seqware/seqware_whitestar bash -c 'seqware bundle launch --dir /workflows/Workflow_Bundle_DEWrapperWorkflow_1.0.0_SeqWare_1.1.0 --engine whitestar --no-metadata --ini /workflow.ini'
 
-## Developers
+This is the approach you would take for running in production.  Each donor gets an INI file that is then used to launch a workflow using Docker.  If you choose to upload to S3 or GNOS your files should be uploaded there.  You can also find output in /datastore.
 
-Refer to https://github.com/SeqWare/docker/commit/9b98f6ec47f0acc4545fd0d6243a7693305da83a to see the Perl script this was derived from. 
-
-## Docker Images
+## Developer Info
 
 ### DKFZ
 
