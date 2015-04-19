@@ -411,7 +411,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         // tumor delly files
         ArrayList<String> tumorDelly = new ArrayList<String>();
         for  (int i=0; i<tumorAliquotIds.size(); i++) {
-          tumorDelly.add("/mnt/datastore/workflow_data/inputdata/"+tumorAliquotIds.get(i)+".embl-delly_1-0-0-preFilter."+formattedDate+".somatic.sv.txt");
+          tumorDelly.add("/mnt/datastore/workflow_data/inputdata/"+tumorAliquotIds.get(i)+".embl-delly_1-0-0-preFilter."+formattedDate+".somatic.sv.bedpe.txt");
         }
       
         Job generateIni = this.getWorkflow().createBashJob("generateDKFZ_ini");
@@ -435,7 +435,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
           String aliquotId = tumorAliquotIds.get(i);
           String analysisId = tumorAnalysisIds.get(i);
           mounts.append(" -v `pwd`/" + SHARED_WORKSPACE + "/inputs/"+analysisId+":/mnt/datastore/workflow_data/inputdata/"+analysisId+" ");
-          mounts.append(" -v `pwd`/" + SHARED_WORKSPACE + "/"+aliquotId+".embl-delly_1-0-0-preFilter."+formattedDate+".somatic.sv.txt:/mnt/datastore/workflow_data/inputdata/"+aliquotId+".embl-delly_1-0-0-preFilter."+formattedDate+".somatic.sv.txt ");
+          mounts.append(" -v `pwd`/" + SHARED_WORKSPACE + "/"+aliquotId+".embl-delly_1-0-0-preFilter."+formattedDate+".somatic.sv.bedpe.txt:/mnt/datastore/workflow_data/inputdata/"+aliquotId+".embl-delly_1-0-0-preFilter."+formattedDate+".somatic.sv.bedpe.txt ");
         }
         // now deal with the control
         mounts.append(" -v `pwd`/" + SHARED_WORKSPACE + "/inputs/"+controlAnalysisId+":/mnt/datastore/workflow_data/inputdata/"+controlAnalysisId+" ");
