@@ -482,7 +482,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         // summarize timing info since DKFZ does not provide a timing.json
         runWorkflow.getCommand().addArgument("perl " + this.getWorkflowBaseDir() + "/scripts/timing.pl > `pwd`/"+SHARED_WORKSPACE+"/results/timing.json");
 
-          runWorkflow.addParent(generateIni);
+        runWorkflow.addParent(generateIni);
         
         // upload the DKFZ results
         String[] emblTypes = { "sv" };
@@ -496,6 +496,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
 
         // FIXME: really just need one timing file not broken down by tumorAliquotID!  This will be key for multi-tumor donors
         String qcJson = null;
+        String qcJsonSingle = null;
         String timingJson = null;
 
         for (String tumorAliquotId : tumorAliquotIds) {
@@ -504,6 +505,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             String baseFile = tumorAliquotId + ".dkfz-";
 
             qcJson = tumorAliquotId + ".qc_metrics.dkfz.json";
+            qcJsonSingle = tumorAliquotId + ".qc_metrics.dkfz.single.json";
             timingJson = "timing.json";
 
             // VCF
@@ -547,6 +549,11 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         }
 
         Job uploadJob = this.getWorkflow().createBashJob("uploadDKFZ");
+
+        // have to do this to cleanup the multi-line JSON
+        uploadJob.getCommand().addArgument("cat " + SHARED_WORKSPACE + "/results/" + qcJson + " | perl -p -e 's/\\n/ /g' > "
+          + SHARED_WORKSPACE + "/results/" + qcJsonSingle + " \n");
+
         StringBuffer overrideTxt = new StringBuffer();
         if (this.studyRefnameOverride != null) {
           overrideTxt.append(" --study-refname-override " + this.studyRefnameOverride);
@@ -563,7 +570,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
           uploadJob = utils.localUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE+"/results/", pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(), uploadLocalPath, "/tmp/",
-          gnosTimeoutMin, gnosRetries, qcJson, timingJson, Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL,
+          gnosTimeoutMin, gnosRetries, qcJsonSingle, timingJson, Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL,
           Version.DKFZ_WORKFLOW_NAME, Version.WORKFLOW_VERSION, gnosDownloadName);
 
         } else if ("GNOS".equals(uploadDestination)) {
@@ -571,7 +578,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
           uploadJob = utils.gnosUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE+"/results/", pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(),
-          gnosTimeoutMin, gnosRetries, qcJson, timingJson, Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL,
+          gnosTimeoutMin, gnosRetries, qcJsonSingle, timingJson, Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL,
           Version.DKFZ_WORKFLOW_NAME, Version.WORKFLOW_VERSION, gnosDownloadName);
 
         } else if ("S3".equals(uploadDestination)) {
@@ -579,7 +586,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
           uploadJob = utils.s3UploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE+"/results/", pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(), "/tmp/", s3Key, s3SecretKey,
-          uploadS3BucketPath, gnosTimeoutMin, gnosRetries, qcJson, timingJson,
+          uploadS3BucketPath, gnosTimeoutMin, gnosRetries, qcJsonSingle, timingJson,
           Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL, Version.DKFZ_WORKFLOW_NAME, Version.WORKFLOW_VERSION, gnosDownloadName);
 
         } else {

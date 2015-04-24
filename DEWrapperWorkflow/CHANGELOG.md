@@ -23,3 +23,4 @@
 
 * true local file mode for Romina (to include XML files from GNOS)
 * print some helpful messages before the workflow runs indicating where the output will be, touch files for completion, what modes have been set, etc
+* continuing to have problems with DKFZ QC parsing... problem is it needs to be single-line... need to add this to the vcf uploader
