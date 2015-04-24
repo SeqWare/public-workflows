@@ -73,6 +73,10 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
     // workflows to run
     private Boolean runEmbl = true;
     private Boolean runDkfz = true;
+    // docker names
+    private String dkfzDockerName = "pancancer/dkfz_dockered_workflows";
+    private String emblDockerName = "pancancer/pcawg-delly-workflow";
+    private String gnosDownloadName = "seqware/pancancer_upload_download";
     
     @Override
     public void setupWorkflow() {
@@ -169,6 +173,11 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             /* if(hasPropertyAndNotNull("runEmbl")) {
               runEmbl=Boolean.valueOf(getProperty("runEmbl"));
             } */
+
+            // Docker images
+            dkfzDockerName = getProperty("dkfzDockerName");
+            emblDockerName = getProperty("emblDockerName");
+            gnosDownloadName = getProperty("gnosDockerName");
     
         } catch (Exception e) {
             throw new RuntimeException("Could not read property from ini", e);
@@ -269,7 +278,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                                 + "-v `pwd`/" + SHARED_WORKSPACE
                                 + "/settings/embl.ini:/workflow.ini "
                                 // the container
-                                + "pancancer/pcawg-delly-workflow "
+                                + emblDockerName + " "
                                 // command received by seqware (replace this with a real call to Delly after getting bam files downloaded)
                                 + "/start.sh \"seqware bundle launch --dir /mnt/home/seqware/DELLY/target/Workflow_Bundle_DELLY_1.0-SNAPSHOT_SeqWare_1.1.0-alpha.6 --engine whitestar-parallel --no-metadata --ini /workflow.ini\" \n");
         // with a real workflow, we would pass in the workflow.ini
@@ -359,7 +368,9 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(), uploadLocalPath, "/tmp/",
           gnosTimeoutMin, gnosRetries, qcJson, timingJson,
-          Version.EMBL_WORKFLOW_SRC_URL, Version.EMBL_WORKFLOW_URL, Version.EMBL_WORKFLOW_NAME, Version.WORKFLOW_VERSION);
+          Version.EMBL_WORKFLOW_SRC_URL, Version.EMBL_WORKFLOW_URL, Version.EMBL_WORKFLOW_NAME,
+          Version.WORKFLOW_VERSION, gnosDownloadName);
+
 
         } else if ("GNOS".equals(uploadDestination)) {
 
@@ -367,7 +378,8 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(),
           gnosTimeoutMin, gnosRetries, qcJson, timingJson,
-          Version.EMBL_WORKFLOW_SRC_URL, Version.EMBL_WORKFLOW_URL, Version.EMBL_WORKFLOW_NAME, Version.WORKFLOW_VERSION);
+          Version.EMBL_WORKFLOW_SRC_URL, Version.EMBL_WORKFLOW_URL, Version.EMBL_WORKFLOW_NAME,
+          Version.WORKFLOW_VERSION, gnosDownloadName);
 
         } else if ("S3".equals(uploadDestination)) {
 
@@ -375,7 +387,8 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(), "/tmp/", s3Key, s3SecretKey,
           uploadS3BucketPath, gnosTimeoutMin, gnosRetries, qcJson, timingJson,
-          Version.EMBL_WORKFLOW_SRC_URL, Version.EMBL_WORKFLOW_URL, Version.EMBL_WORKFLOW_NAME, Version.WORKFLOW_VERSION);
+          Version.EMBL_WORKFLOW_SRC_URL, Version.EMBL_WORKFLOW_URL, Version.EMBL_WORKFLOW_NAME,
+          Version.WORKFLOW_VERSION, gnosDownloadName);
 
         } else {
           throw new RuntimeException("Don't know what download Type "+downloadSource+" is!");
@@ -456,7 +469,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                         + "-v `pwd`/" + SHARED_WORKSPACE
                         + "/results:/mnt/datastore/resultdata "
                         // the DKFZ image and the command we feed into it follow
-                        + "pancancer/dkfz_dockered_workflows /bin/bash -c '/root/bin/runwrapper.sh' ");
+                        + dkfzDockerName + " /bin/bash -c '/root/bin/runwrapper.sh' ");
         runWorkflow.addParent(generateIni);
         
         // upload the DKFZ results
@@ -539,14 +552,16 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
           uploadJob = utils.localUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE+"/results/", pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(), uploadLocalPath, "/tmp/",
-          gnosTimeoutMin, gnosRetries, qcJson, timingJson, Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL, Version.DKFZ_WORKFLOW_NAME, Version.WORKFLOW_VERSION);
+          gnosTimeoutMin, gnosRetries, qcJson, timingJson, Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL,
+          Version.DKFZ_WORKFLOW_NAME, Version.WORKFLOW_VERSION, gnosDownloadName);
 
         } else if ("GNOS".equals(uploadDestination)) {
 
           uploadJob = utils.gnosUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE+"/results/", pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(),
-          gnosTimeoutMin, gnosRetries, qcJson, timingJson, Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL, Version.DKFZ_WORKFLOW_NAME, Version.WORKFLOW_VERSION);
+          gnosTimeoutMin, gnosRetries, qcJson, timingJson, Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL,
+          Version.DKFZ_WORKFLOW_NAME, Version.WORKFLOW_VERSION, gnosDownloadName);
 
         } else if ("S3".equals(uploadDestination)) {
 
@@ -554,7 +569,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(), "/tmp/", s3Key, s3SecretKey,
           uploadS3BucketPath, gnosTimeoutMin, gnosRetries, qcJson, timingJson,
-          Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL, Version.DKFZ_WORKFLOW_NAME, Version.WORKFLOW_VERSION);
+          Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL, Version.DKFZ_WORKFLOW_NAME, Version.WORKFLOW_VERSION, gnosDownloadName);
 
         } else {
           throw new RuntimeException("Don't know what download Type "+downloadSource+" is!");
@@ -605,7 +620,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                                 // link in the pem key
                                 + "-v "
                                 + dkfzDataBundleDownloadKey
-                                + ":/root/gnos_icgc_keyfile.pem seqware/pancancer_upload_download"
+                                + ":/root/gnos_icgc_keyfile.pem "+gnosDownloadName
                                 // here is the Bash command to be run
                                 + " /bin/bash -c 'cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-2.0.10/lib "
                                 + "/opt/vcf-uploader/vcf-uploader-2.0.3/gnos_download_file.pl "
@@ -635,7 +650,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         
         // GET FROM INI
         
-        downloadJob = utils.gnosDownloadJob(downloadJob, "`pwd`/"+SHARED_WORKSPACE+"/inputs", pemFile, gnosTimeoutMin, gnosRetries, gnosServer, analysisIds.get(i), bams.get(i) );
+        downloadJob = utils.gnosDownloadJob(downloadJob, "`pwd`/"+SHARED_WORKSPACE+"/inputs", pemFile, gnosTimeoutMin, gnosRetries, gnosServer, analysisIds.get(i), bams.get(i), gnosDownloadName);
         
       } else if ("S3".equals(downloadSource)) {
         

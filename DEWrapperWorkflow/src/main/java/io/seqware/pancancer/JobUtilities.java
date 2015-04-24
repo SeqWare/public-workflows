@@ -18,7 +18,7 @@ import net.sourceforge.seqware.pipeline.workflowV2.model.Job;
  */
 public class JobUtilities {
     
-  public Job gnosDownloadJob(Job thisJob, String outputDir, String pemFile, int timeout, int retries, String gnosServer, String analysisId, String bam) {
+  public Job gnosDownloadJob(Job thisJob, String outputDir, String pemFile, int timeout, int retries, String gnosServer, String analysisId, String bam, String dockerName) {
 
     thisJob.getCommand()
         .addArgument(
@@ -28,7 +28,7 @@ public class JobUtilities {
                 // link in the pem kee
                 + "-v "
                 + pemFile
-                + ":/root/gnos_icgc_keyfile.pem seqware/pancancer_upload_download"
+                + ":/root/gnos_icgc_keyfile.pem "+dockerName+" "
                 // here is the Bash command to be run
                 + " /bin/bash -c 'cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-2.0.10/lib "
                 + "/opt/vcf-uploader/vcf-uploader-2.0.3/gnos_download_file.pl "
@@ -67,7 +67,7 @@ public class JobUtilities {
           List<String> tars, List<String> tarmd5s, String uploadServer, String seqwareVersion,
           String vmInstanceType, String vmLocationCode, String overrideTxt, String uploadLocalPath, String temp,
           int timeout, int retries, String qcJson, String timingJson, String workflowSrcUrl,
-          String workflowUrl, String workflowName, String workflowVersion) {
+          String workflowUrl, String workflowName, String workflowVersion, String dockerName) {
     
     StringBuffer sb = new StringBuffer(overrideTxt);
     sb.append(" --upload-archive "+temp+" --skip-upload --skip-validate ");
@@ -75,7 +75,7 @@ public class JobUtilities {
     uploadJob = vcfUpload(uploadJob, workflowDataDir, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, seqwareVersion,
           vmInstanceType, vmLocationCode, sb.toString(), timeout, retries, qcJson, timingJson,
-          workflowSrcUrl, workflowUrl, workflowName, workflowVersion);
+          workflowSrcUrl, workflowUrl, workflowName, workflowVersion, dockerName);
     
     uploadJob.getCommand().addArgument(" && rsync -rauv "+temp+"/*.tar.gz "+uploadLocalPath+"/");
     
@@ -88,12 +88,12 @@ public class JobUtilities {
           List<String> tars, List<String> tarmd5s, String uploadServer, String seqwareVersion,
           String vmInstanceType, String vmLocationCode, String overrideTxt, int timeout, int retries,
           String qcJson, String timingJson, String workflowSrcUrl,
-          String workflowUrl, String workflowName, String workflowVersion) {
+          String workflowUrl, String workflowName, String workflowVersion, String dockerName) {
     
     return(vcfUpload(uploadJob, workflowDataDir, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, seqwareVersion,
           vmInstanceType, vmLocationCode, overrideTxt, timeout, retries, qcJson, timingJson,
-          workflowSrcUrl, workflowUrl, workflowName, workflowVersion));
+          workflowSrcUrl, workflowUrl, workflowName, workflowVersion, dockerName));
     
   }
   
@@ -106,7 +106,7 @@ public class JobUtilities {
           String vmInstanceType, String vmLocationCode, String overrideTxt, String temp,
           String S3UploadArchiveKey, String S3UploadArchiveSecretKey, String uploadS3Bucket,
           int timeout, int retries, String qcJson, String timingJson, String workflowSrcUrl,
-          String workflowUrl, String workflowName, String workflowVersion) {
+          String workflowUrl, String workflowName, String workflowVersion, String dockerName) {
 
       StringBuffer sb = new StringBuffer(overrideTxt);
       sb.append(" --upload-archive "+temp+" --skip-upload --skip-validate ");
@@ -114,7 +114,7 @@ public class JobUtilities {
       uploadJob = vcfUpload(uploadJob, workflowDataDir, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, seqwareVersion,
           vmInstanceType, vmLocationCode, sb.toString(), timeout, retries, qcJson, timingJson,
-          workflowSrcUrl, workflowUrl, workflowName, workflowVersion);
+          workflowSrcUrl, workflowUrl, workflowName, workflowVersion, dockerName);
     
       uploadJob.getCommand()
         .addArgument(" && mkdir -p ~/.aws/; ")
@@ -134,7 +134,7 @@ public class JobUtilities {
           List<String> tars, List<String> tarmd5s, String uploadServer, String seqwareVersion,
           String vmInstanceType, String vmLocationCode, String overrideTxt, int timeout, int retries,
           String qcJson, String timingJson, String workflowSrcUrl, String workflowUrl,
-          String workflowName, String workflowVersion) {
+          String workflowName, String workflowVersion, String dockerName) {
     
     uploadJob.getCommand().addArgument(
                 "docker run "
@@ -145,7 +145,7 @@ public class JobUtilities {
                         + "-v "
                         + pemFile
                         + ":/root/gnos_icgc_keyfile.pem "
-                        + "seqware/pancancer_upload_download "
+                        + dockerName + " "
                         // the command invoked on the container follows
                         + "/bin/bash -c 'cd /workflow_data && mkdir -p uploads && "
                         + "perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-2.0.10/lib "
