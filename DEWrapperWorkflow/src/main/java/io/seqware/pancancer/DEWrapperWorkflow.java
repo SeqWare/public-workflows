@@ -251,7 +251,11 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
       
         // call the EMBL workflow
         Job emblJob = this.getWorkflow().createBashJob("embl_workflow");
-        
+
+        // timing info
+        emblJob.getCommand().addArgument("date +%s >> download_timing.txt \n");
+        emblJob.getCommand().addArgument("date +%s > embl_timing.txt \n");
+
         // make config
         boolean count = true;
         for (Entry<String, String> entry : this.getConfigs().entrySet()) {
@@ -265,7 +269,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             }
         }
         // now supply date
-        emblJob.getCommand().addArgument("echo \"date="+formattedDate+"\" >> `pwd`/"+SHARED_WORKSPACE + "/settings/embl.ini \n");
+        emblJob.getCommand().addArgument("echo \"date=" + formattedDate + "\" >> `pwd`/" + SHARED_WORKSPACE + "/settings/embl.ini \n");
 
         // the actual docker command
         emblJob.getCommand()
@@ -281,7 +285,9 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                                 + emblDockerName + " "
                                 // command received by seqware (replace this with a real call to Delly after getting bam files downloaded)
                                 + "/start.sh \"seqware bundle launch --dir /mnt/home/seqware/DELLY/target/Workflow_Bundle_DELLY_1.0-SNAPSHOT_SeqWare_1.1.0-alpha.6 --engine whitestar-parallel --no-metadata --ini /workflow.ini\" \n");
-        // with a real workflow, we would pass in the workflow.ini
+
+        // timing
+        emblJob.getCommand().addArgument("date +%s >> embl_timing.txt \n");
 
         emblJob.addParent(previousJobPointer);
         previousJobPointer = emblJob;
@@ -306,8 +312,8 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
           //String baseFile = "/workflow_data/" + tumorAliquotId + ".embl-delly_1-0-0-preFilter."+formattedDate;
           String baseFile = tumorAliquotId + ".embl-delly_1-0-0-preFilter."+formattedDate;
 
-          qcJson = baseFile + ".sv.qc.json";
-          timingJson = baseFile + ".sv.timing.json";
+          qcJson = "`find . | grep " + baseFile + ".sv.qc.json | head -1`";
+          timingJson = "`find . | grep " + baseFile + ".sv.timing.json | head -1`";
 
           vcfs.add(baseFile + ".germline.sv.vcf.gz");
           vcfs.add(baseFile + ".sv.vcf.gz");
@@ -456,6 +462,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         
         // run the docker for DKFZ
         Job runWorkflow = this.getWorkflow().createBashJob("runDKFZ");
+        runWorkflow.getCommand().addArgument("date +%s > dkfz_timing.txt \n");
         runWorkflow.getCommand().addArgument(
                 "docker run "
                         // mount shared directories
@@ -469,8 +476,13 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                         + "-v `pwd`/" + SHARED_WORKSPACE
                         + "/results:/mnt/datastore/resultdata "
                         // the DKFZ image and the command we feed into it follow
-                        + dkfzDockerName + " /bin/bash -c '/root/bin/runwrapper.sh' ");
-        runWorkflow.addParent(generateIni);
+                        + dkfzDockerName + " /bin/bash -c '/root/bin/runwrapper.sh' \n");
+        runWorkflow.getCommand().addArgument("date +%s >> dkfz_timing.txt \n");
+
+        // summarize timing info since DKFZ does not provide a timing.json
+        runWorkflow.getCommand().addArgument("perl " + this.getWorkflowBaseDir() + "/scripts/timing.pl > `pwd`/"+SHARED_WORKSPACE+"/results/timing.json");
+
+          runWorkflow.addParent(generateIni);
         
         // upload the DKFZ results
         String[] emblTypes = { "sv" };
@@ -492,8 +504,9 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             String baseFile = tumorAliquotId + ".dkfz-";
 
             // FIXME: this is the wrong filename!
-            qcJson = baseFile + ".sv.qc.json";
-            timingJson = baseFile + ".sv.timing.json";
+            qcJson = tumorAliquotId + ".qc_metrics.dkfz.json";
+            //timingJson = "`find . | grep " + baseFile + ".sv.timing.json | head -1`";
+            timingJson = "timing.json";
 
             // VCF
             vcfs.add(baseFile + "indelCalling_"+DKFZ_VERSION+"."+formattedDate+".germline.indel.vcf.gz");
@@ -601,11 +614,14 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
   private Job createReferenceDataJob(Job createSharedWorkSpaceJob) {
     
     Job getReferenceDataJob = this.getWorkflow().createBashJob("getEMBLDataFiles");
+    getReferenceDataJob.getCommand().addArgument("date +%s > reference_timing.txt \n");
     getReferenceDataJob.getCommand().addArgument("cd " + commonDataDir + "/embl \n");
     getReferenceDataJob.getCommand().addArgument("if [ ! -f genome.fa ]; then wget http://s3.amazonaws.com/pan-cancer-data/pan-cancer-reference/genome.fa.gz \n gunzip genome.fa.gz || true \n fi \n");
     // upload this to S3 after testing
     getReferenceDataJob.getCommand().addArgument(
             "if [ ! -f hs37d5_1000GP.gc ]; then wget https://s3.amazonaws.com/pan-cancer-data/pan-cancer-reference/hs37d5_1000GP.gc \n fi \n");
+    getReferenceDataJob.getCommand().addArgument("cd - \n");
+    getReferenceDataJob.getCommand().addArgument("date +%s >> reference_timing.txt \n");
     getReferenceDataJob.addParent(createSharedWorkSpaceJob);
     return(getReferenceDataJob);
     
@@ -613,6 +629,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
 
   private Job createDkfzReferenceDataJob(Job getReferenceDataJob) {
     Job getDKFZReferenceDataJob = this.getWorkflow().createBashJob("getDKFZDataFiles");
+    getDKFZReferenceDataJob.getCommand().addArgument("date +%s > dkfz_reference_timing.txt \n");
     getDKFZReferenceDataJob.getCommand().addArgument("cd " + commonDataDir + "/dkfz \n");
     getDKFZReferenceDataJob.getCommand().addArgument("if [ ! -d " + dkfzDataBundleUUID + "/bundledFiles ]; then docker run "
                                 // link in the input directory
@@ -629,6 +646,9 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                                 + dkfzDataBundleFile + " --retries "+gnosRetries+" --timeout-min "+gnosTimeoutMin+" && "
                                 + "cd " + dkfzDataBundleUUID + " && "
                                 + "tar zxf " + dkfzDataBundleFile + "' \n fi \n ");
+    getDKFZReferenceDataJob.getCommand().addArgument("cd - \n");
+    getDKFZReferenceDataJob.getCommand().addArgument("date +%s >> dkfz_reference_timing.txt \n");
+    getDKFZReferenceDataJob.getCommand().addArgument("date +%s > download_timing.txt \n");
     getDKFZReferenceDataJob.addParent(getReferenceDataJob);
     return(getDKFZReferenceDataJob);
   }
