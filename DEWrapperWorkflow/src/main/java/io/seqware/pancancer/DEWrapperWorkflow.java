@@ -351,6 +351,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         }
 
         // Now do the upload based on the destination chosen
+        // NOTE: I'm using the wrapper workflow version here so it's immediately obvious what wrapper was used
         if ("local".equals(uploadDestination)) {
 
           // using hard links so it spans multiple exported filesystems to Docker
@@ -358,7 +359,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(), uploadLocalPath, "/tmp/",
           gnosTimeoutMin, gnosRetries, qcJson, timingJson,
-          Version.EMBL_WORKFLOW_SRC_URL, Version.EMBL_WORKFLOW_URL, Version.EMBL_WORKFLOW_NAME, Version.EMBL_WORKFLOW_VERSION);
+          Version.EMBL_WORKFLOW_SRC_URL, Version.EMBL_WORKFLOW_URL, Version.EMBL_WORKFLOW_NAME, Version.WORKFLOW_VERSION);
 
         } else if ("GNOS".equals(uploadDestination)) {
 
@@ -366,7 +367,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(),
           gnosTimeoutMin, gnosRetries, qcJson, timingJson,
-          Version.EMBL_WORKFLOW_SRC_URL, Version.EMBL_WORKFLOW_URL, Version.EMBL_WORKFLOW_NAME, Version.EMBL_WORKFLOW_VERSION);
+          Version.EMBL_WORKFLOW_SRC_URL, Version.EMBL_WORKFLOW_URL, Version.EMBL_WORKFLOW_NAME, Version.WORKFLOW_VERSION);
 
         } else if ("S3".equals(uploadDestination)) {
 
@@ -374,7 +375,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(), "/tmp/", s3Key, s3SecretKey,
           uploadS3BucketPath, gnosTimeoutMin, gnosRetries, qcJson, timingJson,
-          Version.EMBL_WORKFLOW_SRC_URL, Version.EMBL_WORKFLOW_URL, Version.EMBL_WORKFLOW_NAME, Version.EMBL_WORKFLOW_VERSION);
+          Version.EMBL_WORKFLOW_SRC_URL, Version.EMBL_WORKFLOW_URL, Version.EMBL_WORKFLOW_NAME, Version.WORKFLOW_VERSION);
 
         } else {
           throw new RuntimeException("Don't know what download Type "+downloadSource+" is!");
@@ -531,20 +532,21 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         }
         
         // Now do the upload based on the destination chosen
+        // NOTE: I'm using the wrapper workflow version here so it's immediately obvious what wrapper was used
         if ("local".equals(uploadDestination)) {
 
           // using hard links so it spans multiple exported filesystems to Docker
           uploadJob = utils.localUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE+"/results/", pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(), uploadLocalPath, "/tmp/",
-          gnosTimeoutMin, gnosRetries, qcJson, timingJson, Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL, Version.DKFZ_WORKFLOW_NAME, Version.DKFZ_WORKFLOW_VERSION);
+          gnosTimeoutMin, gnosRetries, qcJson, timingJson, Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL, Version.DKFZ_WORKFLOW_NAME, Version.WORKFLOW_VERSION);
 
         } else if ("GNOS".equals(uploadDestination)) {
 
           uploadJob = utils.gnosUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE+"/results/", pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(),
-          gnosTimeoutMin, gnosRetries, qcJson, timingJson, Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL, Version.DKFZ_WORKFLOW_NAME, Version.DKFZ_WORKFLOW_VERSION);
+          gnosTimeoutMin, gnosRetries, qcJson, timingJson, Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL, Version.DKFZ_WORKFLOW_NAME, Version.WORKFLOW_VERSION);
 
         } else if ("S3".equals(uploadDestination)) {
 
@@ -552,7 +554,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(), "/tmp/", s3Key, s3SecretKey,
           uploadS3BucketPath, gnosTimeoutMin, gnosRetries, qcJson, timingJson,
-          Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL, Version.DKFZ_WORKFLOW_NAME, Version.DKFZ_WORKFLOW_VERSION);
+          Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL, Version.DKFZ_WORKFLOW_NAME, Version.WORKFLOW_VERSION);
 
         } else {
           throw new RuntimeException("Don't know what download Type "+downloadSource+" is!");

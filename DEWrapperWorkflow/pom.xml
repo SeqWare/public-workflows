@@ -9,7 +9,7 @@
 
     <groupId>io.seqware</groupId>
     <artifactId>DEWrapperWorkflow</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0.0</version>
     <packaging>jar</packaging>
 
     <name>DEWrapperWorkflow</name>
@@ -124,10 +124,62 @@
                     <token>@workflow-url@</token>
                     <value>${workflow-url}</value>
                   </replacement>
-                  <replacement>
-                    <token>@workflow-src-url@</token>
-                    <value>${workflow-src-url}</value>
-                  </replacement>
+                    <replacement>
+                        <token>@workflow-src-url@</token>
+                        <value>${workflow-src-url}</value>
+                    </replacement>
+                    <replacement>
+                        <token>@dkfz-workflow-name@</token>
+                        <value>${dkfz-workflow-name}</value>
+                    </replacement>
+                    <replacement>
+                        <token>@dkfz-workflow-short-name-version@</token>
+                        <value>${dkfz-workflow-short-name-version}</value>
+                    </replacement>
+                    <replacement>
+                        <token>@dkfz-workflow-version@</token>
+                        <value>${dkfz-workflow-version}</value>
+                    </replacement>
+                    <replacement>
+                        <token>@dkfz-workflow-version-underscore@</token>
+                        <value>${dkfz-workflow-version-underscore}</value>
+                    </replacement>
+                    <replacement>
+                        <token>@dkfz-workflow-description@</token>
+                        <value>${dkfz-workflow-description}</value>
+                    </replacement>
+                    <replacement>
+                        <token>@dkfz-workflow-url@</token>
+                        <value>${dkfz-workflow-url}</value>
+                    </replacement>
+                    <replacement>
+                        <token>@dkfz-workflow-src-url@</token>
+                        <value>${dkfz-workflow-src-url}</value>
+                    </replacement>
+                    <replacement>
+                        <token>@embl-workflow-name@</token>
+                        <value>${embl-workflow-name}</value>
+                    </replacement>
+                    <replacement>
+                        <token>@embl-workflow-short-name-version@</token>
+                        <value>${embl-workflow-short-name-version}</value>
+                    </replacement>
+                    <replacement>
+                        <token>@embl-workflow-version@</token>
+                        <value>${embl-workflow-version}</value>
+                    </replacement>
+                    <replacement>
+                        <token>@embl-workflow-description@</token>
+                        <value>${embl-workflow-description}</value>
+                    </replacement>
+                    <replacement>
+                        <token>@embl-workflow-url@</token>
+                        <value>${embl-workflow-url}</value>
+                    </replacement>
+                    <replacement>
+                        <token>@embl-workflow-src-url@</token>
+                        <value>${embl-workflow-src-url}</value>
+                    </replacement>
                 </replacements>
               </configuration>
             </plugin>

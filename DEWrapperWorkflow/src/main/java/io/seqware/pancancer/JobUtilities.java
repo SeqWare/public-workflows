@@ -159,9 +159,11 @@ public class JobUtilities {
                         + " --key /root/gnos_icgc_keyfile.pem --upload-url " + uploadServer
                         + " --qc-metrics-json " + qcJson
                         + " --timing-metrics-json " + timingJson
-                        + " --workflow-src-url https://bitbucket.org/weischen/pcawg-delly-workflow" + " --workflow-url https://registry.hub.docker.com/u/pancancer/pcawg-delly-workflow" + " --workflow-name EmblPancancerStr "
+                        + " --workflow-src-url " + workflowSrcUrl
+                        + " --workflow-url " + workflowUrl
+                        + " --workflow-name "+workflowName
                         + " --timeout-min "+timeout+" --retries "+retries+" "
-                        + " --workflow-version 1.0.0" + " --seqware-version " + seqwareVersion + " --vm-instance-type "
+                        + " --workflow-version " + workflowVersion + " --seqware-version " + seqwareVersion + " --vm-instance-type "
                         + vmInstanceType + " --vm-instance-cores `nproc` --vm-instance-mem-gb "
                         + "`free | grep \"Mem:\" | awk \"{print \\\\$2 / 1000000 }\"` "
                         + " --vm-location-code " + vmLocationCode + overrideTxt + "' "
