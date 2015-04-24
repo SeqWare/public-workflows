@@ -640,7 +640,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                                 + ":/root/gnos_icgc_keyfile.pem "+gnosDownloadName
                                 // here is the Bash command to be run
                                 + " /bin/bash -c 'cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-2.0.10/lib "
-                                + "/opt/vcf-uploader/vcf-uploader-2.0.3/gnos_download_file.pl "
+                                + "/opt/vcf-uploader/vcf-uploader-2.0.4/gnos_download_file.pl "
                                 + "--url " + dkfzDataBundleServer
                                 + "/cghub/data/analysis/download/" + dkfzDataBundleUUID + " --file " + dkfzDataBundleUUID + "/"
                                 + dkfzDataBundleFile + " --retries "+gnosRetries+" --timeout-min "+gnosTimeoutMin+" && "
