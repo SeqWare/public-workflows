@@ -1,4 +1,4 @@
-# 1.1.x (Future Release)
+# 1.0.1 (Future Release)
 
 ## TODO
 
@@ -17,7 +17,7 @@
 # 1.0.0
 
 * Initial release
-* Do not schedule 1.0.0 with multiple-tumor donors!!  1.1.x will support this
+* Do not schedule 1.0.0 with multiple-tumor donors!!  1.0.1 will support this
 
 ## TODO
 
