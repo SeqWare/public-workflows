@@ -503,9 +503,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             //String baseFile = "/workflow_data/" + tumorAliquotId + ".dkfz-";
             String baseFile = tumorAliquotId + ".dkfz-";
 
-            // FIXME: this is the wrong filename!
             qcJson = tumorAliquotId + ".qc_metrics.dkfz.json";
-            //timingJson = "`find . | grep " + baseFile + ".sv.timing.json | head -1`";
             timingJson = "timing.json";
 
             // VCF
