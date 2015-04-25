@@ -31,7 +31,7 @@ public class JobUtilities {
                 + ":/root/gnos_icgc_keyfile.pem "+dockerName+" "
                 // here is the Bash command to be run
                 + " /bin/bash -c 'cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-2.0.10/lib "
-                + "/opt/vcf-uploader/vcf-uploader-2.0.3/gnos_download_file.pl "
+                + "/opt/vcf-uploader/vcf-uploader-2.0.4/gnos_download_file.pl "
                 + "--url "+gnosServer+"/cghub/data/analysis/download/"+analysisId+" "
                 + "--pem /root/gnos_icgc_keyfile.pem --file " + analysisId + "/"
                 + bam + " --retries "+retries+" --timeout-min "+timeout+"' \n");
@@ -149,7 +149,7 @@ public class JobUtilities {
                         // the command invoked on the container follows
                         + "/bin/bash -c 'cd /workflow_data && mkdir -p uploads && "
                         + "perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-2.0.10/lib "
-                        + "/opt/vcf-uploader/vcf-uploader-2.0.3/gnos_upload_vcf.pl "
+                        + "/opt/vcf-uploader/vcf-uploader-2.0.4/gnos_upload_vcf.pl "
                         // parameters to gnos_upload
                         + "--metadata-urls "
                         + metadataURLs
