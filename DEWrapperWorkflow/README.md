@@ -8,11 +8,15 @@ Unlike previous workflows, there is now a central decider that generates INIs fr
 
 ## Users
 
-In order to get this running, you will need to setup Docker. It is recommended that you do this on an Amazon host with a 100GB root disk (one good choice is ami-9a562df2, this should be an Ubuntu 14.04 image if you use another AMI). We used a m3.xlarge:
+### Worker Host Docker Setup
+
+In order to get this running, you will need to setup Docker on your worker host(s). It is recommended that you do this on an Amazon host with a 100GB root disk (one good choice is ami-9a562df2, this should be an Ubuntu 14.04 image if you use another AMI). We used a m3.xlarge:
 
         curl -sSL https://get.docker.com/ | sudo sh
         sudo usermod -aG docker ubuntu
         exit
+
+### Worker Host Docker Image Pull from DockerHub
 
 Next, after logging back in, cache the seqware containers that we will be using 
 
@@ -20,11 +24,21 @@ Next, after logging back in, cache the seqware containers that we will be using
         docker pull seqware/seqware_full
         docker pull pancancer/pcawg-delly-workflow
         
-You need to get and build the DKFZ portion:
+### Worker Host Docker Image Build for DKFZ   
+
+#### Option 1 - Download
+
+Note, if you have been given a .tar of the DKFZ workflow you can skip the build below and just import it directly into Docker:
+
+        docker load < /tmp/dkfz_dockered_workflows_1.0.132-1.tar
+
+#### Option 2 - Build 
+        
+You need to get and build the DKFZ workflow since we are not allowed to redistribute it on DockerHub:
 
         git clone git@github.com:SeqWare/docker.git
 
-See https://github.com/SeqWare/docker/tree/develop/dkfz_dockered_workflows for downloading Roddy bundles of data/binaries.
+See the [README](https://github.com/SeqWare/docker/tree/develop/dkfz_dockered_workflows) for how to downloading Roddy bundles of data/binaries and build this Docker image.
 
         cd ~/gitroot/docker/dkfz_dockered_workflows/
         # you need to download the Roddy binary, untar/gz, and move the Roddy directory into the current git checkout dir
@@ -35,6 +49,8 @@ See https://github.com/SeqWare/docker/tree/develop/dkfz_dockered_workflows for d
         REPOSITORY                          TAG                 IMAGE ID            CREATED             VIRTUAL SIZE
         pancancer/dkfz_dockered_workflows   latest              0805f987f138        8 seconds ago       1.63 GB
 
+### Worker Host Directory Setup
+
 Next, setup your environment with your workflow and a shared datastore directory
 
         sudo mkdir /workflows && sudo mkdir /datastore
@@ -44,6 +60,17 @@ Next, setup your environment with your workflow and a shared datastore directory
         wget https://seqwaremaven.oicr.on.ca/artifactory/seqware-release/com/github/seqware/seqware-distribution/1.1.0/seqware-distribution-1.1.0-full.jar
         sudo apt-get install openjdk-7-jdk maven
 
+### Worker Host DEWrapperWorkflow
+
+#### Option 1 - Download
+
+I uploaded a copy of the .zip for the DEWrapperWorkflow to Amazon S3 to save you the build time.
+
+        wget https://s3.amazonaws.com/oicr.workflow.bundles/released-bundles/Workflow_Bundle_DEWrapperWorkflow_1.0.0_SeqWare_1.1.0.zip
+        java -cp seqware-distribution-1.1.0-full.jar net.sourceforge.seqware.pipeline.tools.UnZip --input-zip Workflow_Bundle_DEWrapperWorkflow_1.0.0_SeqWare_1.1.0.zip --output-dir /workflows/
+
+#### Option 2 - Build 
+
 Next, you will need to build a copy of the workflow wrappering the DKFZ and EMBL pipelines.
 
         git clone git clone git@github.com:SeqWare/public-workflows.git
@@ -52,17 +79,13 @@ Next, you will need to build a copy of the workflow wrappering the DKFZ and EMBL
         mvn clean install
         rsync -rauvL target/Workflow_Bundle_DEWrapperWorkflow_1.0.0_SeqWare_1.1.0 /workflows/
 
-This will eventually be uploaded to S3.
-
-<!--
-Do your `mvn clean install`,`seqware bundle package --dir target/Workflow_Bundle_WorkflowOfWorkflows_1.0.0_SeqWare_1.1.0/`, and then scp the bundle in. These next steps assume that you have copied in your bundle. Do the following if you're downloading a zip from S3.
-
-        java -cp seqware-distribution-1.1.0-full.jar net.sourceforge.seqware.pipeline.tools.UnZip --input-zip Workflow_Bundle_DEWrapperWorkflow_1.0.0_SeqWare_1.1.0.zip --output-dir Workflow_Bundle_DEWrapperWorkflow_1.0.0_SeqWare_1.1.0
--->
+### Worker Host GNOS Pem Key
 
 Copy your pem key to:
 
         /home/ubuntu/.ssh/20150212_boconnor_gnos_icgc_keyfile.pem
+
+### Worker Host Run the Workflow in Test Mode
 
 Finally, you can run your workflow with a small launcher script that can be modified for different workflows
 
@@ -79,6 +102,8 @@ Note that you can also launch using the whitestar workflow engine which is much 
 Look in your datastore for the two working directories generated per run (one for the overall workflow and one for the embedded workflow, currently HelloWorld)
 
         ls -alhtr /datastore
+
+### Worker Host Launch Workflow with New INI File for Real Run
 
 If you want to run with a specific INI:
 
