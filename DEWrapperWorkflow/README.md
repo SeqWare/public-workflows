@@ -77,7 +77,7 @@ I uploaded a copy of the .zip for the DEWrapperWorkflow to Amazon S3 to save you
 
 Next, you will need to build a copy of the workflow wrappering the DKFZ and EMBL pipelines.
 
-        git clone git clone git@github.com:SeqWare/public-workflows.git
+        git clone git@github.com:SeqWare/public-workflows.git
         # git checkout feature/workflow-DKFZ-EMBL-wrap-workflow # TODO: replace with release string
         cd DEWrapperWorkflow/
         mvn clean install
