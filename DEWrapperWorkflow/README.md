@@ -6,6 +6,10 @@ Unlike previous workflows, there is now a central decider that generates INIs fr
 
 [![Build Status](https://travis-ci.org/SeqWare/public-workflows.svg?branch=develop)](https://travis-ci.org/SeqWare/public-workflows)
 
+## Contact
+
+If you have questions please contact Brian O'Connor at boconnor@oicr.on.ca or the PCAWG shepherds list: PCAWG Shepherds <pcawg-shepherds@lists.icgc.org>
+
 ## Users
 
 ### Worker Host Docker Setup
