@@ -87,23 +87,15 @@ Next, you will need to build a copy of the workflow wrappering the DKFZ and EMBL
 
 Copy your pem key to:
 
-        /home/ubuntu/.ssh/20150212_boconnor_gnos_icgc_keyfile.pem
+        /home/ubuntu/.ssh/gnos.pem
 
 ### Worker Host Run the Workflow in Test Mode
 
-Finally, you can run your workflow with a small launcher script that can be modified for different workflows
+Now you can launch a test run of the workflow using the whitestar workflow engine which is much faster but lacks the more advanced features that are normally present in SeqWare. See [Developing in Partial SeqWare Environments with Whitestar](https://seqware.github.io/docs/6-pipeline/partial_environments/) for details. 
 
-        wget https://raw.githubusercontent.com/SeqWare/public-workflows/develop/DEWrapperWorkflow/launchWorkflow.sh
-        # edit the above script if you need to
-        docker run --rm -h master -t -v /var/run/docker.sock:/var/run/docker.sock -v /datastore:/datastore -v /workflows:/workflows -v `pwd`/launchWorkflow.sh:/launchWorkflow.sh  -i seqware/seqware_full /start.sh "bash /launchWorkflow.sh"        
-        
-Note that you can also launch using the whitestar workflow engine which is much faster but lacks the more advanced features that are normally present in SeqWare. See [Developing in Partial SeqWare Environments with Whitestar](https://seqware.github.io/docs/6-pipeline/partial_environments/) for details. 
+       docker run --rm -h master -it -v /var/run/docker.sock:/var/run/docker.sock -v /datastore:/datastore -v /workflows:/workflows -v `pwd`/workflow.ini:/workflow.ini -v /home/ubuntu/.ssh/gnos.pem:/home/ubuntu/.ssh/gnos.pem seqware/seqware_whitestar /bin/bash -c 'seqware bundle launch --dir /workflows/Workflow_Bundle_DEWrapperWorkflow_1.0.0_SeqWare_1.1.0 --engine whitestar --no-metadata'
 
-        wget https://raw.githubusercontent.com/SeqWare/public-workflows/develop/DEWrapperWorkflow/launchWorkflowDev.sh
-        # edit the above script if you need to
-        docker run --rm -h master -t -v /var/run/docker.sock:/var/run/docker.sock -v /datastore:/datastore -v /workflows:/workflows -v `pwd`/launchWorkflowDev.sh:/launchWorkflowDev.sh -i seqware/seqware_whitestar bash /launchWorkflowDev.sh
-
-Look in your datastore for the two working directories generated per run (one for the overall workflow and one for the embedded workflow, currently HelloWorld)
+Look in your datastore for the oozie-<uuid> working directory created.  This contains the scripts/logs (generated-script directory) and the working directory for the two workflows (shared-data):
 
         ls -alhtr /datastore
 
