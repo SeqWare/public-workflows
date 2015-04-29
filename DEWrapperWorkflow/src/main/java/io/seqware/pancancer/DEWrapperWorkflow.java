@@ -648,7 +648,8 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                                 + "/opt/vcf-uploader/vcf-uploader-2.0.4/gnos_download_file.pl "
                                 + "--url " + dkfzDataBundleServer
                                 + "/cghub/data/analysis/download/" + dkfzDataBundleUUID + " --file " + dkfzDataBundleUUID + "/"
-                                + dkfzDataBundleFile + " --retries "+gnosRetries+" --timeout-min "+gnosTimeoutMin+" && "
+                                + dkfzDataBundleFile + " --retries "+gnosRetries+" --timeout-min "+gnosTimeoutMin+" "
+                                + "  --pem /root/gnos_icgc_keyfile.pem && "
                                 + "cd " + dkfzDataBundleUUID + " && "
                                 + "tar zxf " + dkfzDataBundleFile + "' \n fi \n ");
     getDKFZReferenceDataJob.getCommand().addArgument("cd - \n");
