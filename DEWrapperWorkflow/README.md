@@ -115,6 +115,8 @@ This is the approach you would take for running in production.  Each donor gets 
 
 Adam Wright provides instructions here (https://github.com/ICGC-TCGA-PanCancer/central-decider-client/blob/develop/README.md) on using a simple command line tool for generating INIs based on your site's allocation of donors.
 
+You can use Adam's tool for generating many INI files, one per donor, and it takes care of choosing the correct input based on the curation work the OICR team has done.  It's also very fast to run versus or old "decider" that was used previously to make INI files. See the link above for more directions.
+
 ## Developer Info
 
 ### DKFZ
