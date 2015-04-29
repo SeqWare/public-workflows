@@ -18,6 +18,7 @@ In order to get this running, you will need to setup Docker on your worker host(
 
         curl -sSL https://get.docker.com/ | sudo sh
         sudo usermod -aG docker ubuntu
+        # log out then back in!
         exit
 
 ### Worker Host Docker Image Pull from DockerHub
