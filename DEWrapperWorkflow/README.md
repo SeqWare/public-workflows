@@ -41,7 +41,7 @@ Note, if you have been given a .tar of the DKFZ workflow you can skip the build 
         
 You need to get and build the DKFZ workflow since we are not allowed to redistribute it on DockerHub:
 
-        git clone git@github.com:SeqWare/docker.git
+        git clone https://github.com/SeqWare/docker.git
 
 See the [README](https://github.com/SeqWare/docker/tree/develop/dkfz_dockered_workflows) for how to downloading Roddy bundles of data/binaries and build this Docker image.
 
@@ -79,7 +79,7 @@ I uploaded a copy of the .zip for the DEWrapperWorkflow to Amazon S3 to save you
 
 Next, you will need to build a copy of the workflow wrappering the DKFZ and EMBL pipelines.
 
-        git clone git@github.com:SeqWare/public-workflows.git
+        git clone https://github.com/SeqWare/public-workflows.git
         # git checkout feature/workflow-DKFZ-EMBL-wrap-workflow # TODO: replace with release string
         cd DEWrapperWorkflow/
         mvn clean install
