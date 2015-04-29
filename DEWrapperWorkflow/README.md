@@ -35,7 +35,7 @@ Next, after logging back in, cache the seqware containers that we will be using
 
 Note, if you have been given a .tar of the DKFZ workflow you can skip the build below and just import it directly into Docker:
 
-        docker load < /tmp/dkfz_dockered_workflows_1.0.132-1.tar
+        docker load < dkfz_dockered_workflows_1.0.132-1.tar
 
 #### Option 2 - Build 
         
