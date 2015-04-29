@@ -113,7 +113,7 @@ This is the approach you would take for running in production.  Each donor gets 
 
 ### Source of INIs
 
-Adam Wright will provide instructions here on using a simple command line tool for generating INIs based on your site's allocation of donors.
+Adam Wright provides instructions here (https://github.com/ICGC-TCGA-PanCancer/central-decider-client/blob/develop/README.md) on using a simple command line tool for generating INIs based on your site's allocation of donors.
 
 ## Developer Info
 
