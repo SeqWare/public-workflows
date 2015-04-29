@@ -109,6 +109,10 @@ If you want to run with a specific INI:
 
 This is the approach you would take for running in production.  Each donor gets an INI file that is then used to launch a workflow using Docker.  If you choose to upload to S3 or GNOS your files should be uploaded there.  You can also find output in /datastore.
 
+### Source of INIs
+
+Adam Wright will provide instructions here on using a simple command line tool for generating INIs based on your site's allocation of donors.
+
 ## Developer Info
 
 ### DKFZ
