@@ -31,7 +31,8 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
     // variables
     private static final String SHARED_WORKSPACE = "shared_workspace";
     private static final String EMBL_PREFIX = "EMBL.";
-    private static final String DKFZ_PREFIX = "EMBL.";
+    private static final String DKFZ_PREFIX = "DKFZ.";
+    private static final String DKFZ_VERSION = Version.DKFZ_WORKFLOW_VERSION_UNDERSCORE;
     private ArrayList<String> analysisIds = null;
     private ArrayList<String> tumorAnalysisIds = null;
     private ArrayList<String> bams = null;
@@ -42,8 +43,6 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
     private String metadataURLs = null;
     private List<String> tumorAliquotIds = null;
     private String vmInstanceType;
-    private String vmInstanceCores;
-    private String vmInstanceMemGb;
     private String vmLocationCode;
     private String studyRefnameOverride = null;
     private String analysisCenterOverride = null;
@@ -52,6 +51,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
     private String dkfzDataBundleServer = "";
     private String dkfzDataBundleUUID = "";
     private String dkfzDataBundleFile = "";
+    private String dkfzDataBundleDownloadKey = "";
     private String controlBam = null;
     private String controlAnalysisId = null;
     private String downloadSource = null;
@@ -73,6 +73,10 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
     // workflows to run
     private Boolean runEmbl = true;
     private Boolean runDkfz = true;
+    // docker names
+    private String dkfzDockerName = "pancancer/dkfz_dockered_workflows";
+    private String emblDockerName = "pancancer/pcawg-delly-workflow";
+    private String gnosDownloadName = "seqware/pancancer_upload_download";
     
     @Override
     public void setupWorkflow() {
@@ -115,8 +119,6 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             // background information on VMs
             // TODO: Cores and MemGb can be filled in at runtime
             this.vmInstanceType = getProperty("vmInstanceType");
-            this.vmInstanceCores = getProperty("vmInstanceCores");
-            this.vmInstanceMemGb = getProperty("vmInstanceMemGb");
             this.vmLocationCode = getProperty("vmLocationCode");
             
             // overrides for study name and analysis center
@@ -130,6 +132,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             dkfzDataBundleServer = getProperty("DKFZ.dkfzDataBundleServer");
             dkfzDataBundleUUID = getProperty("DKFZ.dkfzDataBundleUUID");
             dkfzDataBundleFile = getProperty("DKFZ.dkfzDataBundleFile");
+            dkfzDataBundleDownloadKey = getProperty("DKFZ.dkfzDataBundleDownloadKey");
 
             // record the date
             DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
@@ -170,6 +173,11 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             /* if(hasPropertyAndNotNull("runEmbl")) {
               runEmbl=Boolean.valueOf(getProperty("runEmbl"));
             } */
+
+            // Docker images
+            dkfzDockerName = getProperty("dkfzDockerName");
+            emblDockerName = getProperty("emblDockerName");
+            gnosDownloadName = getProperty("gnosDockerName");
     
         } catch (Exception e) {
             throw new RuntimeException("Could not read property from ini", e);
@@ -243,7 +251,11 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
       
         // call the EMBL workflow
         Job emblJob = this.getWorkflow().createBashJob("embl_workflow");
-        
+
+        // timing info
+        emblJob.getCommand().addArgument("date +%s >> download_timing.txt \n");
+        emblJob.getCommand().addArgument("date +%s > embl_timing.txt \n");
+
         // make config
         boolean count = true;
         for (Entry<String, String> entry : this.getConfigs().entrySet()) {
@@ -257,7 +269,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             }
         }
         // now supply date
-        emblJob.getCommand().addArgument("echo \"date="+formattedDate+"\" >> `pwd`/"+SHARED_WORKSPACE + "/settings/embl.ini \n");
+        emblJob.getCommand().addArgument("echo \"date=" + formattedDate + "\" >> `pwd`/" + SHARED_WORKSPACE + "/settings/embl.ini \n");
 
         // the actual docker command
         emblJob.getCommand()
@@ -270,10 +282,12 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                                 + "-v `pwd`/" + SHARED_WORKSPACE
                                 + "/settings/embl.ini:/workflow.ini "
                                 // the container
-                                + "pancancer/pcawg-delly-workflow "
+                                + emblDockerName + " "
                                 // command received by seqware (replace this with a real call to Delly after getting bam files downloaded)
                                 + "/start.sh \"seqware bundle launch --dir /mnt/home/seqware/DELLY/target/Workflow_Bundle_DELLY_1.0-SNAPSHOT_SeqWare_1.1.0-alpha.6 --engine whitestar-parallel --no-metadata --ini /workflow.ini\" \n");
-        // with a real workflow, we would pass in the workflow.ini
+
+        // timing
+        emblJob.getCommand().addArgument("date +%s >> embl_timing.txt \n");
 
         emblJob.addParent(previousJobPointer);
         previousJobPointer = emblJob;
@@ -288,32 +302,40 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         List<String> tbimd5s = new ArrayList<>();
         List<String> tarmd5s = new ArrayList<>();
 
+        // FIXME: really just need one timing file not broken down by tumorAliquotID!  This will be key for multi-tumor donors
+        String qcJson = null;
+        String timingJson = null;
+
         // FIXME: these don't quite follow the naming convention
         for (String tumorAliquotId : tumorAliquotIds) {
-        
-          String baseFile = "/workflow_data/" + tumorAliquotId + ".embl-delly_1-0-0-preFilter."+formattedDate;
 
-          vcfs.add(baseFile + ".germline.vcf.gz");
+          //String baseFile = "/workflow_data/" + tumorAliquotId + ".embl-delly_1-0-0-preFilter."+formattedDate;
+          String baseFile = tumorAliquotId + ".embl-delly_1-0-0-preFilter."+formattedDate;
+
+          qcJson = "`find . | grep " + baseFile + ".sv.qc.json | head -1`";
+          timingJson = "`find . | grep " + baseFile + ".sv.timing.json | head -1`";
+
+          vcfs.add(baseFile + ".germline.sv.vcf.gz");
           vcfs.add(baseFile + ".sv.vcf.gz");
           vcfs.add(baseFile + ".somatic.sv.vcf.gz");
           
-          vcfmd5s.add(baseFile + ".germline.vcf.gz.md5");
+          vcfmd5s.add(baseFile + ".germline.sv.vcf.gz.md5");
           vcfmd5s.add(baseFile + ".sv.vcf.gz.md5");
           vcfmd5s.add(baseFile + ".somatic.sv.vcf.gz.md5");
           
-          tbis.add(baseFile + ".germline.vcf.gz.tbi");
+          tbis.add(baseFile + ".germline.sv.vcf.gz.tbi");
           tbis.add(baseFile + ".sv.vcf.gz.tbi");
           tbis.add(baseFile + ".somatic.sv.vcf.gz.tbi");
           
-          tbimd5s.add(baseFile + ".germline.vcf.gz.tbi.md5");
+          tbimd5s.add(baseFile + ".germline.sv.vcf.gz.tbi.md5");
           tbimd5s.add(baseFile + ".sv.vcf.gz.tbi.md5");
           tbimd5s.add(baseFile + ".somatic.sv.vcf.gz.tbi.md5");
 
-          tars.add(baseFile + ".germline.readname.txt.tar.gz");
-          tarmd5s.add(baseFile + ".germline.readname.txt.tar.gz.md5");      
+          tars.add(baseFile + ".germline.sv.readname.txt.tar.gz");
+          tarmd5s.add(baseFile + ".germline.sv.readname.txt.tar.gz.md5");
 
-          tars.add(baseFile + ".germline.bedpe.txt.tar.gz");
-          tarmd5s.add(baseFile + ".germline.bedpe.txt.tar.gz.md5");
+          tars.add(baseFile + ".germline.sv.bedpe.txt.tar.gz");
+          tarmd5s.add(baseFile + ".germline.sv.bedpe.txt.tar.gz.md5");
           
           tars.add(baseFile + ".somatic.sv.readname.txt.tar.gz");
           tarmd5s.add(baseFile + ".somatic.sv.readname.txt.tar.gz.md5");      
@@ -321,11 +343,11 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
           tars.add(baseFile + ".somatic.sv.bedpe.txt.tar.gz");
           tarmd5s.add(baseFile + ".somatic.sv.bedpe.txt.tar.gz.md5");
           
-          tars.add(baseFile + ".cov.plots.tar.gz");
-          tarmd5s.add(baseFile + ".cov.plots.tar.gz.md5");
+          tars.add(baseFile + ".sv.cov.plots.tar.gz");
+          tarmd5s.add(baseFile + ".sv.cov.plots.tar.gz.md5");
           
-          tars.add(baseFile + ".cov.tar.gz");
-          tarmd5s.add(baseFile + ".cov.tar.gz.md5");
+          tars.add(baseFile + ".sv.cov.tar.gz");
+          tarmd5s.add(baseFile + ".sv.cov.tar.gz.md5");
 
         }
         
@@ -344,35 +366,43 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         }
 
         // Now do the upload based on the destination chosen
+        // NOTE: I'm using the wrapper workflow version here so it's immediately obvious what wrapper was used
         if ("local".equals(uploadDestination)) {
 
           // using hard links so it spans multiple exported filesystems to Docker
           uploadJob = utils.localUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(), uploadLocalPath, "/tmp/",
-          gnosTimeoutMin, gnosRetries);
+          gnosTimeoutMin, gnosRetries, qcJson, timingJson,
+          Version.EMBL_WORKFLOW_SRC_URL, Version.EMBL_WORKFLOW_URL, Version.EMBL_WORKFLOW_NAME,
+          Version.WORKFLOW_VERSION, gnosDownloadName);
+
 
         } else if ("GNOS".equals(uploadDestination)) {
 
           uploadJob = utils.gnosUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(),
-          gnosTimeoutMin, gnosRetries);
+          gnosTimeoutMin, gnosRetries, qcJson, timingJson,
+          Version.EMBL_WORKFLOW_SRC_URL, Version.EMBL_WORKFLOW_URL, Version.EMBL_WORKFLOW_NAME,
+          Version.WORKFLOW_VERSION, gnosDownloadName);
 
         } else if ("S3".equals(uploadDestination)) {
 
           uploadJob = utils.s3UploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(), "/tmp/", s3Key, s3SecretKey,
-          uploadS3BucketPath, gnosTimeoutMin, gnosRetries);
+          uploadS3BucketPath, gnosTimeoutMin, gnosRetries, qcJson, timingJson,
+          Version.EMBL_WORKFLOW_SRC_URL, Version.EMBL_WORKFLOW_URL, Version.EMBL_WORKFLOW_NAME,
+          Version.WORKFLOW_VERSION, gnosDownloadName);
 
         } else {
           throw new RuntimeException("Don't know what download Type "+downloadSource+" is!");
         }
 
         uploadJob.addParent(previousJobPointer);
-        // for now, make these sequential
-        return uploadJob;
+        // I want DKFZ to continue while the upload is going for EMBL
+        return previousJobPointer;
         
     }
 
@@ -401,7 +431,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         // tumor delly files
         ArrayList<String> tumorDelly = new ArrayList<String>();
         for  (int i=0; i<tumorAliquotIds.size(); i++) {
-          tumorDelly.add("/mnt/datastore/workflow_data/inputdata/"+tumorAliquotIds.get(i)+".embl-delly_1-0-0-preFilter."+formattedDate+".germline.bedpe.txt");
+          tumorDelly.add("/mnt/datastore/workflow_data/inputdata/"+tumorAliquotIds.get(i)+".embl-delly_1-0-0-preFilter."+formattedDate+".somatic.sv.bedpe.txt");
         }
       
         Job generateIni = this.getWorkflow().createBashJob("generateDKFZ_ini");
@@ -425,13 +455,14 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
           String aliquotId = tumorAliquotIds.get(i);
           String analysisId = tumorAnalysisIds.get(i);
           mounts.append(" -v `pwd`/" + SHARED_WORKSPACE + "/inputs/"+analysisId+":/mnt/datastore/workflow_data/inputdata/"+analysisId+" ");
-          mounts.append(" -v `pwd`/" + SHARED_WORKSPACE + "/"+aliquotId+".embl-delly_1-0-0-preFilter."+formattedDate+".germline.bedpe.txt:/mnt/datastore/workflow_data/inputdata/"+aliquotId+".embl-delly_1-0-0-preFilter."+formattedDate+".germline.bedpe.txt ");
+          mounts.append(" -v `pwd`/" + SHARED_WORKSPACE + "/"+aliquotId+".embl-delly_1-0-0-preFilter."+formattedDate+".somatic.sv.bedpe.txt:/mnt/datastore/workflow_data/inputdata/"+aliquotId+".embl-delly_1-0-0-preFilter."+formattedDate+".somatic.sv.bedpe.txt ");
         }
         // now deal with the control
         mounts.append(" -v `pwd`/" + SHARED_WORKSPACE + "/inputs/"+controlAnalysisId+":/mnt/datastore/workflow_data/inputdata/"+controlAnalysisId+" ");
         
         // run the docker for DKFZ
         Job runWorkflow = this.getWorkflow().createBashJob("runDKFZ");
+        runWorkflow.getCommand().addArgument("date +%s > dkfz_timing.txt \n");
         runWorkflow.getCommand().addArgument(
                 "docker run "
                         // mount shared directories
@@ -445,7 +476,12 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                         + "-v `pwd`/" + SHARED_WORKSPACE
                         + "/results:/mnt/datastore/resultdata "
                         // the DKFZ image and the command we feed into it follow
-                        + "dkfz_dockered_workflows /bin/bash -c '/root/bin/runwrapper.sh' ");
+                        + dkfzDockerName + " /bin/bash -c '/root/bin/runwrapper.sh' \n");
+        runWorkflow.getCommand().addArgument("date +%s >> dkfz_timing.txt \n");
+
+        // summarize timing info since DKFZ does not provide a timing.json
+        runWorkflow.getCommand().addArgument("perl " + this.getWorkflowBaseDir() + "/scripts/timing.pl > `pwd`/"+SHARED_WORKSPACE+"/results/timing.json");
+
         runWorkflow.addParent(generateIni);
         
         // upload the DKFZ results
@@ -458,52 +494,66 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         List<String> tbimd5s = new ArrayList<>();
         List<String> tarmd5s = new ArrayList<>();
 
+        // FIXME: really just need one timing file not broken down by tumorAliquotID!  This will be key for multi-tumor donors
+        String qcJson = null;
+        String qcJsonSingle = null;
+        String timingJson = null;
 
         for (String tumorAliquotId : tumorAliquotIds) {
 
-            String baseFile = "/workflow_data/" + tumorAliquotId + ".dkfz-";
+            //String baseFile = "/workflow_data/" + tumorAliquotId + ".dkfz-";
+            String baseFile = tumorAliquotId + ".dkfz-";
+
+            qcJson = tumorAliquotId + ".qc_metrics.dkfz.json";
+            qcJsonSingle = tumorAliquotId + ".qc_metrics.dkfz.single.json";
+            timingJson = "timing.json";
 
             // VCF
-            vcfs.add(baseFile + "indelCalling_1-0-114."+formattedDate+".germline.indel.vcf.gz");
-            vcfs.add(baseFile + "indelCalling_1-0-114."+formattedDate+".somatic.indel.vcf.gz");
-            vcfs.add(baseFile + "snvCalling_1-0-114."+formattedDate+".germline.snv_mnv.vcf.gz");
-            vcfs.add(baseFile + "snvCalling_1-0-114."+formattedDate+".somatic.snv_mnv.vcf.gz");
-            vcfs.add(baseFile + "copyNumberEstimation_1-0-114."+formattedDate+".somatic.cnv.vcf.gz");
+            vcfs.add(baseFile + "indelCalling_"+DKFZ_VERSION+"."+formattedDate+".germline.indel.vcf.gz");
+            vcfs.add(baseFile + "indelCalling_"+DKFZ_VERSION+"."+formattedDate+".somatic.indel.vcf.gz");
+            vcfs.add(baseFile + "snvCalling_"+DKFZ_VERSION+"."+formattedDate+".germline.snv_mnv.vcf.gz");
+            vcfs.add(baseFile + "snvCalling_"+DKFZ_VERSION+"."+formattedDate+".somatic.snv_mnv.vcf.gz");
+            vcfs.add(baseFile + "copyNumberEstimation_"+DKFZ_VERSION+"."+formattedDate+".somatic.cnv.vcf.gz");
             
             // VCF MD5
-            vcfmd5s.add(baseFile + "indelCalling_1-0-114."+formattedDate+".germline.indel.vcf.gz.md5");
-            vcfmd5s.add(baseFile + "indelCalling_1-0-114."+formattedDate+".somatic.indel.vcf.gz.md5");
-            vcfmd5s.add(baseFile + "snvCalling_1-0-114."+formattedDate+".germline.snv_mnv.vcf.gz.md5");
-            vcfmd5s.add(baseFile + "snvCalling_1-0-114."+formattedDate+".somatic.snv_mnv.vcf.gz.md5");
-            vcfmd5s.add(baseFile + "copyNumberEstimation_1-0-114."+formattedDate+".somatic.cnv.vcf.gz.md5");
+            vcfmd5s.add(baseFile + "indelCalling_"+DKFZ_VERSION+"."+formattedDate+".germline.indel.vcf.gz.md5");
+            vcfmd5s.add(baseFile + "indelCalling_"+DKFZ_VERSION+"."+formattedDate+".somatic.indel.vcf.gz.md5");
+            vcfmd5s.add(baseFile + "snvCalling_"+DKFZ_VERSION+"."+formattedDate+".germline.snv_mnv.vcf.gz.md5");
+            vcfmd5s.add(baseFile + "snvCalling_"+DKFZ_VERSION+"."+formattedDate+".somatic.snv_mnv.vcf.gz.md5");
+            vcfmd5s.add(baseFile + "copyNumberEstimation_"+DKFZ_VERSION+"."+formattedDate+".somatic.cnv.vcf.gz.md5");
 
             // Tabix
-            tbis.add(baseFile + "indelCalling_1-0-114."+formattedDate+".somatic.germline.indel.vcf.gz.tbi");
-            tbis.add(baseFile + "indelCalling_1-0-114."+formattedDate+".somatic.somatic.indel.vcf.gz.tbi");
-            tbis.add(baseFile + "snvCalling_1-0-114."+formattedDate+".germline.snv_mnv.vcf.gz.tbi");
-            tbis.add(baseFile + "snvCalling_1-0-114."+formattedDate+".somatic.snv_mnv.vcf.gz.tbi");
-            tbis.add(baseFile + "copyNumberEstimation_1-0-114."+formattedDate+".somatic.cnv.vcf.gz.tbi");
+            tbis.add(baseFile + "indelCalling_"+DKFZ_VERSION+"."+formattedDate+".somatic.indel.vcf.gz.tbi");
+            tbis.add(baseFile + "indelCalling_"+DKFZ_VERSION+"."+formattedDate+".somatic.indel.vcf.gz.tbi");
+            tbis.add(baseFile + "snvCalling_"+DKFZ_VERSION+"."+formattedDate+".germline.snv_mnv.vcf.gz.tbi");
+            tbis.add(baseFile + "snvCalling_"+DKFZ_VERSION+"."+formattedDate+".somatic.snv_mnv.vcf.gz.tbi");
+            tbis.add(baseFile + "copyNumberEstimation_"+DKFZ_VERSION+"."+formattedDate+".somatic.cnv.vcf.gz.tbi");
             
             // Tabix MD5
-            tbimd5s.add(baseFile + "indelCalling_1-0-114."+formattedDate+".somatic.germline.indel.vcf.gz.tbi.md5");
-            tbimd5s.add(baseFile + "indelCalling_1-0-114."+formattedDate+".somatic.somatic.indel.vcf.gz.tbi.md5");
-            tbimd5s.add(baseFile + "snvCalling_1-0-114."+formattedDate+".germline.snv_mnv.vcf.gz.tbi.md5");
-            tbimd5s.add(baseFile + "snvCalling_1-0-114."+formattedDate+".somatic.snv_mnv.vcf.gz.tbi.md5");
-            tbimd5s.add(baseFile + "copyNumberEstimation_1-0-114."+formattedDate+".somatic.cnv.vcf.gz.tbi.md5");
+            tbimd5s.add(baseFile + "indelCalling_"+DKFZ_VERSION+"."+formattedDate+".somatic.indel.vcf.gz.tbi.md5");
+            tbimd5s.add(baseFile + "indelCalling_"+DKFZ_VERSION+"."+formattedDate+".somatic.indel.vcf.gz.tbi.md5");
+            tbimd5s.add(baseFile + "snvCalling_"+DKFZ_VERSION+"."+formattedDate+".germline.snv_mnv.vcf.gz.tbi.md5");
+            tbimd5s.add(baseFile + "snvCalling_"+DKFZ_VERSION+"."+formattedDate+".somatic.snv_mnv.vcf.gz.tbi.md5");
+            tbimd5s.add(baseFile + "copyNumberEstimation_"+DKFZ_VERSION+"."+formattedDate+".somatic.cnv.vcf.gz.tbi.md5");
 
-            // Tarballs LEFT OFF HERE
-            tars.add(baseFile + "-copyNumberEstimation_1-0-114."+formattedDate+".somatic.cnv.tar.gz");
-            tars.add(baseFile + "-indelCalling_1-0-114."+formattedDate+".somatic.indel.tar.gz");
-            tars.add(baseFile + "-snvCalling_1-0-114."+formattedDate+".somatic.snv_mnv.tar.gz");
+            // Tarballs
+            tars.add(baseFile + "copyNumberEstimation_"+DKFZ_VERSION+"."+formattedDate+".somatic.cnv.tar.gz");
+            tars.add(baseFile + "indelCalling_"+DKFZ_VERSION+"."+formattedDate+".somatic.indel.tar.gz");
+            tars.add(baseFile + "snvCalling_"+DKFZ_VERSION+"."+formattedDate+".somatic.snv_mnv.tar.gz");
             
             // Tarballs MD5
-            tarmd5s.add(baseFile + "-copyNumberEstimation_1-0-114."+formattedDate+".somatic.cnv.tar.gz.md5");
-            tarmd5s.add(baseFile + "-indelCalling_1-0-114."+formattedDate+".somatic.indel.tar.gz.md5");
-            tarmd5s.add(baseFile + "-snvCalling_1-0-114."+formattedDate+".somatic.snv_mnv.tar.gz.md5");
+            tarmd5s.add(baseFile + "copyNumberEstimation_"+DKFZ_VERSION+"."+formattedDate+".somatic.cnv.tar.gz.md5");
+            tarmd5s.add(baseFile + "indelCalling_"+DKFZ_VERSION+"."+formattedDate+".somatic.indel.tar.gz.md5");
+            tarmd5s.add(baseFile + "snvCalling_"+DKFZ_VERSION+"."+formattedDate+".somatic.snv_mnv.tar.gz.md5");
 
         }
 
         Job uploadJob = this.getWorkflow().createBashJob("uploadDKFZ");
+
+        // have to do this to cleanup the multi-line JSON
+        uploadJob.getCommand().addArgument("cat " + SHARED_WORKSPACE + "/results/" + qcJson + " | perl -p -e 's/\\n/ /g' > "
+          + SHARED_WORKSPACE + "/results/" + qcJsonSingle + " \n");
+
         StringBuffer overrideTxt = new StringBuffer();
         if (this.studyRefnameOverride != null) {
           overrideTxt.append(" --study-refname-override " + this.studyRefnameOverride);
@@ -513,27 +563,31 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         }
         
         // Now do the upload based on the destination chosen
+        // NOTE: I'm using the wrapper workflow version here so it's immediately obvious what wrapper was used
         if ("local".equals(uploadDestination)) {
 
           // using hard links so it spans multiple exported filesystems to Docker
-          uploadJob = utils.localUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
+          uploadJob = utils.localUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE+"/results/", pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(), uploadLocalPath, "/tmp/",
-          gnosTimeoutMin, gnosRetries);
+          gnosTimeoutMin, gnosRetries, qcJsonSingle, timingJson, Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL,
+          Version.DKFZ_WORKFLOW_NAME, Version.WORKFLOW_VERSION, gnosDownloadName);
 
         } else if ("GNOS".equals(uploadDestination)) {
 
-          uploadJob = utils.gnosUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
+          uploadJob = utils.gnosUploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE+"/results/", pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(),
-          gnosTimeoutMin, gnosRetries);
+          gnosTimeoutMin, gnosRetries, qcJsonSingle, timingJson, Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL,
+          Version.DKFZ_WORKFLOW_NAME, Version.WORKFLOW_VERSION, gnosDownloadName);
 
         } else if ("S3".equals(uploadDestination)) {
 
-          uploadJob = utils.s3UploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE, pemFile, metadataURLs,
+          uploadJob = utils.s3UploadJob(uploadJob, "`pwd`/"+SHARED_WORKSPACE+"/results/", pemFile, metadataURLs,
           vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION,
           vmInstanceType, vmLocationCode, overrideTxt.toString(), "/tmp/", s3Key, s3SecretKey,
-          uploadS3BucketPath, gnosTimeoutMin, gnosRetries);
+          uploadS3BucketPath, gnosTimeoutMin, gnosRetries, qcJsonSingle, timingJson,
+          Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL, Version.DKFZ_WORKFLOW_NAME, Version.WORKFLOW_VERSION, gnosDownloadName);
 
         } else {
           throw new RuntimeException("Don't know what download Type "+downloadSource+" is!");
@@ -565,11 +619,14 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
   private Job createReferenceDataJob(Job createSharedWorkSpaceJob) {
     
     Job getReferenceDataJob = this.getWorkflow().createBashJob("getEMBLDataFiles");
+    getReferenceDataJob.getCommand().addArgument("date +%s > reference_timing.txt \n");
     getReferenceDataJob.getCommand().addArgument("cd " + commonDataDir + "/embl \n");
     getReferenceDataJob.getCommand().addArgument("if [ ! -f genome.fa ]; then wget http://s3.amazonaws.com/pan-cancer-data/pan-cancer-reference/genome.fa.gz \n gunzip genome.fa.gz || true \n fi \n");
     // upload this to S3 after testing
     getReferenceDataJob.getCommand().addArgument(
             "if [ ! -f hs37d5_1000GP.gc ]; then wget https://s3.amazonaws.com/pan-cancer-data/pan-cancer-reference/hs37d5_1000GP.gc \n fi \n");
+    getReferenceDataJob.getCommand().addArgument("cd - \n");
+    getReferenceDataJob.getCommand().addArgument("date +%s >> reference_timing.txt \n");
     getReferenceDataJob.addParent(createSharedWorkSpaceJob);
     return(getReferenceDataJob);
     
@@ -577,23 +634,27 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
 
   private Job createDkfzReferenceDataJob(Job getReferenceDataJob) {
     Job getDKFZReferenceDataJob = this.getWorkflow().createBashJob("getDKFZDataFiles");
+    getDKFZReferenceDataJob.getCommand().addArgument("date +%s > dkfz_reference_timing.txt \n");
     getDKFZReferenceDataJob.getCommand().addArgument("cd " + commonDataDir + "/dkfz \n");
     getDKFZReferenceDataJob.getCommand().addArgument("if [ ! -d " + dkfzDataBundleUUID + "/bundledFiles ]; then docker run "
                                 // link in the input directory
                                 + "-v `pwd`:/workflow_data "
                                 // link in the pem key
                                 + "-v "
-                                + pemFile
-                                + ":/root/gnos_icgc_keyfile.pem seqware/pancancer_upload_download"
+                                + dkfzDataBundleDownloadKey
+                                + ":/root/gnos_icgc_keyfile.pem "+gnosDownloadName
                                 // here is the Bash command to be run
-                                + " /bin/bash -c 'cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-1.0.3/lib "
-                                + "/opt/vcf-uploader/vcf-uploader-1.0.0/gnos_download_file.pl "
-                                // here is the command that is fed to gtdownload
-                                + "--command \"gtdownload -c /root/gnos_icgc_keyfile.pem -k 60 -vv " + dkfzDataBundleServer
-                                + "/cghub/data/analysis/download/" + dkfzDataBundleUUID + "\" --file " + dkfzDataBundleUUID + "/"
-                                + dkfzDataBundleFile + " --retries "+gnosRetries+" --sleep-min 1 --timeout-min "+gnosTimeoutMin+" && "
+                                + " /bin/bash -c 'cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-2.0.10/lib "
+                                + "/opt/vcf-uploader/vcf-uploader-2.0.4/gnos_download_file.pl "
+                                + "--url " + dkfzDataBundleServer
+                                + "/cghub/data/analysis/download/" + dkfzDataBundleUUID + " --file " + dkfzDataBundleUUID + "/"
+                                + dkfzDataBundleFile + " --retries "+gnosRetries+" --timeout-min "+gnosTimeoutMin+" "
+                                + "  --pem /root/gnos_icgc_keyfile.pem && "
                                 + "cd " + dkfzDataBundleUUID + " && "
                                 + "tar zxf " + dkfzDataBundleFile + "' \n fi \n ");
+    getDKFZReferenceDataJob.getCommand().addArgument("cd - \n");
+    getDKFZReferenceDataJob.getCommand().addArgument("date +%s >> dkfz_reference_timing.txt \n");
+    getDKFZReferenceDataJob.getCommand().addArgument("date +%s > download_timing.txt \n");
     getDKFZReferenceDataJob.addParent(getReferenceDataJob);
     return(getDKFZReferenceDataJob);
   }
@@ -615,7 +676,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         
         // GET FROM INI
         
-        downloadJob = utils.gnosDownloadJob(downloadJob, "`pwd`/"+SHARED_WORKSPACE+"/inputs", pemFile, gnosTimeoutMin, gnosRetries, gnosServer, analysisIds.get(i), bams.get(i) );
+        downloadJob = utils.gnosDownloadJob(downloadJob, "`pwd`/"+SHARED_WORKSPACE+"/inputs", pemFile, gnosTimeoutMin, gnosRetries, gnosServer, analysisIds.get(i), bams.get(i), gnosDownloadName);
         
       } else if ("S3".equals(downloadSource)) {
         
