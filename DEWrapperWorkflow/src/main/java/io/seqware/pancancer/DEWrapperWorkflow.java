@@ -589,7 +589,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                     tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION, vmInstanceType, vmLocationCode,
                     overrideTxt.toString(), uploadLocalPath, "/tmp/", gnosTimeoutMin, gnosRetries, qcJsonSingle, timingJson,
                     Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL, Version.DKFZ_WORKFLOW_NAME, Version.WORKFLOW_VERSION,
-                    gnosDownloadName, null, null);
+                    gnosDownloadName, this.localXMLMetadataPath, this.localXMLMetadataFiles);
 
         } else if (GNOS.equalsIgnoreCase(uploadDestination)) {
 
