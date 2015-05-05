@@ -400,8 +400,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
 
             // using hard links so it spans multiple exported filesystems to Docker
             uploadJob = utils.localUploadJob(uploadJob, SHARED_WORKSPACE_ABSOLUTE, pemFile, metadataURLs, vcfs, vcfmd5s, tbis, tbimd5s,
-                    tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION, vmInstanceType, vmLocationCode, overrideTxt.toString(),
-                    uploadLocalPath, UPLOAD_ARCHIVE_ABSOLUTE, gnosTimeoutMin, gnosRetries, qcJson, timingJson,
+                    tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION, vmInstanceType, vmLocationCode, overrideTxt.toString(), UPLOAD_ARCHIVE_ABSOLUTE, gnosTimeoutMin, gnosRetries, qcJson, timingJson,
                     Version.EMBL_WORKFLOW_SRC_URL, Version.EMBL_WORKFLOW_URL, Version.EMBL_WORKFLOW_NAME, Version.WORKFLOW_VERSION,
                     gnosDownloadName, this.localXMLMetadataPath, this.localXMLMetadataFiles);
 
@@ -587,8 +586,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
 
             // using hard links so it spans multiple exported filesystems to Docker
             uploadJob = utils.localUploadJob(uploadJob, DKFZ_RESULT_DIRECTORY_ABSOLUTE, pemFile, metadataURLs, vcfs, vcfmd5s, tbis,
-                    tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION, vmInstanceType, vmLocationCode, overrideTxt.toString(),
-                    uploadLocalPath, UPLOAD_ARCHIVE_ABSOLUTE, gnosTimeoutMin, gnosRetries, qcJsonSingle, timingJson,
+                    tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION, vmInstanceType, vmLocationCode, overrideTxt.toString(), UPLOAD_ARCHIVE_ABSOLUTE, gnosTimeoutMin, gnosRetries, qcJsonSingle, timingJson,
                     Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL, Version.DKFZ_WORKFLOW_NAME, Version.WORKFLOW_VERSION,
                     gnosDownloadName, this.localXMLMetadataPath, this.localXMLMetadataFiles);
 

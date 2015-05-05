@@ -112,7 +112,6 @@ public class JobUtilities {
      * @param vmInstanceType
      * @param vmLocationCode
      * @param overrideTxt
-     * @param uploadLocalPath
      * @param temp
      * @param timeout
      * @param retries
@@ -125,13 +124,13 @@ public class JobUtilities {
      * @param dockerName
      * @param localXMLMetadataPath
      * @param localXMLMetadataFiles
-     * @return the net.sourceforge.seqware.pipeline.workflowV2.model.Job
+     * @return the workflow job
      */
     public Job localUploadJob(Job uploadJob, String workflowDataDir, String pemFile, String metadataURLs, List<String> vcfs,
             List<String> vcfmd5s, List<String> tbis, List<String> tbimd5s, List<String> tars, List<String> tarmd5s, String uploadServer,
-            String seqwareVersion, String vmInstanceType, String vmLocationCode, String overrideTxt, String uploadLocalPath, String temp,
-            int timeout, int retries, String qcJson, String timingJson, String workflowSrcUrl, String workflowUrl, String workflowName,
-            String workflowVersion, String dockerName, String localXMLMetadataPath, List<String> localXMLMetadataFiles) {
+            String seqwareVersion, String vmInstanceType, String vmLocationCode, String overrideTxt, String temp, int timeout, int retries,
+            String qcJson, String timingJson, String workflowSrcUrl, String workflowUrl, String workflowName, String workflowVersion,
+            String dockerName, String localXMLMetadataPath, List<String> localXMLMetadataFiles) {
 
         StringBuilder sb = new StringBuilder(overrideTxt);
         sb.append(" --upload-archive ").append(temp).append(" --skip-upload --skip-validate ");
@@ -139,9 +138,6 @@ public class JobUtilities {
         uploadJob = vcfUpload(uploadJob, workflowDataDir, pemFile, metadataURLs, vcfs, vcfmd5s, tbis, tbimd5s, tars, tarmd5s, uploadServer,
                 seqwareVersion, vmInstanceType, vmLocationCode, sb.toString(), timeout, retries, qcJson, timingJson, workflowSrcUrl,
                 workflowUrl, workflowName, workflowVersion, dockerName, localXMLMetadataPath, localXMLMetadataFiles);
-
-        uploadJob.getCommand().addArgument(" && rsync -rauv " + temp + "/*.tar.gz " + uploadLocalPath + "/");
-
         return uploadJob;
 
     }
