@@ -117,15 +117,19 @@ Adam Wright provides instructions here (https://github.com/ICGC-TCGA-PanCancer/c
 
 You can use Adam's tool for generating many INI files, one per donor, and it takes care of choosing the correct input based on the curation work the OICR team has done.  It's also very fast to run versus or old "decider" that was used previously to make INI files. See the link above for more directions.
 
-### Tips for INIs
+### User Tips for Workflow Settings
 
-The INI files let you control many functions of the workflow.
+The INI files let you control many functions of the workflow.  Here are some of the most important and some that are 
+useful but difficult to understand.
 
+#### core variables that change per workflow
+#### file modes
 * local file mode
 * GNOS file mode
 * S3 file mode
 * upload archive tarball
 * testing
+* cleanup options
 
 
 ## Developer Info

@@ -1,4 +1,4 @@
-# 1.0.1 (Future Release)
+# 1.x (Future Release)
 
 ## TODO
 
@@ -13,14 +13,16 @@
 * need to switch to --uuid for uploader so I know the output archive file name
 * I may want to rethink the upload options so that you can upload to both S3 and GNOS at the same time, for example
 * DKFZ is missing timing JSON file, I co-opted this for my full-workflow timing metrics but we really should get them to supply this and just add to it.  Also EMBL timing metrics need a total wall-time.
+* print some helpful messages before the workflow runs indicating where the output will be, touch files for completion, what modes have been set, etc
+
+# 1.0.1
+
+* but fixes to support creation of upload archive
+* getting full offline mode working, ability to supply XML metadata files was the largest change
 
 # 1.0.0
 
 * Initial release
 * Do not schedule 1.0.0 with multiple-tumor donors!!  1.0.1 will support this
 
-## TODO
 
-* true local file mode for Romina (to include XML files from GNOS)
-* print some helpful messages before the workflow runs indicating where the output will be, touch files for completion, what modes have been set, etc
-* continuing to have problems with DKFZ QC parsing... problem is it needs to be single-line... need to add this to the vcf uploader
