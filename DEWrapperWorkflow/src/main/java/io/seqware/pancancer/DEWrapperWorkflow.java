@@ -35,6 +35,11 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
 
     // variables
     private static final String SHARED_WORKSPACE = "shared_workspace";
+    private static final String UPLOAD_ARCHIVE_LOCATION = "upload_archive";
+    public static final String SHARED_WORKSPACE_ABSOLUTE = "`pwd`/" + SHARED_WORKSPACE;
+    private static final String DKFZ_RESULT_DIRECTORY_ABSOLUTE = SHARED_WORKSPACE_ABSOLUTE + "/results/";
+    public static final String UPLOAD_ARCHIVE_ABSOLUTE = "`pwd`/" + SHARED_WORKSPACE + "/" + UPLOAD_ARCHIVE_LOCATION;
+
     private static final String EMBL_PREFIX = "EMBL.";
     private static final String DKFZ_PREFIX = "DKFZ.";
     private static final String DKFZ_VERSION = Version.DKFZ_WORKFLOW_VERSION_UNDERSCORE;
@@ -76,7 +81,6 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
     private String uploadLocalPath = null;
     private String uploadS3BucketPath = null;
     // workflows to run
-    private Boolean runEmbl = true;
     private Boolean runDkfz = true;
     // docker names
     private String dkfzDockerName = "pancancer/dkfz_dockered_workflows";
@@ -286,26 +290,26 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                 }
                 emblJob.getCommand().addArgument(
                 // we need a better way of getting the ini file here, this may not be safe if the workflow has escaped key-values
-                        "echo \"" + entry.getKey().replaceFirst(EMBL_PREFIX, "") + "\"=\"" + entry.getValue() + "\" " + cat + " `pwd`/"
-                                + SHARED_WORKSPACE + "/settings/embl.ini \n");
+                        "echo \"" + entry.getKey().replaceFirst(EMBL_PREFIX, "") + "\"=\"" + entry.getValue() + "\" " + cat + " "
+                                + SHARED_WORKSPACE_ABSOLUTE + "/settings/embl.ini \n");
             }
         }
         // now supply date
-        emblJob.getCommand().addArgument("echo \"date=" + formattedDate + "\" >> `pwd`/" + SHARED_WORKSPACE + "/settings/embl.ini \n");
+        emblJob.getCommand().addArgument("echo \"date=" + formattedDate + "\" >> " + SHARED_WORKSPACE_ABSOLUTE + "/settings/embl.ini \n");
 
         // the actual docker command
         emblJob.getCommand()
                 .addArgument(
                 // this is the actual command we run inside the container, which is to launch a workflow
-                        "docker run --rm -h master -v `pwd`/" + SHARED_WORKSPACE
+                        "docker run --rm -h master -v " + SHARED_WORKSPACE_ABSOLUTE
                                 + ":/datastore "
                                 // data files
                                 + "-v "
                                 + commonDataDir
                                 + "/embl:/datafiles "
                                 // mount the workflow.ini
-                                + "-v `pwd`/"
-                                + SHARED_WORKSPACE
+                                + "-v "
+                                + SHARED_WORKSPACE_ABSOLUTE
                                 + "/settings/embl.ini:/workflow.ini "
                                 // the container
                                 + emblDockerName
@@ -320,7 +324,6 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         previousJobPointer = emblJob;
 
         // upload the EMBL results
-        String[] emblTypes = { "sv" };
 
         List<String> vcfs = new ArrayList<>();
         List<String> tbis = new ArrayList<>();
@@ -380,7 +383,6 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
 
         // perform upload to GNOS
         // FIXME: hardcoded versions, URLs, etc
-        // FIXME: temp location problem, see "/tmp/" below
         Job uploadJob = this.getWorkflow().createBashJob("uploadEMBL");
 
         // params
@@ -397,25 +399,26 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         if (LOCAL.equalsIgnoreCase(uploadDestination)) {
 
             // using hard links so it spans multiple exported filesystems to Docker
-            uploadJob = utils.localUploadJob(uploadJob, "`pwd`/" + SHARED_WORKSPACE, pemFile, metadataURLs, vcfs, vcfmd5s, tbis, tbimd5s,
+            uploadJob = utils.localUploadJob(uploadJob, SHARED_WORKSPACE_ABSOLUTE, pemFile, metadataURLs, vcfs, vcfmd5s, tbis, tbimd5s,
                     tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION, vmInstanceType, vmLocationCode, overrideTxt.toString(),
-                    uploadLocalPath, "/tmp/", gnosTimeoutMin, gnosRetries, qcJson, timingJson, Version.EMBL_WORKFLOW_SRC_URL,
-                    Version.EMBL_WORKFLOW_URL, Version.EMBL_WORKFLOW_NAME, Version.WORKFLOW_VERSION, gnosDownloadName,
-                    this.localXMLMetadataPath, this.localXMLMetadataFiles);
+                    uploadLocalPath, UPLOAD_ARCHIVE_ABSOLUTE, gnosTimeoutMin, gnosRetries, qcJson, timingJson,
+                    Version.EMBL_WORKFLOW_SRC_URL, Version.EMBL_WORKFLOW_URL, Version.EMBL_WORKFLOW_NAME, Version.WORKFLOW_VERSION,
+                    gnosDownloadName, this.localXMLMetadataPath, this.localXMLMetadataFiles);
 
         } else if (GNOS.equalsIgnoreCase(uploadDestination)) {
 
-            uploadJob = utils.gnosUploadJob(uploadJob, "`pwd`/" + SHARED_WORKSPACE, pemFile, metadataURLs, vcfs, vcfmd5s, tbis, tbimd5s,
+            uploadJob = utils.gnosUploadJob(uploadJob, SHARED_WORKSPACE_ABSOLUTE, pemFile, metadataURLs, vcfs, vcfmd5s, tbis, tbimd5s,
                     tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION, vmInstanceType, vmLocationCode, overrideTxt.toString(),
                     gnosTimeoutMin, gnosRetries, qcJson, timingJson, Version.EMBL_WORKFLOW_SRC_URL, Version.EMBL_WORKFLOW_URL,
                     Version.EMBL_WORKFLOW_NAME, Version.WORKFLOW_VERSION, gnosDownloadName);
 
         } else if (S3.equalsIgnoreCase(uploadDestination)) {
 
-            uploadJob = utils.s3UploadJob(uploadJob, "`pwd`/" + SHARED_WORKSPACE, pemFile, metadataURLs, vcfs, vcfmd5s, tbis, tbimd5s,
-                    tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION, vmInstanceType, vmLocationCode, overrideTxt.toString(), "/tmp/",
-                    s3Key, s3SecretKey, uploadS3BucketPath, gnosTimeoutMin, gnosRetries, qcJson, timingJson, Version.EMBL_WORKFLOW_SRC_URL,
-                    Version.EMBL_WORKFLOW_URL, Version.EMBL_WORKFLOW_NAME, Version.WORKFLOW_VERSION, gnosDownloadName);
+            uploadJob = utils.s3UploadJob(uploadJob, SHARED_WORKSPACE_ABSOLUTE, pemFile, metadataURLs, vcfs, vcfmd5s, tbis, tbimd5s, tars,
+                    tarmd5s, uploadServer, Version.SEQWARE_VERSION, vmInstanceType, vmLocationCode, overrideTxt.toString(),
+                    UPLOAD_ARCHIVE_ABSOLUTE, s3Key, s3SecretKey, uploadS3BucketPath, gnosTimeoutMin, gnosRetries, qcJson, timingJson,
+                    Version.EMBL_WORKFLOW_SRC_URL, Version.EMBL_WORKFLOW_URL, Version.EMBL_WORKFLOW_NAME, Version.WORKFLOW_VERSION,
+                    gnosDownloadName);
 
         } else {
             throw new RuntimeException("Don't know what download Type " + downloadSource + " is!");
@@ -442,7 +445,6 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         }
 
         // generate control bam
-        String controlBamStr = "/mnt/datastore/workflow_data/inputdata/" + controlAnalysisId + "/" + controlBam;
         if (LOCAL.equals(downloadSource)) {
             String[] tokens = controlBam.split("/");
             controlBam = tokens[tokens.length - 1];
@@ -469,14 +471,14 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         for (int i = 0; i < tumorAliquotIds.size(); i++) {
             String aliquotId = tumorAliquotIds.get(i);
             String analysisId = tumorAnalysisIds.get(i);
-            mounts.append(" -v `pwd`/" + SHARED_WORKSPACE + "/inputs/").append(analysisId)
+            mounts.append(" -v " + SHARED_WORKSPACE_ABSOLUTE + "/inputs/").append(analysisId)
                     .append(":/mnt/datastore/workflow_data/inputdata/").append(analysisId).append(" ");
-            mounts.append(" -v `pwd`/" + SHARED_WORKSPACE + "/").append(aliquotId).append(".embl-delly_1-0-0-preFilter.")
+            mounts.append(" -v " + SHARED_WORKSPACE_ABSOLUTE + "/").append(aliquotId).append(".embl-delly_1-0-0-preFilter.")
                     .append(formattedDate).append(".somatic.sv.bedpe.txt:/mnt/datastore/workflow_data/inputdata/").append(aliquotId)
                     .append(".embl-delly_1-0-0-preFilter.").append(formattedDate).append(".somatic.sv.bedpe.txt ");
         }
         // now deal with the control
-        mounts.append(" -v `pwd`/" + SHARED_WORKSPACE + "/inputs/").append(controlAnalysisId)
+        mounts.append(" -v " + SHARED_WORKSPACE_ABSOLUTE + "/inputs/").append(controlAnalysisId)
                 .append(":/mnt/datastore/workflow_data/inputdata/").append(controlAnalysisId).append(" ");
 
         // run the docker for DKFZ
@@ -488,21 +490,20 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                         + "-v " + commonDataDir + "/dkfz/" + dkfzDataBundleUUID
                         + "/bundledFiles:/mnt/datastore/bundledFiles "
                         // this path does not look right
-                        + mounts + "-v `pwd`/" + SHARED_WORKSPACE + "/testdata:/mnt/datastore/testdata " + "-v `pwd`/" + SHARED_WORKSPACE
-                        + "/settings/dkfz.ini:/mnt/datastore/workflow_data/workflow.ini " + "-v `pwd`/" + SHARED_WORKSPACE
-                        + "/results:/mnt/datastore/resultdata "
+                        + mounts + "-v " + SHARED_WORKSPACE_ABSOLUTE + "/testdata:/mnt/datastore/testdata " + "-v "
+                        + SHARED_WORKSPACE_ABSOLUTE + "/settings/dkfz.ini:/mnt/datastore/workflow_data/workflow.ini " + "-v "
+                        + SHARED_WORKSPACE_ABSOLUTE + "/results:/mnt/datastore/resultdata "
                         // the DKFZ image and the command we feed into it follow
                         + dkfzDockerName + " /bin/bash -c '/root/bin/runwrapper.sh' \n");
         runWorkflow.getCommand().addArgument("date +%s >> dkfz_timing.txt \n");
 
         // summarize timing info since DKFZ does not provide a timing.json
         runWorkflow.getCommand().addArgument(
-                "perl " + this.getWorkflowBaseDir() + "/scripts/timing.pl > `pwd`/" + SHARED_WORKSPACE + "/results/timing.json");
+                "perl " + this.getWorkflowBaseDir() + "/scripts/timing.pl > " + SHARED_WORKSPACE_ABSOLUTE + "/results/timing.json");
 
         runWorkflow.addParent(generateIni);
 
         // upload the DKFZ results
-        String[] emblTypes = { "sv" };
 
         List<String> vcfs = new ArrayList<>();
         List<String> tbis = new ArrayList<>();
@@ -585,24 +586,24 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
         if (LOCAL.equalsIgnoreCase(uploadDestination)) {
 
             // using hard links so it spans multiple exported filesystems to Docker
-            uploadJob = utils.localUploadJob(uploadJob, "`pwd`/" + SHARED_WORKSPACE + "/results/", pemFile, metadataURLs, vcfs, vcfmd5s,
-                    tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION, vmInstanceType, vmLocationCode,
-                    overrideTxt.toString(), uploadLocalPath, "/tmp/", gnosTimeoutMin, gnosRetries, qcJsonSingle, timingJson,
+            uploadJob = utils.localUploadJob(uploadJob, DKFZ_RESULT_DIRECTORY_ABSOLUTE, pemFile, metadataURLs, vcfs, vcfmd5s, tbis,
+                    tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION, vmInstanceType, vmLocationCode, overrideTxt.toString(),
+                    uploadLocalPath, UPLOAD_ARCHIVE_ABSOLUTE, gnosTimeoutMin, gnosRetries, qcJsonSingle, timingJson,
                     Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL, Version.DKFZ_WORKFLOW_NAME, Version.WORKFLOW_VERSION,
                     gnosDownloadName, this.localXMLMetadataPath, this.localXMLMetadataFiles);
 
         } else if (GNOS.equalsIgnoreCase(uploadDestination)) {
 
-            uploadJob = utils.gnosUploadJob(uploadJob, "`pwd`/" + SHARED_WORKSPACE + "/results/", pemFile, metadataURLs, vcfs, vcfmd5s,
-                    tbis, tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION, vmInstanceType, vmLocationCode,
-                    overrideTxt.toString(), gnosTimeoutMin, gnosRetries, qcJsonSingle, timingJson, Version.DKFZ_WORKFLOW_SRC_URL,
-                    Version.DKFZ_WORKFLOW_URL, Version.DKFZ_WORKFLOW_NAME, Version.WORKFLOW_VERSION, gnosDownloadName);
+            uploadJob = utils.gnosUploadJob(uploadJob, DKFZ_RESULT_DIRECTORY_ABSOLUTE, pemFile, metadataURLs, vcfs, vcfmd5s, tbis, tbimd5s,
+                    tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION, vmInstanceType, vmLocationCode, overrideTxt.toString(),
+                    gnosTimeoutMin, gnosRetries, qcJsonSingle, timingJson, Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL,
+                    Version.DKFZ_WORKFLOW_NAME, Version.WORKFLOW_VERSION, gnosDownloadName);
 
         } else if (S3.equalsIgnoreCase(uploadDestination)) {
 
-            uploadJob = utils.s3UploadJob(uploadJob, "`pwd`/" + SHARED_WORKSPACE + "/results/", pemFile, metadataURLs, vcfs, vcfmd5s, tbis,
-                    tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION, vmInstanceType, vmLocationCode, overrideTxt.toString(),
-                    "/tmp/", s3Key, s3SecretKey, uploadS3BucketPath, gnosTimeoutMin, gnosRetries, qcJsonSingle, timingJson,
+            uploadJob = utils.s3UploadJob(uploadJob, DKFZ_RESULT_DIRECTORY_ABSOLUTE, pemFile, metadataURLs, vcfs, vcfmd5s, tbis, tbimd5s,
+                    tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION, vmInstanceType, vmLocationCode, overrideTxt.toString(),
+                    UPLOAD_ARCHIVE_ABSOLUTE, s3Key, s3SecretKey, uploadS3BucketPath, gnosTimeoutMin, gnosRetries, qcJsonSingle, timingJson,
                     Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL, Version.DKFZ_WORKFLOW_NAME, Version.WORKFLOW_VERSION,
                     gnosDownloadName);
 
@@ -697,14 +698,13 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
             if (LOCAL.equalsIgnoreCase(downloadSource)) {
 
                 // using hard links so it spans multiple exported filesystems to Docker
-                downloadJob = utils.localDownloadJob(downloadJob, "`pwd`/" + SHARED_WORKSPACE + "/inputs/" + analysisIds.get(i),
-                        bams.get(i));
+                downloadJob = utils.localDownloadJob(downloadJob, SHARED_WORKSPACE_ABSOLUTE + "/inputs/" + analysisIds.get(i), bams.get(i));
 
             } else if (GNOS.equalsIgnoreCase(downloadSource)) {
 
                 // GET FROM INI
 
-                downloadJob = utils.gnosDownloadJob(downloadJob, "`pwd`/" + SHARED_WORKSPACE + "/inputs", pemFile, gnosTimeoutMin,
+                downloadJob = utils.gnosDownloadJob(downloadJob, SHARED_WORKSPACE_ABSOLUTE + "/inputs", pemFile, gnosTimeoutMin,
                         gnosRetries, gnosServer, analysisIds.get(i), bams.get(i), gnosDownloadName);
 
             } else if (S3.equalsIgnoreCase(downloadSource)) {

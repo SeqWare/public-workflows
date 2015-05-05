@@ -295,7 +295,11 @@ public class JobUtilities {
                         + "-v "
                         + workflowDataDir
                         + ":/workflow_data "
-                        // link in the pem kee
+                        // link in the working directory for local file uploads as well, if needed
+                        + "-v "
+                        + DEWrapperWorkflow.SHARED_WORKSPACE_ABSOLUTE
+                        + ":/datastore "
+                        // link in the pem key
                         + "-v "
                         + pemFile
                         + ":/root/gnos_icgc_keyfile.pem "
