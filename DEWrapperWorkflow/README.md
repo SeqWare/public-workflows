@@ -126,7 +126,10 @@ useful but difficult to understand.
 
 The INI contains several important variables that change from donor run to donor run.  These include:
 
-        # General Parameters
+        # General Donor Parameters
+        donor_id=test_donor
+        project_code=test_project
+        # Inputs Parameters
         tumourAliquotIds=f393bb07-270c-2c93-e040-11ac0d484533
         tumourAnalysisIds=ef26d046-e88a-4f21-a232-16ccb43637f2
         tumourBams=7723a85b59ebce340fe43fc1df504b35.bam
@@ -145,10 +148,17 @@ you want to asynchronously upload later so you just want to prepare an upload fo
 
 These variables are set with:
 
-        downloadSource=GNOS
-        uploadDestination=GNOS
+        downloadSource=[GNOS,local,S3]
+        uploadDestination=[GNOS,local,S3]
+
+Keep in mind you can mix and match upload and download options here.  For example, you could download from GNOS
+and then upload the resulting variant calls to S3.  Currently, you can't set a list of upload destinations so you
+can only upload to one location per run of the workflow.
 
 ##### "local" file mode
+
+        downloadSource=local
+        uploadDestination=local
 
 You can use local file mode for downloaded files. You need to use full paths to the BAM input files.
 
@@ -170,8 +180,61 @@ according to the standard mentioned above.
 
 ##### "GNOS" file mode
 
+        downloadSource=GNOS
+        uploadDestination=GNOS
+
+This works similarly to other PanCancer workflows where input aligned BAM files are first downloaded from GNOS
+and the resulting variant calls are uploaded to GNOS.  The download and upload servers may be different.  For this
+option, you want to make sure you use just the BAM file name in the following variables and leave `localXMLMetadataPath`
+blank:
+
+        tumourBams=7723a85b59ebce340fe43fc1df504b35.bam
+        controlBam=8f957ddae66343269cb9b854c02eee2f.bam
+
+You also most have the GNOS servers for download and upload defined along with the PEM key files.  Note, in its current
+form you can download all BAM inputs from one server and upload the results to one server.  Pulling from multiple 
+input servers is not yet possible.
+
+        pemFile=/home/ubuntu/.ssh/gnos.pem
+        gnosServer=https://gtrepo-ebi.annailabs.com
+        uploadServer=https://gtrepo-ebi.annailabs.com
+        uploadPemFile=/home/ubuntu/.ssh/gnos.pem
+
+Obviously, the workflow host will need to be able to reach the GNOS servers multiple times in the workflow.
 
 ##### "S3" file mode
+
+This is the least tested file mode.  The idea is that you can pre-stage data in S3 and then very quickly
+pull inputs into an AWS host for processing.  At the end of the workflow you can then
+write the submission tarball prepared for GNOS to S3 so you can latter upload to GNOS in batch.
+
+To activate this mode:
+
+        downloadSource=S3
+        uploadDestination=S3
+
+For downloads from S3:
+
+        tumourBamS3Urls=s3://bucket/path/7723a85b59ebce340fe43fc1df504b35.bam
+        controlBamS3Url=s3://bucket/path/8f957ddae66343269cb9b854c02eee2f.bam
+
+You then refer to these using a non-full path:
+
+        tumourBams=7723a85b59ebce340fe43fc1df504b35.bam
+        controlBam=8f957ddae66343269cb9b854c02eee2f.bam
+
+For uploads, you set the following for an upload path:
+
+        uploadS3BucketPath=s3://bucket/path
+
+And you also need to set your credentials used for both upload and download:
+
+        s3Key=kljsdflkjsdlkfj
+        s3SecretKey=lksdfjlsdkjflksdjfkljsd
+
+Obviously, the workflow host will need to be able to reach AWS multiple times in the workflow so it's best to run
+the full workflow in AWS if using this option.
+
 
 #### upload archive tarball
 
