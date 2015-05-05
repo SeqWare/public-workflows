@@ -235,13 +235,42 @@ And you also need to set your credentials used for both upload and download:
 Obviously, the workflow host will need to be able to reach AWS multiple times in the workflow so it's best to run
 the full workflow in AWS if using this option.
 
-
 #### upload archive tarball
+
+For local file mode the VCF preparation process automatically creates a tarball bundle of the submission files
+which is useful for archiving.  Currently, you don't have much control over where or how these tarballs are written,
+you will find them in:
+
+        uploadLocalPath=./upload_archive/
+
+which is relative to the working directory's shared_workspace directory.  It's best to not change this because of the
+nested nature of docker calling docker.  Instead, for local file mode, harvest the tarball archives from this directory.
+
+The S3 upload mode also transfers the archive file to S3. 
 
 #### testing data
 
+The workflow comes complete with details about a real donor in the EBI GNOS.  So this means you need to provide a 
+valid PEM key on the path specified:
+
+        pemFile=/home/ubuntu/.ssh/gnos.pem
+        uploadPemFile=/home/ubuntu/.ssh/gnos.pem
+
+It's the same key and set to upload back to EBI under the test study.
+
+        study-refname-override=CGTEST
+        
+Keep in mind if you use two different keys (say you download and upload to different GNOS repos) then you need
+to provide two `-v` options to the `docker run...` of this workflow, each pointing to a different pem path.
+
 #### cleanup options
 
+I recommend you cleanup bam files but not all.  That way your scripts and log files are preserved but you clean up most
+space used by a workflow.  Once your system is working well, you should consider turning on the full cleanup, especially
+if your worker nodes/VMs are long-lived.  In this case the variant call files left behind will cause the disk to fill up.
+
+        cleanup=false
+        cleanupBams=false
 
 ## Developer Info
 
