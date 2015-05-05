@@ -17,8 +17,11 @@
 
 # 1.0.1
 
+Version 1.0.1 represents non-scientific changes and mostly focus on the usability of local file mode and archive bundles.
+
 * but fixes to support creation of upload archive
 * getting full offline mode working, ability to supply XML metadata files was the largest change
+* docs updated
 
 # 1.0.0
 

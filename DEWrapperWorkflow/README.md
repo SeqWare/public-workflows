@@ -123,13 +123,61 @@ The INI files let you control many functions of the workflow.  Here are some of 
 useful but difficult to understand.
 
 #### core variables that change per workflow
+
+The INI contains several important variables that change from donor run to donor run.  These include:
+
+        # General Parameters
+        tumourAliquotIds=f393bb07-270c-2c93-e040-11ac0d484533
+        tumourAnalysisIds=ef26d046-e88a-4f21-a232-16ccb43637f2
+        tumourBams=7723a85b59ebce340fe43fc1df504b35.bam
+        controlAnalysisId=1b9215ab-3634-4108-9db7-7e63139ef7e9
+        controlBam=8f957ddae66343269cb9b854c02eee2f.bam
+        # EMBL Parameters
+        EMBL.delly_runID=f393bb07-270c-2c93-e040-11ac0d484533
+        EMBL.input_bam_path_tumor=inputs/ef26d046-e88a-4f21-a232-16ccb43637f2
+        EMBL.input_bam_path_germ=inputs/1b9215ab-3634-4108-9db7-7e63139ef7e9
+
 #### file modes
-* local file mode
-* GNOS file mode
-* S3 file mode
-* upload archive tarball
-* testing
-* cleanup options
+
+There are three file modes for reading and writing: GNOS, local, S3.  Usually people use GNOS for both
+reading and writing the files.  But local file mode can be used when files are already downloaded locally or
+you want to asynchronously upload later so you just want to prepare an upload for later use.
+
+These variables are set with:
+
+        downloadSource=GNOS
+        uploadDestination=GNOS
+
+##### "local" file mode
+
+You can use local file mode for downloaded files. You need to use full paths to the BAM input files.
+
+        tumourBams=<full_path>/7723a85b59ebce340fe43fc1df504b35.bam
+        controlBam=<full_path>/8f957ddae66343269cb9b854c02eee2f.bam
+
+The workflow will then symlink these files and continue the workflow.
+
+For uploads, GNOS is still consulted for metadata unless the following parameter is included:
+
+        localXMLMetadataPath=<path_to_directory_with_analysis_xml>
+
+So this is a little complicated, when using local file upload mode (uploadDestination=local) *and* the previous variable is defined
+the upload script will use XML files from this directory named data_<analysis_id>.xml.  It will also suppress the
+validation and upload of metadata to GNOS from the upload tool.  In this way you can completely work offline.
+By default it's simply not defined and, even in local file mode, GNOS will be queried for metadata when localXMLMetadataPath is null. If you
+need to work fully offline make sure you pre-download the GNOS XML, put them in this directory, and name them
+according to the standard mentioned above.
+
+##### "GNOS" file mode
+
+
+##### "S3" file mode
+
+#### upload archive tarball
+
+#### testing data
+
+#### cleanup options
 
 
 ## Developer Info
