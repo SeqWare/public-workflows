@@ -286,7 +286,7 @@ public class JobUtilities {
                 && localXMLMetadataFiles != null);
         // prepend path to metadatafiles
         for (int i = 0; localXMLMetadataFiles != null && i < localXMLMetadataFiles.size(); i++) {
-            localXMLMetadataFiles.set(i, localXMLMetadataPath + "/" + localXMLMetadataFiles.get(i));
+            localXMLMetadataFiles.set(i, "/xml/" + localXMLMetadataFiles.get(i));
         }
 
         uploadJob.getCommand().addArgument(
@@ -299,7 +299,7 @@ public class JobUtilities {
                         + "-v "
                         + pemFile
                         + ":/root/gnos_icgc_keyfile.pem "
-                        + (localXMLMetadataPath == null ? "" : "-v " + localXMLMetadataPath + ":/xml")
+                        + (localXMLMetadataPath == null ? "" : "-v " + localXMLMetadataPath + ":/xml ")
                         + dockerName
                         + " "
                         // the command invoked on the container follows
@@ -308,7 +308,7 @@ public class JobUtilities {
                         + "/opt/vcf-uploader/vcf-uploader-2.0.4/gnos_upload_vcf.pl "
                         // parameters to gnos_upload
                         + "--metadata-urls " + metadataURLs
-                        + (localXMLMetadataFiles == null ? "" : "--metadata-paths " + Joiner.on(',').join(localXMLMetadataFiles))
+                        + (localXMLMetadataFiles == null ? "" : " --metadata-paths " + Joiner.on(',').join(localXMLMetadataFiles))
                         + " --vcfs " + Joiner.on(',').join(vcfs) + " --vcf-md5sum-files " + Joiner.on(',').join(vcfmd5s) + " --vcf-idxs "
                         + Joiner.on(',').join(tbis) + " --vcf-idx-md5sum-files " + Joiner.on(',').join(tbimd5s) + " --tarballs "
                         + Joiner.on(',').join(tars) + " --tarball-md5sum-files " + Joiner.on(',').join(tarmd5s) + " --outdir uploads"
