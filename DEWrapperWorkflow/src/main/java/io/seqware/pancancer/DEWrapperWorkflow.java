@@ -38,7 +38,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
     private static final String UPLOAD_ARCHIVE_LOCATION = "upload_archive";
     public static final String SHARED_WORKSPACE_ABSOLUTE = "`pwd`/" + SHARED_WORKSPACE;
     private static final String DKFZ_RESULT_DIRECTORY_ABSOLUTE = SHARED_WORKSPACE_ABSOLUTE + "/results/";
-    public static final String UPLOAD_ARCHIVE_ABSOLUTE = "`pwd`/" + SHARED_WORKSPACE + "/" + UPLOAD_ARCHIVE_LOCATION;
+    public static final String UPLOAD_ARCHIVE_IN_CONTAINER = "/datastore/" + UPLOAD_ARCHIVE_LOCATION;
 
     private static final String EMBL_PREFIX = "EMBL.";
     private static final String DKFZ_PREFIX = "DKFZ.";
@@ -400,9 +400,10 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
 
             // using hard links so it spans multiple exported filesystems to Docker
             uploadJob = utils.localUploadJob(uploadJob, SHARED_WORKSPACE_ABSOLUTE, pemFile, metadataURLs, vcfs, vcfmd5s, tbis, tbimd5s,
-                    tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION, vmInstanceType, vmLocationCode, overrideTxt.toString(), UPLOAD_ARCHIVE_ABSOLUTE, gnosTimeoutMin, gnosRetries, qcJson, timingJson,
-                    Version.EMBL_WORKFLOW_SRC_URL, Version.EMBL_WORKFLOW_URL, Version.EMBL_WORKFLOW_NAME, Version.WORKFLOW_VERSION,
-                    gnosDownloadName, this.localXMLMetadataPath, this.localXMLMetadataFiles);
+                    tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION, vmInstanceType, vmLocationCode, overrideTxt.toString(),
+                    UPLOAD_ARCHIVE_IN_CONTAINER, gnosTimeoutMin, gnosRetries, qcJson, timingJson, Version.EMBL_WORKFLOW_SRC_URL,
+                    Version.EMBL_WORKFLOW_URL, Version.EMBL_WORKFLOW_NAME, Version.WORKFLOW_VERSION, gnosDownloadName,
+                    this.localXMLMetadataPath, this.localXMLMetadataFiles);
 
         } else if (GNOS.equalsIgnoreCase(uploadDestination)) {
 
@@ -415,7 +416,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
 
             uploadJob = utils.s3UploadJob(uploadJob, SHARED_WORKSPACE_ABSOLUTE, pemFile, metadataURLs, vcfs, vcfmd5s, tbis, tbimd5s, tars,
                     tarmd5s, uploadServer, Version.SEQWARE_VERSION, vmInstanceType, vmLocationCode, overrideTxt.toString(),
-                    UPLOAD_ARCHIVE_ABSOLUTE, s3Key, s3SecretKey, uploadS3BucketPath, gnosTimeoutMin, gnosRetries, qcJson, timingJson,
+                    UPLOAD_ARCHIVE_IN_CONTAINER, s3Key, s3SecretKey, uploadS3BucketPath, gnosTimeoutMin, gnosRetries, qcJson, timingJson,
                     Version.EMBL_WORKFLOW_SRC_URL, Version.EMBL_WORKFLOW_URL, Version.EMBL_WORKFLOW_NAME, Version.WORKFLOW_VERSION,
                     gnosDownloadName);
 
@@ -586,9 +587,10 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
 
             // using hard links so it spans multiple exported filesystems to Docker
             uploadJob = utils.localUploadJob(uploadJob, DKFZ_RESULT_DIRECTORY_ABSOLUTE, pemFile, metadataURLs, vcfs, vcfmd5s, tbis,
-                    tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION, vmInstanceType, vmLocationCode, overrideTxt.toString(), UPLOAD_ARCHIVE_ABSOLUTE, gnosTimeoutMin, gnosRetries, qcJsonSingle, timingJson,
-                    Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL, Version.DKFZ_WORKFLOW_NAME, Version.WORKFLOW_VERSION,
-                    gnosDownloadName, this.localXMLMetadataPath, this.localXMLMetadataFiles);
+                    tbimd5s, tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION, vmInstanceType, vmLocationCode, overrideTxt.toString(),
+                    UPLOAD_ARCHIVE_IN_CONTAINER, gnosTimeoutMin, gnosRetries, qcJsonSingle, timingJson, Version.DKFZ_WORKFLOW_SRC_URL,
+                    Version.DKFZ_WORKFLOW_URL, Version.DKFZ_WORKFLOW_NAME, Version.WORKFLOW_VERSION, gnosDownloadName,
+                    this.localXMLMetadataPath, this.localXMLMetadataFiles);
 
         } else if (GNOS.equalsIgnoreCase(uploadDestination)) {
 
@@ -601,9 +603,9 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
 
             uploadJob = utils.s3UploadJob(uploadJob, DKFZ_RESULT_DIRECTORY_ABSOLUTE, pemFile, metadataURLs, vcfs, vcfmd5s, tbis, tbimd5s,
                     tars, tarmd5s, uploadServer, Version.SEQWARE_VERSION, vmInstanceType, vmLocationCode, overrideTxt.toString(),
-                    UPLOAD_ARCHIVE_ABSOLUTE, s3Key, s3SecretKey, uploadS3BucketPath, gnosTimeoutMin, gnosRetries, qcJsonSingle, timingJson,
-                    Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL, Version.DKFZ_WORKFLOW_NAME, Version.WORKFLOW_VERSION,
-                    gnosDownloadName);
+                    UPLOAD_ARCHIVE_IN_CONTAINER, s3Key, s3SecretKey, uploadS3BucketPath, gnosTimeoutMin, gnosRetries, qcJsonSingle,
+                    timingJson, Version.DKFZ_WORKFLOW_SRC_URL, Version.DKFZ_WORKFLOW_URL, Version.DKFZ_WORKFLOW_NAME,
+                    Version.WORKFLOW_VERSION, gnosDownloadName);
 
         } else {
             throw new RuntimeException("Don't know what download Type " + downloadSource + " is!");
