@@ -494,7 +494,7 @@ public class DEWrapperWorkflow extends AbstractWorkflowDataModel {
                         + SHARED_WORKSPACE_ABSOLUTE + "/settings/dkfz.ini:/mnt/datastore/workflow_data/workflow.ini " + "-v "
                         + SHARED_WORKSPACE_ABSOLUTE + "/results:/mnt/datastore/resultdata "
                         // the DKFZ image and the command we feed into it follow
-                        + dkfzDockerName + " /bin/bash -c '/root/bin/runwrapper.sh' \n");
+                        + dkfzDockerName + " /bin/bash -c '/roddy/bin/runwrapper.sh' \n");
         runWorkflow.getCommand().addArgument("date +%s >> dkfz_timing.txt \n");
 
         // summarize timing info since DKFZ does not provide a timing.json
