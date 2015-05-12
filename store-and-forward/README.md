@@ -1,12 +1,9 @@
 # store-and-forward workflow
 
-This is me messing around with modifying the existing DEWrapper to
-create GNOS -> S3 downloader script.
-
-Very simple workflow that takes an analysisID, and downloads:
-  XML for that analysisID
-  bam file for that analysisID
-  bam.bai file for that analysisID
+Very simple workflow that takes an analysisID, and downloads:<br>
+  XML for that analysisID<br>
+  bam file for that analysisID<br>
+  bam.bai file for that analysisID<br><br>
   
-Then, will take the downloaded files and push them into an S3 bucket:
-  foldername - analysisID, which will contain the a bam, a bai and an XML file.
+Then, will take the downloaded files and push them into an S3 bucket:<br>
+  foldername - analysisID, which will contain the a bam, a bai and an XML file.<br><br>
