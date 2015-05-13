@@ -117,6 +117,28 @@ Adam Wright provides instructions here (https://github.com/ICGC-TCGA-PanCancer/c
 
 You can use Adam's tool for generating many INI files, one per donor, and it takes care of choosing the correct input based on the curation work the OICR team has done.  It's also very fast to run versus or old "decider" that was used previously to make INI files. See the link above for more directions.
 
+## Local File Mode
+
+The following ini variables need to change
+* downloadSource and uploadDestination need to be set as desired
+* tumourBams and controlBam need to be file paths to actual bam files if download source is local
+* localXMLMetadataPath has to indicate a directory for provided XML files that correspond to the input data files
+
+
+## Running With an alternate datastore path
+
+There are three components to this currently, the first docker container is started with the following
+
+    docker run --rm -h master -it -v /var/run/docker.sock:/var/run/docker.sock -v /not-datastore:/not-datastore  -v /workflows:/workflows -v `pwd`/different_dirs_workflow.ini:/workflow.ini -v /home/ubuntu/.ssh/gnos.pem:/home/ubuntu/.ssh/gnos.pem seqware/seqware_whitestar_pancancer  bash -c "sed -i 's/datastore/not-datastore/g' /home/seqware/.seqware/settings ; seqware bundle launch --dir /workflows/Workflow_Bundle_DEWrapperWorkflow_1.0.1-SNAPSHOT_SeqWare_1.1.0 --engine whitestar --no-metadata --ini /workflow.ini"
+
+First, for the section "-v /not-datastore:/not-datastore" that the mount doesn't change to /datastore inside the container. If it does then the current workflow will fail, creating directories in the wrong locations. 
+
+Second, SeqWare needs to be informed to do its work in the new directory. That's the second portion in bold. Otherwise, SeqWare will do its work in /datastore which is now solely within the container and will now disappear after the container stops.
+
+Note that "/not-datastore" is arbitrary and can be changed on your system.
+
+Third, "common_data_dir" is the ini parameter that needs to be changed to reflect the alternate path.
+
 ## Developer Info
 
 ### DKFZ
