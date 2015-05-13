@@ -60,7 +60,6 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
           
             // Idenfify Content
             this.analysisIds = Lists.newArrayList(getProperty("analysisIds").split(","));
-            this.bams = Lists.newArrayList(getProperty("bams").split(","));
 	    
             // GNOS DOWNLOAD
             this.gnosServer = getProperty("gnosServer");
@@ -81,7 +80,6 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
             this.s3Key = getProperty("S3UploadKey");
             this.s3SecretKey = getProperty("S3UploadSecretKey");
             this.uploadS3Bucket = getProperty("S3UploadBucket");
-            this.uploadTimeout = getProperty("S3UploadTimeout");
 
             // record the date
             DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
@@ -170,43 +168,29 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
 	  GNOSjob.getCommand().addArgument("date +%s > ../download_timing.txt \n");
 	  for (String url : downloadUrls) {
 		  GNOSjob.getCommand().addArgument("echo '" + url + "' > individual_download_timing.txt \n");
-		  GNOSjob.getCommand().addArgument("date +%s > individual_download_timing.txt  \n");
-		  // bam file
-		  GNOSjob.getCommand().addArgument("sudo docker run "
-					      // link in the input directory
-					      + "-v `pwd`:/workflow_data "
-					      // link in the pem key
-					      + "-v "
-					      + pemFile
-					      + ":/root/gnos_icgc_keyfile.pem " + gnosDownloadName
-					      // here is the Bash command to be run
-					      + " /bin/bash -c 'cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-2.0.10/lib "
-					      + "/opt/vcf-uploader/vcf-uploader-2.0.4/gnos_download_file.pl "
-					      + "--url " + url + " . "
-					      + " --retries " + gnosRetries + " --timeout-min " + gnosTimeoutMin + " "
-					      + " --file " + analysisIds.get(index) + "/" + bams.get(index) + ".bam.bai"
-					      + "  --pem /root/gnos_icgc_keyfile.pem' \n");
-		  // bai file
-		  GNOSjob.getCommand().addArgument("sudo docker run "
-					      // link in the input directory
-					      + "-v `pwd`:/workflow_data "
-					      // link in the pem key
-					      + "-v "
-					      + pemFile
-					      + ":/root/gnos_icgc_keyfile.pem " + gnosDownloadName
-					      // here is the Bash command to be run
-					      + " /bin/bash -c 'cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-2.0.10/lib "
-					      + "/opt/vcf-uploader/vcf-uploader-2.0.4/gnos_download_file.pl "
-					      + "--url " + url + " . "
-					      + " --retries " + gnosRetries + " --timeout-min " + gnosTimeoutMin + " "
-					      + " --file " + analysisIds.get(index) + "/" + bams.get(index) + ".bam"
-					      + "  --pem /root/gnos_icgc_keyfile.pem' \n");
-		  GNOSjob.getCommand().addArgument("sudo chown -R seqware:seqware " + analysisIds.get(index) + "\n ");
-		  GNOSjob.getCommand().addArgument("date +%s > individual_download_timing.txt  \n");
+		  GNOSjob.getCommand().addArgument("date +%s > individual_download_timing.txt \n");
 		  GNOSjob.getCommand().addArgument("curl " 
-				  		  + downloadMetadataUrls.get(index) 
-				  		  + " > " + analysisIds.get(index) 
-				  		  + "/" + analysisIds.get(index) + ".xml \n");
+		  		  + downloadMetadataUrls.get(index) 
+		  		  + " > " + analysisIds.get(index) + ".xml \n");
+		  GNOSjob.getCommand().addArgument("sudo docker run "
+					      // link in the input directory
+					      + "-v `pwd`:/workflow_data "
+					      // link in the pem key
+					      + "-v "
+					      + pemFile
+					      + ":/root/gnos_icgc_keyfile.pem " + gnosDownloadName
+					      // here is the Bash command to be run
+					      + " /bin/bash -c \"cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-2.0.10/lib "
+					      + "/opt/vcf-uploader/vcf-uploader-2.0.4/gnos_download_file.pl "
+					      + "--url " + url + " . "
+					      + " --retries " + gnosRetries + " --timeout-min " + gnosTimeoutMin + " "
+					      + " --file /root/gnos_icgc_keyfile.pem "
+					      + " --pem /root/gnos_icgc_keyfile.pem\" \n");
+		  GNOSjob.getCommand().addArgument("sudo chown -R seqware:seqware " + analysisIds.get(index) + " \n");
+		  GNOSjob.getCommand().addArgument("mv "
+				  + analysisIds.get(index) + ".xml "
+				  + analysisIds.get(index) + " \n");
+		  GNOSjob.getCommand().addArgument("date +%s > individual_download_timing.txt \n");
 		  index += 1;
 	  }
 	  GNOSjob.getCommand().addArgument("date +%s > ../download_timing.txt \n");
