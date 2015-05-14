@@ -25,7 +25,7 @@ In order to get this running, you will need to setup Docker on your worker host(
 
 Next, after logging back in, cache the seqware containers that we will be using 
 
-        docker pull seqware/seqware_whitestar_pancancer
+        docker pull seqware/seqware_whitestar_pancancer:1.1.1
         docker pull seqware/pancancer_upload_download
         docker pull pancancer/pcawg-delly-workflow
         
@@ -95,7 +95,7 @@ Copy your pem key to:
 
 Now you can launch a test run of the workflow using the whitestar workflow engine which is much faster but lacks the more advanced features that are normally present in SeqWare. See [Developing in Partial SeqWare Environments with Whitestar](https://seqware.github.io/docs/6-pipeline/partial_environments/) for details. 
 
-       docker run --rm -h master -it -v /var/run/docker.sock:/var/run/docker.sock -v /datastore:/datastore -v /workflows:/workflows -v `pwd`/workflow.ini:/workflow.ini -v /home/ubuntu/.ssh/gnos.pem:/home/ubuntu/.ssh/gnos.pem seqware/seqware_whitestar_pancancer /bin/bash -c 'seqware bundle launch --dir /workflows/Workflow_Bundle_DEWrapperWorkflow_1.0.0_SeqWare_1.1.0 --engine whitestar --no-metadata'
+       docker run --rm -h master -it -v /var/run/docker.sock:/var/run/docker.sock -v /datastore:/datastore -v /workflows:/workflows -v `pwd`/workflow.ini:/workflow.ini -v /home/ubuntu/.ssh/gnos.pem:/home/ubuntu/.ssh/gnos.pem seqware/seqware_whitestar_pancancer:1.1.1 /bin/bash -c 'seqware bundle launch --dir /workflows/Workflow_Bundle_DEWrapperWorkflow_1.0.0_SeqWare_1.1.0 --engine whitestar --no-metadata'
 
 Look in your datastore for the oozie-<uuid> working directory created.  This contains the scripts/logs (generated-script directory) and the working directory for the two workflows (shared-data):
 
@@ -107,7 +107,7 @@ If you want to run with a specific INI:
 
         # edit the ini
         vim workflow.ini
-        docker run --rm -h master -it -v /var/run/docker.sock:/var/run/docker.sock -v /datastore:/datastore -v /workflows:/workflows -v `pwd`/workflow.ini:/workflow.ini -v /home/ubuntu/.ssh/gnos.pem:/home/ubuntu/.ssh/gnos.pem seqware/seqware_whitestar_pancancer bash -c 'seqware bundle launch --dir /workflows/Workflow_Bundle_DEWrapperWorkflow_1.0.0_SeqWare_1.1.0 --engine whitestar --no-metadata --ini /workflow.ini'
+        docker run --rm -h master -it -v /var/run/docker.sock:/var/run/docker.sock -v /datastore:/datastore -v /workflows:/workflows -v `pwd`/workflow.ini:/workflow.ini -v /home/ubuntu/.ssh/gnos.pem:/home/ubuntu/.ssh/gnos.pem seqware/seqware_whitestar_pancancer:1.1.1 bash -c 'seqware bundle launch --dir /workflows/Workflow_Bundle_DEWrapperWorkflow_1.0.0_SeqWare_1.1.0 --engine whitestar --no-metadata --ini /workflow.ini'
 
 This is the approach you would take for running in production.  Each donor gets an INI file that is then used to launch a workflow using Docker.  If you choose to upload to S3 or GNOS your files should be uploaded there.  You can also find output in /datastore.
 
@@ -145,7 +145,7 @@ The INI contains several important variables that change from donor run to donor
 
 There are three components to this currently, the first docker container is started with the following
 
-    docker run --rm -h master -it -v /var/run/docker.sock:/var/run/docker.sock -v /not-datastore:/not-datastore  -v /workflows:/workflows -v `pwd`/different_dirs_workflow.ini:/workflow.ini -v /home/ubuntu/.ssh/gnos.pem:/home/ubuntu/.ssh/gnos.pem seqware/seqware_whitestar_pancancer  bash -c "sed -i 's/datastore/not-datastore/g' /home/seqware/.seqware/settings ; seqware bundle launch --dir /workflows/Workflow_Bundle_DEWrapperWorkflow_1.0.1-SNAPSHOT_SeqWare_1.1.0 --engine whitestar --no-metadata --ini /workflow.ini"
+    docker run --rm -h master -it -v /var/run/docker.sock:/var/run/docker.sock -v /not-datastore:/not-datastore  -v /workflows:/workflows -v `pwd`/different_dirs_workflow.ini:/workflow.ini -v /home/ubuntu/.ssh/gnos.pem:/home/ubuntu/.ssh/gnos.pem seqware/seqware_whitestar_pancancer:1.1.1  bash -c "sed -i 's/datastore/not-datastore/g' /home/seqware/.seqware/settings ; seqware bundle launch --dir /workflows/Workflow_Bundle_DEWrapperWorkflow_1.0.1_SeqWare_1.1.0 --engine whitestar --no-metadata --ini /workflow.ini"
 
 First, for the section "-v /not-datastore:/not-datastore" that the mount doesn't change to /datastore inside the container. If it does then the current workflow will fail, creating directories in the wrong locations. 
 
