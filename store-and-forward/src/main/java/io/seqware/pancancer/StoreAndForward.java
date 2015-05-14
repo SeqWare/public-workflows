@@ -88,11 +88,11 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
             
             // GNOS timeouts
             if(hasPropertyAndNotNull("gnosTimeoutMin"))
-            		gnosTimeoutMin = Integer.parseInt(getProperty("gnosTimeoutMin"));
+            		this.gnosTimeoutMin = Integer.parseInt(getProperty("gnosTimeoutMin"));
             if(hasPropertyAndNotNull("gnosRetries"))
-            		gnosRetries = Integer.parseInt(getProperty("gnosRetries"));
+            		this.gnosRetries = Integer.parseInt(getProperty("gnosRetries"));
             if(hasPropertyAndNotNull("gnosDockerName"))
-            	gnosDownloadName = getProperty("gnosDockerName");
+            		this.gnosDownloadName = getProperty("gnosDockerName");
 	    
 		    // skipping
 	        if(hasPropertyAndNotNull("skipdownload")) {
@@ -169,30 +169,30 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
 	  GNOSjob.getCommand().addArgument("cd " + SHARED_WORKSPACE + "/downloads \n");
 	  int index = 0;
 	  GNOSjob.getCommand().addArgument("date +%s > ../download_timing.txt \n");
-	  for (String url : downloadUrls) {
+	  for (String url : this.downloadUrls) {
 		  GNOSjob.getCommand().addArgument("echo '" + url + "' > individual_download_timing.txt \n");
 		  GNOSjob.getCommand().addArgument("date +%s > individual_download_timing.txt \n");
 		  GNOSjob.getCommand().addArgument("curl " 
-		  		  + downloadMetadataUrls.get(index) 
-		  		  + " > " + analysisIds.get(index) + ".xml \n");
+		  		  + this.downloadMetadataUrls.get(index) 
+		  		  + " > " + this.analysisIds.get(index) + ".xml \n");
 		  GNOSjob.getCommand().addArgument("sudo docker run "
 					      // link in the input directory
 					      + "-v `pwd`:/workflow_data "
 					      // link in the pem key
 					      + "-v "
-					      + pemFile
-					      + ":/root/gnos_icgc_keyfile.pem " + gnosDownloadName
+					      + this.pemFile
+					      + ":/root/gnos_icgc_keyfile.pem " + this.gnosDownloadName
 					      // here is the Bash command to be run
 					      + " /bin/bash -c \"cd /workflow_data/ && perl -I /opt/gt-download-upload-wrapper/gt-download-upload-wrapper-2.0.10/lib "
 					      + "/opt/vcf-uploader/vcf-uploader-2.0.4/gnos_download_file.pl "
 					      + "--url " + url + " . "
-					      + " --retries " + gnosRetries + " --timeout-min " + gnosTimeoutMin + " "
+					      + " --retries " + this.gnosRetries + " --timeout-min " + this.gnosTimeoutMin + " "
 					      + " --file /root/gnos_icgc_keyfile.pem "
 					      + " --pem /root/gnos_icgc_keyfile.pem\" \n");
-		  GNOSjob.getCommand().addArgument("sudo chown -R seqware:seqware " + analysisIds.get(index) + " \n");
+		  GNOSjob.getCommand().addArgument("sudo chown -R seqware:seqware " + this.analysisIds.get(index) + " \n");
 		  GNOSjob.getCommand().addArgument("mv "
-				  + analysisIds.get(index) + ".xml "
-				  + analysisIds.get(index) + " \n");
+				  + this.analysisIds.get(index) + ".xml "
+				  + this.analysisIds.get(index) + " \n");
 		  GNOSjob.getCommand().addArgument("date +%s > individual_download_timing.txt \n");
 		  index += 1;
 	  }
@@ -215,10 +215,10 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
           S3job.getCommand().addArgument("running=1 \n");
           S3job.getCommand().addArgument("for x in {0..3}; do \n");
           S3job.getCommand().addArgument("	echo \"Upload attempt $x ...\" \n");
-    	  S3job.getCommand().addArgument(" 	timeout " + uploadTimeout
+    	  S3job.getCommand().addArgument(" 	timeout " + this.uploadTimeout
     			  + " s3cmd put --ssl --recursive"
-    			  + " --access_key " + s3Key
-    			  + " --secret_key " + s3SecretKey
+    			  + " --access_key " + this.s3Key
+    			  + " --secret_key " + this.s3SecretKey
     			  + " " + analysisIds.get(index)
     			  + " s3://" + uploadS3Bucket + " >> s3cmd.log || echo \"s3cmd failed!\" \n"
     			  );
@@ -240,7 +240,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     	Job verifyJob = this.getWorkflow().createBashJob("Download_Verify");
     	verifyJob.getCommand().addArgument("cd " + SHARED_WORKSPACE + "/downloads \n");
     	for (String url : this.downloadMetadataUrls) {
-    		verifyJob.getCommand().addArgument("python " + getWorkflowBaseDir() + "/scripts/download_check.py " + url + " \n");
+    		verifyJob.getCommand().addArgument("python " + this.getWorkflowBaseDir() + "/scripts/download_check.py " + url + " \n");
     	}
     	verifyJob.addParent(getReferenceDataJob);
     	return(verifyJob);
