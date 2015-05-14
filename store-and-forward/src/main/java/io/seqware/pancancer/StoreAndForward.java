@@ -75,11 +75,11 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
             	this.downloadMetadataUrls.add(downloadMetadataURLBuilder.toString());
             }
             
-            
             // S3 UPLOAD
             this.s3Key = getProperty("S3UploadKey");
             this.s3SecretKey = getProperty("S3UploadSecretKey");
             this.uploadS3Bucket = getProperty("S3UploadBucket");
+            this.uploadTimeout = getProperty("S3UploadTimeout");
 
             // record the date
             DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
@@ -128,8 +128,11 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
         // download data from GNOS
         Job getGNOSJob = createGNOSJob(createSharedWorkSpaceJob);
         
+        // download verification
+        Job verifyDownload = createVerifyJob(getGNOSJob);
+        
         // upload data to S3
-        Job s3Upload = createS3Job(getGNOSJob);
+        Job s3Upload = createS3Job(verifyDownload);
 	
         // now cleanup
         cleanupWorkflow(s3Upload);
@@ -203,24 +206,44 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
       Job S3job = this.getWorkflow().createBashJob("S3_upload");
       if (skipupload == true)
     	  S3job.getCommand().addArgument("exit 0 \n");
-      S3job.getCommand().addArgument("sudo apt-get install -y python-pip \n");
-      S3job.getCommand().addArgument("sudo pip install s3cmd \n");
+      S3job.getCommand().addArgument(" sudo apt-get install -y python-pip > /dev/null \n");
+      S3job.getCommand().addArgument("sudo pip install s3cmd > /dev/null \n");
       S3job.getCommand().addArgument("cd " + SHARED_WORKSPACE + "/downloads \n");
       S3job.getCommand().addArgument("date +%s > ../upload_timing.txt \n");
       int index = 0;
       for (String url : this.downloadUrls) {
-    	  S3job.getCommand().addArgument("  s3cmd put --recursive"
+          S3job.getCommand().addArgument("running=1 \n");
+          S3job.getCommand().addArgument("for x in {0..3}; do \n");
+          S3job.getCommand().addArgument("	echo \"Upload attempt $x ...\" \n");
+    	  S3job.getCommand().addArgument(" 	timeout " + uploadTimeout
+    			  + " s3cmd put --recursive"
     			  + " --access_key " + s3Key
     			  + " --secret_key " + s3SecretKey
     			  + " " + analysisIds.get(index)
     			  + " s3://" + uploadS3Bucket + " >> s3cmd.log \n"
     			  );
+    	  S3job.getCommand().addArgument("	if [[ $? -eq 0 ]]; then \n");
+    	  S3job.getCommand().addArgument("		running=0 \n"); 
+    	  S3job.getCommand().addArgument(" 		echo \"Upload complete!\" \n");
+    	  S3job.getCommand().addArgument("		break \n");
+    	  S3job.getCommand().addArgument("	fi \n");
       }
+      S3job.getCommand().addArgument("done \n");
       S3job.getCommand().addArgument("date +%s > ../upload_timing.txt \n");
       S3job.getCommand().addArgument("cd - \n");
       S3job.getCommand().addArgument("exit $running \n");
       S3job.addParent(getReferenceDataJob);
       return(S3job);
+    }
+    
+    private Job createVerifyJob(Job getReferenceDataJob) {
+    	Job verifyJob = this.getWorkflow().createBashJob("Download_Verify");
+    	verifyJob.getCommand().addArgument("cd " + SHARED_WORKSPACE + "/downloads \n");
+    	for (String url : this.downloadMetadataUrls) {
+    		verifyJob.getCommand().addArgument("python " + getWorkflowBaseDir() + "/scripts/download_check.py " + url + " \n");
+    	}
+    	verifyJob.addParent(getReferenceDataJob);
+    	return(verifyJob);
     }
 
 }
