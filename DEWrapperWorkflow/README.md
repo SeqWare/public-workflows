@@ -139,7 +139,23 @@ The INI contains several important variables that change from donor run to donor
         EMBL.delly_runID=f393bb07-270c-2c93-e040-11ac0d484533
         EMBL.input_bam_path_tumor=inputs/ef26d046-e88a-4f21-a232-16ccb43637f2
         EMBL.input_bam_path_germ=inputs/1b9215ab-3634-4108-9db7-7e63139ef7e9
+        
+        
+## Running With an alternate datastore path
 
+There are three components to this currently, the first docker container is started with the following
+
+    docker run --rm -h master -it -v /var/run/docker.sock:/var/run/docker.sock -v /not-datastore:/not-datastore  -v /workflows:/workflows -v `pwd`/different_dirs_workflow.ini:/workflow.ini -v /home/ubuntu/.ssh/gnos.pem:/home/ubuntu/.ssh/gnos.pem seqware/seqware_whitestar_pancancer  bash -c "sed -i 's/datastore/not-datastore/g' /home/seqware/.seqware/settings ; seqware bundle launch --dir /workflows/Workflow_Bundle_DEWrapperWorkflow_1.0.1-SNAPSHOT_SeqWare_1.1.0 --engine whitestar --no-metadata --ini /workflow.ini"
+
+First, for the section "-v /not-datastore:/not-datastore" that the mount doesn't change to /datastore inside the container. If it does then the current workflow will fail, creating directories in the wrong locations. 
+
+Second, SeqWare needs to be informed to do its work in the new directory. That's the second portion in bold. Otherwise, SeqWare will do its work in /datastore which is now solely within the container and will now disappear after the container stops.
+
+Note that "/not-datastore" is arbitrary and can be changed on your system.
+
+Third, "common_data_dir" is the ini parameter that needs to be changed to reflect the alternate path.
+
+        
 #### file modes
 
 There are three file modes for reading and writing: GNOS, local, S3.  Usually people use GNOS for both
