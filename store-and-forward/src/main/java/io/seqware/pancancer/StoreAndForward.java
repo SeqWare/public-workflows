@@ -216,7 +216,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
           S3job.getCommand().addArgument("for x in {0..3}; do \n");
           S3job.getCommand().addArgument("	echo \"Upload attempt $x ...\" \n");
     	  S3job.getCommand().addArgument(" 	timeout " + this.uploadTimeout
-    			  + " s3cmd put --ssl --recursive"
+    			  + " s3cmd put --ssl --sse --recursive"
     			  + " --access_key " + this.s3Key
     			  + " --secret_key " + this.s3SecretKey
     			  + " " + analysisIds.get(index)

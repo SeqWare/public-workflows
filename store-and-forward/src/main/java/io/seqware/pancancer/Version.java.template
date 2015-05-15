@@ -8,7 +8,7 @@ package io.seqware.pancancer;
 
 /**
  *
- * @author boconnor
+ * @author nbyrne
  */
 public class Version {
   
@@ -23,31 +23,5 @@ public class Version {
     public static final String WORKFLOW_URL="@workflow-url@";
     
     public static final String WORKFLOW_SRC_URL="@workflow-src-url@";
-
-    // DKFZ
-
-    public static final String DKFZ_WORKFLOW_NAME="@dkfz-workflow-name@";
-
-    public static final String DKFZ_WORKFLOW_SHORT_NAME_VERSION="@dkfz-workflow-short-name-version@";
-
-    public static final String DKFZ_WORKFLOW_VERSION_UNDERSCORE="@dkfz-workflow-version-underscore@";
-
-    public static final String DKFZ_WORKFLOW_VERSION="@dkfz-workflow-version@";
-
-    public static final String DKFZ_WORKFLOW_URL="@dkfz-workflow-url@";
-
-    public static final String DKFZ_WORKFLOW_SRC_URL="@dkfz-workflow-src-url@";
-
-    // EMBL
-
-    public static final String EMBL_WORKFLOW_NAME="@embl-workflow-name@";
-
-    public static final String EMBL_WORKFLOW_SHORT_NAME_VERSION="@embl-workflow-short-name-version@";
-
-    public static final String EMBL_WORKFLOW_VERSION="@embl-workflow-version@";
-
-    public static final String EMBL_WORKFLOW_URL="@embl-workflow-url@";
-
-    public static final String EMBL_WORKFLOW_SRC_URL="@embl-workflow-src-url@";
 
 }
