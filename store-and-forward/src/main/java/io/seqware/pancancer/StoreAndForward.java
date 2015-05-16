@@ -228,7 +228,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     	  S3job.getCommand().addArgument(" 		echo \"Upload complete!\" \n");
     	  S3job.getCommand().addArgument("		break \n");
     	  S3job.getCommand().addArgument("	fi \n");
-    	  S3job.getCommand().addArgument("running=0 \n");
+    	  S3job.getCommand().addArgument("retry=0 \n");
     	  S3job.getCommand().addArgument("done \n");
       }
       S3job.getCommand().addArgument("date +%s > ../upload_timing.txt \n");
