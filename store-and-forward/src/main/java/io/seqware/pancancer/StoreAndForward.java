@@ -213,6 +213,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
       int index = 0;
       for (String url : this.downloadUrls) {
           S3job.getCommand().addArgument("running=1 \n");
+          S3job.getCommand().addArgument("retry=0 \n");
           S3job.getCommand().addArgument("for x in {0..3}; do \n");
           S3job.getCommand().addArgument("	echo \"Upload attempt $x ...\" \n");
     	  S3job.getCommand().addArgument(" 	timeout " + this.uploadTimeout
@@ -220,15 +221,16 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     			  + " --access_key " + this.s3Key
     			  + " --secret_key " + this.s3SecretKey
     			  + " " + analysisIds.get(index)
-    			  + " s3://" + uploadS3Bucket + " >> s3cmd.log || echo \"s3cmd failed!\" \n"
+    			  + " s3://" + uploadS3Bucket + " >> s3cmd.log || retry=1 \n"
     			  );
-    	  S3job.getCommand().addArgument("	if [[ $? -eq 0 ]]; then \n");
+    	  S3job.getCommand().addArgument("	if [[ retry -eq 0 ]]; then \n");
     	  S3job.getCommand().addArgument("		running=0 \n"); 
     	  S3job.getCommand().addArgument(" 		echo \"Upload complete!\" \n");
     	  S3job.getCommand().addArgument("		break \n");
     	  S3job.getCommand().addArgument("	fi \n");
+    	  S3job.getCommand().addArgument("running=0 \n");
+    	  S3job.getCommand().addArgument("done \n");
       }
-      S3job.getCommand().addArgument("done \n");
       S3job.getCommand().addArgument("date +%s > ../upload_timing.txt \n");
       S3job.getCommand().addArgument("cd - \n");
       S3job.getCommand().addArgument("exit $running \n");
