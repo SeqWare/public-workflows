@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map.Entry;
+import java.lang.Long;
 import net.sourceforge.seqware.pipeline.workflowV2.AbstractWorkflowDataModel;
 import net.sourceforge.seqware.pipeline.workflowV2.model.Job;
 
@@ -17,7 +18,7 @@ import net.sourceforge.seqware.pipeline.workflowV2.model.Job;
  * href="http://seqware.github.io/docs/6-pipeline/java-workflows/">SeqWare Java Workflows</a>.
  * </p>
  *
- * Quick reference for the order of methods called: 1. setupDirectory 2. setupFiles 3. setupWorkflow 4. setupEnvironment 5. buildWorkflow
+ * Quick reference for the order of steps: 1. setupDirectory 2. GNOS Download 3. Verify Files 4. S3Upload 5. Notify ElasticSearch 6. Cleanup
  *
  * See the SeqWare API for <a href=
  * "http://seqware.github.io/javadoc/stable/apidocs/net/sourceforge/seqware/pipeline/workflowV2/AbstractWorkflowDataModel.html#setupDirectory%28%29"
@@ -50,6 +51,9 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     private String s3SecretKey = null;
     private String uploadS3Bucket = null;
     private String uploadTimeout = null;
+    // Elasticsearch
+    private String elasticsearchKey = null;
+    private String elasticsearchCert = null;
     // workflows to run
     // docker names
     private String gnosDownloadName = "seqware/pancancer_upload_download";
@@ -80,6 +84,10 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
             this.s3SecretKey = getProperty("S3UploadSecretKey");
             this.uploadS3Bucket = getProperty("S3UploadBucket");
             this.uploadTimeout = getProperty("S3UploadTimeout");
+            
+            // Elasticsearch Notify
+            this.elasticsearchKey = getProperty("elasticsearchKey");
+            this.elasticsearchCert = getProperty("elasticsearchCert");
 
             // record the date
             DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
@@ -133,9 +141,13 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
         
         // upload data to S3
         Job s3Upload = createS3Job(verifyDownload);
+        
+        // report completion to elasticsearch
+        
+        Job elasticNotify = createElasticJob(s3Upload);
 	
         // now cleanup
-        cleanupWorkflow(s3Upload);
+        cleanupWorkflow(elasticNotify);
         
     }
     
@@ -246,6 +258,21 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     	}
     	verifyJob.addParent(getReferenceDataJob);
     	return(verifyJob);
+    }
+    
+    private Job createElasticJob(Job getReferenceDataJob) {
+    	Job elasticJob = this.getWorkflow().createBashJob("elasticsearch_notify");
+    	elasticJob.getCommand().addArgument("cd " + SHARED_WORKSPACE + "/downloads \n");
+    	elasticJob.getCommand().addArgument("curl -k --cert " + this.elasticsearchCert
+    			+ " --key " + this.elasticsearchKey
+    			+ " 'https://reporter.oicrsofteng.org/?action=success"
+    			+ "&workflow=StoreAndForward"
+    			+ "&gnosServer=" + this.gnosServer
+    			+ "&time=" + Long.toString(System.currentTimeMillis())
+    			+ "' \n"
+    			);
+    	elasticJob.addParent(getReferenceDataJob);
+    	return(elasticJob);
     }
 
 }
