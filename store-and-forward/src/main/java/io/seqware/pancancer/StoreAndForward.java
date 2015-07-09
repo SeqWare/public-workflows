@@ -237,6 +237,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     			  );
     	  index += 1;
       }
+      return(S3job);
     }
   
     // Oldschool S3CMD Method
