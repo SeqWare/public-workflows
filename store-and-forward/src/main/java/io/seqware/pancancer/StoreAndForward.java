@@ -54,6 +54,8 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     // Elasticsearch
     private String elasticsearchKey = null;
     private String elasticsearchCert = null;
+    // Colabtool
+    private String collabToken = null;
     // workflows to run
     // docker names
     private String gnosDownloadName = "seqware/pancancer_upload_download";
@@ -79,7 +81,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
             	this.downloadMetadataUrls.add(downloadMetadataURLBuilder.toString());
             }
             
-            // S3 UPLOAD
+            // S3 UPLOAD - Legacy for 1.0.1
             this.s3Key = getProperty("S3UploadKey");
             this.s3SecretKey = getProperty("S3UploadSecretKey");
             this.uploadS3Bucket = getProperty("S3UploadBucket");
@@ -88,6 +90,9 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
             // Elasticsearch Notify
             this.elasticsearchKey = getProperty("elasticsearchKey");
             this.elasticsearchCert = getProperty("elasticsearchCert");
+            
+            // Collab Token
+            this.collabToken = getProperty("collabToken");
 
             // record the date
             DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
@@ -140,7 +145,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
         Job verifyDownload = createVerifyJob(getGNOSJob);
         
         // upload data to S3
-        Job s3Upload = createS3Job(verifyDownload);
+        Job s3Upload = S3toolJob(verifyDownload);
         
         // report completion to elasticsearch
         
@@ -213,7 +218,28 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
 	  GNOSjob.addParent(getReferenceDataJob);
 	  return(GNOSjob);
     }
+    
+    private Job S3toolJob( Job getReferenceDataJob) {
+      Job S3job = this.getWorkflow().createBashJob("S3_upload");
+      if (skipupload == true)
+    	  S3job.getCommand().addArgument("# Skip upload was turned on in your ini file \n");
+    	  S3job.getCommand().addArgument("exit 0 \n");
+	  S3job.getCommand().addArgument("cd " + SHARED_WORKSPACE + "/downloads \n");
+      S3job.getCommand().addArgument("date +%s > ../upload_timing.txt \n");
+      int index = 0;
+      for (String url : this.downloadUrls) {
+    	  // Execute the collab tool, mounting the downloads folder into /collab/upload
+    	  String folder = analysisIds.get(index);
+    	  S3job.getCommand().addArgument("docker run icgc/cli "
+    			  + "-v " + SHARED_WORKSPACE + "/downloads:/collab/uploads "
+    			  + "-e ACCESS_TOKEN=" + this.collabToken + " "
+    			  + "bash -c \"/collab/upload.sh /collab/uploads/" + this.analysisIds.get(index)+"\" \n"
+    			  );
+    	  index += 1;
+      }
+    }
   
+    // Oldschool S3CMD Method
     private Job createS3Job(Job getReferenceDataJob) {
       Job S3job = this.getWorkflow().createBashJob("S3_upload");
       if (skipupload == true)
@@ -242,6 +268,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     	  S3job.getCommand().addArgument("	fi \n");
     	  S3job.getCommand().addArgument("retry=0 \n");
     	  S3job.getCommand().addArgument("done \n");
+    	  
       }
       S3job.getCommand().addArgument("date +%s > ../upload_timing.txt \n");
       S3job.getCommand().addArgument("cd - \n");
