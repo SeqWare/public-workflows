@@ -56,6 +56,8 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     private String elasticsearchCert = null;
     // Colabtool
     private String collabToken = null;
+    private String collabCertPath = null;
+    private String collabHost = null;
     // workflows to run
     // docker names
     private String gnosDownloadName = "seqware/pancancer_upload_download";
@@ -93,6 +95,8 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
             
             // Collab Token
             this.collabToken = getProperty("collabToken");
+            this.collabCertPath = getProperty("collabCertPath");
+            this.collabHost = getProperty("collabHost");
 
             // record the date
             DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
@@ -230,10 +234,13 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
       for (String url : this.downloadUrls) {
     	  // Execute the collab tool, mounting the downloads folder into /collab/upload
     	  String folder = analysisIds.get(index);
-    	  S3job.getCommand().addArgument("docker run icgc/cli "
+    	  S3job.getCommand().addArgument("docker run "
     			  + "-v " + SHARED_WORKSPACE + "/downloads:/collab/uploads "
+    			  + "-v " + this.collabCertPath + ":/collab/storage/conf/client.jks "
     			  + "-e ACCESS_TOKEN=" + this.collabToken + " "
-    			  + "bash -c \"/collab/upload.sh /collab/uploads/" + this.analysisIds.get(index)+"\" \n"
+    			  + "-e CLIENT_STRICT_SSL=\"True\" "
+    			  + "-e CLIENT_UPLOAD_SERVICE_HOSTNAME=" + this.collabHost + " "
+    			  + "icgc/cli bash -c \"/collab/upload.sh /collab/uploads/" + this.analysisIds.get(index)+"\" \n"
     			  );
     	  index += 1;
       }
