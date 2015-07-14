@@ -161,7 +161,6 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
         
     }
     
-    
     /*
      JOB BUILDING METHODS
     */
