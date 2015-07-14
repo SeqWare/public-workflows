@@ -96,6 +96,9 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
             this.collabToken = getProperty("collabToken");
             this.collabCertPath = getProperty("collabCertPath");
             this.collabHost = getProperty("collabHost");
+            
+            // Elasticsearch Repo
+            this.JSONrepo = getProperty("JSONrepo");
 
             // record the date
             DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
