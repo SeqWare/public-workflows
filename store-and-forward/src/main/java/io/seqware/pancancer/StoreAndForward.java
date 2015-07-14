@@ -145,7 +145,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
         Job installDependenciesJob = installDependencies(createSharedWorkSpaceJob);
                  
         // download data from GNOS
-        Job getGNOSJob = createGNOSJob(createSharedWorkSpaceJob);
+        Job getGNOSJob = createGNOSJob(installDependenciesJob);
         
         // download verification
         Job verifyDownload = createVerifyJob(getGNOSJob);
