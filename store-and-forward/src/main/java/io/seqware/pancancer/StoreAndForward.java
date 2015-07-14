@@ -70,6 +70,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
             this.analysisIds = Lists.newArrayList(getProperty("analysisIds").split(","));
 	    
             // GNOS DOWNLOAD:
+            this.gnosServer = getProperty("gnosServers").split(",")[0]; // Grab the first server in the list for now
             this.pemFile = getProperty("pemFile");
             this.downloadMetadataUrls = Lists.newArrayList();
             this.downloadUrls = Lists.newArrayList();
