@@ -51,6 +51,8 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     private String s3SecretKey = null;
     private String uploadS3Bucket = null;
     private String uploadTimeout = null;
+    // JSON repo
+    private String JSONrepo = null;
     // Colabtool
     private String collabToken = null;
     private String collabCertPath = null;
@@ -138,6 +140,9 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
 
         // create a shared directory in /datastore on the host in order to download reference data
         Job createSharedWorkSpaceJob = createDirectoriesJob();
+        
+        // Install Dependencies for Ubuntu
+        Job installDependenciesJob = installDependencies(createSharedWorkSpaceJob);
                  
         // download data from GNOS
         Job getGNOSJob = createGNOSJob(createSharedWorkSpaceJob);
@@ -174,10 +179,19 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
 		return(createSharedWorkSpaceJob);
     }
 
+    private Job installDependencies(Job getReferenceDataJob) {
+    	Job installerJob = this.getWorkflow().createBashJob("install_dependencies");
+    	installerJob.getCommand().addArgument("sudo apt-get install git \n");
+    	installerJob.getCommand().addArgument("[[ -d /home/ubuntu/gitroot ]] && mkdir -m 0777 -p /home/ubuntu/gitroot && cd /home/ubuntu/gitroot && git clone " + this.JSONrepo + " \n");
+    	installerJob.addParent(getReferenceDataJob);
+    	return(installerJob);
+    }
+    
     private Job createGNOSJob(Job getReferenceDataJob) {
 	  Job GNOSjob = this.getWorkflow().createBashJob("GNOS_download");
-	  if (this.skipdownload == true)
+	  if (this.skipdownload == true) {
 		  GNOSjob.getCommand().addArgument("exit 0 \n");
+	  }
 	  GNOSjob.getCommand().addArgument("cd " + SHARED_WORKSPACE + "/downloads \n");
 	  int index = 0;
 	  GNOSjob.getCommand().addArgument("date +%s > ../download_timing.txt \n");
@@ -216,9 +230,10 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     
     private Job S3toolJob( Job getReferenceDataJob) {
       Job S3job = this.getWorkflow().createBashJob("S3_upload");
-      if (skipupload == true)
+      if (skipupload == true) {
     	  S3job.getCommand().addArgument("# Skip upload was turned on in your ini file \n");
     	  S3job.getCommand().addArgument("exit 0 \n");
+      }
 	  S3job.getCommand().addArgument("cd " + SHARED_WORKSPACE + "/downloads \n");
       S3job.getCommand().addArgument("date +%s > ../upload_timing.txt \n");
       int index = 0;
