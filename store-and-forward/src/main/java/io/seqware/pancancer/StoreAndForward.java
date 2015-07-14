@@ -145,7 +145,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
         Job createSharedWorkSpaceJob = createDirectoriesJob();
         
         // Install Dependencies for Ubuntu
-        Job installDependenciesJob = installDependencies(createSharedWorkSpaceJob);
+        Job installDependenciesJob = pullRepo(createSharedWorkSpaceJob);
                  
         // download data from GNOS
         Job getGNOSJob = createGNOSJob(installDependenciesJob);
