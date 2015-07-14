@@ -51,9 +51,6 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     private String s3SecretKey = null;
     private String uploadS3Bucket = null;
     private String uploadTimeout = null;
-    // Elasticsearch
-    private String elasticsearchKey = null;
-    private String elasticsearchCert = null;
     // Colabtool
     private String collabToken = null;
     private String collabCertPath = null;
@@ -70,7 +67,11 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
             this.analysisIds = Lists.newArrayList(getProperty("analysisIds").split(","));
 	    
             // GNOS DOWNLOAD:
-            this.gnosServer = getProperty("gnosServers").split(",")[0]; // Grab the first server in the list for now
+            
+            // This may end up being a list of servers, just take the first element for now
+            // We can add more logic later
+            this.gnosServer = getProperty("gnosServers").split(",")[0];
+            
             this.pemFile = getProperty("pemFile");
             this.downloadMetadataUrls = Lists.newArrayList();
             this.downloadUrls = Lists.newArrayList();
@@ -88,10 +89,6 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
             this.s3SecretKey = getProperty("S3UploadSecretKey");
             this.uploadS3Bucket = getProperty("S3UploadBucket");
             this.uploadTimeout = getProperty("S3UploadTimeout");
-            
-            // Elasticsearch Notify
-            this.elasticsearchKey = getProperty("elasticsearchKey");
-            this.elasticsearchCert = getProperty("elasticsearchCert");
             
             // Collab Token
             this.collabToken = getProperty("collabToken");
@@ -150,13 +147,9 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
         
         // upload data to S3
         Job s3Upload = S3toolJob(verifyDownload);
-        
-        // report completion to elasticsearch
-        
-        Job elasticNotify = createElasticJob(s3Upload);
 	
         // now cleanup
-        cleanupWorkflow(elasticNotify);
+        cleanupWorkflow(s3Upload);
         
     }
     
@@ -177,9 +170,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     private Job createDirectoriesJob() {
 		Job createSharedWorkSpaceJob = this.getWorkflow().createBashJob("create_dirs");
 		createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + " \n");
-		createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/settings \n");
 		createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/downloads \n");
-		createSharedWorkSpaceJob.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + "/testdata \n");
 		return(createSharedWorkSpaceJob);
     }
 
@@ -235,12 +226,12 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     	  // Execute the collab tool, mounting the downloads folder into /collab/upload
     	  String folder = analysisIds.get(index);
     	  S3job.getCommand().addArgument("docker run "
-    			  + "-v " + SHARED_WORKSPACE + "/downloads:/collab/uploads "
+    			  + "-v " + SHARED_WORKSPACE + "/downloads:/collab/upload "
     			  + "-v " + this.collabCertPath + ":/collab/storage/conf/client.jks "
     			  + "-e ACCESS_TOKEN=" + this.collabToken + " "
     			  + "-e CLIENT_STRICT_SSL=\"True\" "
     			  + "-e CLIENT_UPLOAD_SERVICE_HOSTNAME=" + this.collabHost + " "
-    			  + "icgc/cli bash -c \"/collab/upload.sh /collab/uploads/" + this.analysisIds.get(index)+"\" \n"
+    			  + "icgc/cli bash -c \"/collab/upload.sh /collab/upload/" + this.analysisIds.get(index)+"\" \n"
     			  );
     	  index += 1;
       }
@@ -257,21 +248,6 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     	}
     	verifyJob.addParent(getReferenceDataJob);
     	return(verifyJob);
-    }
-    
-    private Job createElasticJob(Job getReferenceDataJob) {
-    	Job elasticJob = this.getWorkflow().createBashJob("elasticsearch_notify");
-    	elasticJob.getCommand().addArgument("cd " + SHARED_WORKSPACE + "/downloads \n");
-    	elasticJob.getCommand().addArgument("curl -k --cert " + this.elasticsearchCert
-    			+ " --key " + this.elasticsearchKey
-    			+ " 'https://reporter.oicrsofteng.org/?action=success"
-    			+ "&workflow=StoreAndForward"
-    			+ "&gnosServer=" + this.gnosServer
-    			+ "&time=" + Long.toString(System.currentTimeMillis())
-    			+ "' \n"
-    			);
-    	elasticJob.addParent(getReferenceDataJob);
-    	return(elasticJob);
     }
 
 }
