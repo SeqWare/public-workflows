@@ -244,46 +244,10 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     			  );
     	  index += 1;
       }
-      return(S3job);
-    }
-  
-    // Oldschool S3CMD Method
-    private Job createS3Job(Job getReferenceDataJob) {
-      Job S3job = this.getWorkflow().createBashJob("S3_upload");
-      if (skipupload == true)
-    	  S3job.getCommand().addArgument("exit 0 \n");
-      S3job.getCommand().addArgument(" sudo apt-get install -y python-pip > /dev/null \n");
-      S3job.getCommand().addArgument("sudo pip install s3cmd > /dev/null \n");
-      S3job.getCommand().addArgument("cd " + SHARED_WORKSPACE + "/downloads \n");
-      S3job.getCommand().addArgument("date +%s > ../upload_timing.txt \n");
-      int index = 0;
-      for (String url : this.downloadUrls) {
-          S3job.getCommand().addArgument("running=1 \n");
-          S3job.getCommand().addArgument("retry=0 \n");
-          S3job.getCommand().addArgument("for x in {0..3}; do \n");
-          S3job.getCommand().addArgument("	echo \"Upload attempt $x ...\" \n");
-    	  S3job.getCommand().addArgument(" 	timeout " + this.uploadTimeout
-    			  + " s3cmd put --ssl --sse --recursive"
-    			  + " --access_key " + this.s3Key
-    			  + " --secret_key " + this.s3SecretKey
-    			  + " " + analysisIds.get(index)
-    			  + " s3://" + uploadS3Bucket + " >> s3cmd.log || retry=1 \n"
-    			  );
-    	  S3job.getCommand().addArgument("	if [[ retry -eq 0 ]]; then \n");
-    	  S3job.getCommand().addArgument("		running=0 \n"); 
-    	  S3job.getCommand().addArgument(" 		echo \"Upload complete!\" \n");
-    	  S3job.getCommand().addArgument("		break \n");
-    	  S3job.getCommand().addArgument("	fi \n");
-    	  S3job.getCommand().addArgument("retry=0 \n");
-    	  S3job.getCommand().addArgument("done \n");
-    	  
-      }
-      S3job.getCommand().addArgument("date +%s > ../upload_timing.txt \n");
-      S3job.getCommand().addArgument("cd - \n");
-      S3job.getCommand().addArgument("exit $running \n");
       S3job.addParent(getReferenceDataJob);
       return(S3job);
     }
+  
     
     private Job createVerifyJob(Job getReferenceDataJob) {
     	Job verifyJob = this.getWorkflow().createBashJob("Download_Verify");
