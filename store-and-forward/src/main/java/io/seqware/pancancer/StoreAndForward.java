@@ -113,10 +113,10 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
 	    
 		    // skipping
 	        if(hasPropertyAndNotNull("skipdownload")) {
-	        	this.skipdownload = Boolean.valueOf(getProperty("skipdownload"));
+	        	this.skipdownload = Boolean.valueOf(getProperty("skipdownload").toLowerCase());
 	        }
 	        if(hasPropertyAndNotNull("skipupload")) {
-	        	this.skipupload = Boolean.valueOf(getProperty("skipupload"));
+	        	this.skipupload = Boolean.valueOf(getProperty("skipupload").toLowerCase());
 	        }
 	        
 		    // cleanup
@@ -185,7 +185,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
 
     private Job createGNOSJob(Job getReferenceDataJob) {
 	  Job GNOSjob = this.getWorkflow().createBashJob("GNOS_download");
-	  if (skipdownload == true)
+	  if (this.skipdownload == true)
 		  GNOSjob.getCommand().addArgument("exit 0 \n");
 	  GNOSjob.getCommand().addArgument("cd " + SHARED_WORKSPACE + "/downloads \n");
 	  int index = 0;
