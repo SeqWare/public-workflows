@@ -176,9 +176,10 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
 
     private Job pullRepo(Job getReferenceDataJob) {
     	Job installerJob = this.getWorkflow().createBashJob("install_dependencies");
-    	installerJob.getCommand().addArgument("[[ -d " + this.JSONlocation + " ]] || mkdir -p " + this.JSONlocation + " \n");
-    	installerJob.getCommand().addArgument("[[ -d " + this.JSONlocation + " ]] || cd " + this.JSONlocation + " \n");
-    	installerJob.getCommand().addArgument("[[ -d " + this.JSONlocation + " ]] || git clone " + this.JSONrepo + " \n");
+    	installerJob.getCommand().addArgument("if [[ -d " + this.JSONlocation + " ]]; then  exit 0; fi \n");
+    	installerJob.getCommand().addArgument("mkdir -p " + this.JSONlocation + " \n");
+    	installerJob.getCommand().addArgument("cd " + this.JSONlocation + " \n");
+    	installerJob.getCommand().addArgument("git clone " + this.JSONrepo + " \n");
     	installerJob.addParent(getReferenceDataJob);
     	return(installerJob);
     }
