@@ -96,7 +96,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
             // Elasticsearch Git Repo
             this.JSONrepo = getProperty("JSONrepo");
             this.JSONfolderName = getProperty("JSONfolderName");
-            this.JSONFileName = getProperty("JSONfileName");
+            this.JSONfileName = getProperty("JSONfileName");
 
             // record the date
             DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
@@ -172,7 +172,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
      JOB BUILDING METHODS
     */
     
-    private void gitMove(Job lastJob, String src, String dst) {
+    private gitMove(Job lastJob, String src, String dst) {
     	Job manageGit = this.getWorkflow().createBashJob("git_manage_" + src + "_" + dst);
     	String path = this.JSONlocation + "/" +  this.JSONrepoName + "/" + this.JSONfolderName;
     	manageGit.getCommand().addArgument("cd " + path + " \n");
