@@ -53,6 +53,9 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     // JSON repo
     private String JSONrepo = null;
     private String JSONlocation = "/datastore/gitroot";
+    private String JSONrepoName = "s3-transfer-operations"
+    private String JSONfolderName = null;
+    private String JSONfileName = null;
     // Colabtool
     private String collabToken = null;
     private String collabCertPath = null;
@@ -92,6 +95,8 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
             
             // Elasticsearch Git Repo
             this.JSONrepo = getProperty("JSONrepo");
+            this.JSONfolderName = getProperty("JSONfolderName");
+            this.JSONFileName = getProperty("JSONfileName");
 
             // record the date
             DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
@@ -139,24 +144,48 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
         
         // Install Dependencies for Ubuntu
         Job installDependenciesJob = pullRepo(createSharedWorkSpaceJob);
-                 
+        
+        // Move the JSON file to download
+        Job move2download = gitMove(installDependenciesJob, "running-jobs", "downloading-jobs");
+        
         // download data from GNOS
-        Job getGNOSJob = createGNOSJob(installDependenciesJob);
+        Job getGNOSJob = createGNOSJob(move2download);
         
         // download verification
         Job verifyDownload = createVerifyJob(getGNOSJob);
         
+        // Move the JSON file to upload
+        Job move2upload = gitMove(verifyDownload, "downloading-jobs", "uploading-jobs");
+        
         // upload data to S3
-        Job s3Upload = S3toolJob(verifyDownload);
+        Job s3Upload = S3toolJob(move2upload);
 	
+        // Move the JSON file to upload
+        Job move2finished = gitMove(s3Upload, "uploading-jobs", "finished-jobs");
+        
         // now cleanup
-        cleanupWorkflow(s3Upload);
+        cleanupWorkflow(move2finished);
         
     }
     
     /*
      JOB BUILDING METHODS
     */
+    
+    private void gitMove(Job lastJob, String src, String dst) {
+    	Job manageGit = this.getWorkflow().createBashJob("git_manage_" + src + "_" + dst);
+    	String path = this.JSONlocation + "/" +  this.JSONrepoName + "/" + this.JSONfolderName;
+    	manageGit.getCommand().addArgument("cd " + path + " \n");
+    	manageGit.getCommand().addArgument("if [[ ! -d " + dst + "]]; then mkdir " + dst + "; fi \n");
+    	manageGit.getCommand().addArgument("git mv " + path + "/" + src + "/" + this.JSONfileName + " " + path + "/" + dst + " \n");
+    	manageGit.getCommand().addArgument("git stage . \n");
+    	manageGit.getCommand().addArgument("git commit -m '" + this.gnosServer + "' \n");
+    	manageGit.getCommand().addArgument("# git push \n");
+    	manageGit.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + " \n");
+    	manageGit.getCommand().addArgument("if [[ -d " + this.JSONlocation + " ]]; then  exit 0; fi \n");
+    	manageGit.addParent(lastJob);
+    	return(manageGit);
+    }
     
     private void cleanupWorkflow(Job lastJob) {
         if (cleanup) {
@@ -252,7 +281,6 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
       return(S3job);
     }
   
-    
     private Job createVerifyJob(Job getReferenceDataJob) {
     	Job verifyJob = this.getWorkflow().createBashJob("Download_Verify");
     	verifyJob.getCommand().addArgument("cd " + SHARED_WORKSPACE + "/downloads \n");
