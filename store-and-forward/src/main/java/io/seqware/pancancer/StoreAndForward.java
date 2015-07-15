@@ -52,7 +52,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     private String uploadTimeout = null;
     // JSON repo
     private String JSONrepo = null;
-    private String JSONlocation = "/home/datastore/gitroot";
+    private String JSONlocation = "/datastore/gitroot";
     // Colabtool
     private String collabToken = null;
     private String collabCertPath = null;
