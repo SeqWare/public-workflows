@@ -32,7 +32,6 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     // variables
     private static final String SHARED_WORKSPACE = "shared_workspace";
     private ArrayList<String> analysisIds = null;
-    private ArrayList<String> bams = null;
     private ArrayList<String> downloadUrls = null;
     private ArrayList<String> downloadMetadataUrls = null;
     private String gnosServer = null;
@@ -53,6 +52,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     private String uploadTimeout = null;
     // JSON repo
     private String JSONrepo = null;
+    private String JSONlocation = "/home/ubuntu/gitroot";
     // Colabtool
     private String collabToken = null;
     private String collabCertPath = null;
@@ -71,7 +71,6 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
             // GNOS DOWNLOAD:
             
             // This may end up being a list of servers, just take the first element for now
-            // We can add more logic later
             this.gnosServer = getProperty("gnosServers").split(",")[0];
             
             this.pemFile = getProperty("pemFile");
@@ -86,18 +85,12 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
             	this.downloadMetadataUrls.add(downloadMetadataURLBuilder.toString());
             }
             
-            // S3 UPLOAD - Legacy for 1.0.1
-            this.s3Key = getProperty("S3UploadKey");
-            this.s3SecretKey = getProperty("S3UploadSecretKey");
-            this.uploadS3Bucket = getProperty("S3UploadBucket");
-            this.uploadTimeout = getProperty("S3UploadTimeout");
-            
             // Collab Token
             this.collabToken = getProperty("collabToken");
             this.collabCertPath = getProperty("collabCertPath");
             this.collabHost = getProperty("collabHost");
             
-            // Elasticsearch Repo
+            // Elasticsearch Git Repo
             this.JSONrepo = getProperty("JSONrepo");
 
             // record the date
@@ -185,7 +178,9 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     	Job installerJob = this.getWorkflow().createBashJob("install_dependencies");
     	installerJob.getCommand().addArgument("sudo apt-get install git || echo \n");
     	installerJob.getCommand().addArgument("cd " + SHARED_WORKSPACE + " \n");
-    	installerJob.getCommand().addArgument("git clone " + this.JSONrepo + " \n");
+    	installerJob.getCommand().addArgument("[[ -d " + this.JSONlocation + " ]] || mkdir -p " + this.JSONlocation + " \n");
+    	installerJob.getCommand().addArgument("[[ -d " + this.JSONlocation + " ]] || cd " + this.JSONlocation + " \n");
+    	installerJob.getCommand().addArgument("[[ -d " + this.JSONlocation + " ]] || git clone " + this.JSONrepo + " \n");
     	installerJob.addParent(getReferenceDataJob);
     	return(installerJob);
     }
@@ -247,6 +242,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     			  + "-v `pwd`:/collab/upload "
     			  + "-v " + this.collabCertPath + ":/collab/storage/conf/client.jks "
     			  + "-e ACCESSTOKEN=" + this.collabToken + " "
+    			  + "--net=\"host\" "
     			  + "-e CLIENT_STRICT_SSL=\"True\" "
     			  + "-e CLIENT_UPLOAD_SERVICEHOSTNAME=" + this.collabHost + " "
     			  + "icgc/cli bash -c \"/collab/upload.sh /collab/upload/" + this.analysisIds.get(index)+"\" \n"
