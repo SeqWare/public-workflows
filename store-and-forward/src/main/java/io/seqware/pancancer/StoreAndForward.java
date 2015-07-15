@@ -244,7 +244,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     	  // Execute the collab tool, mounting the downloads folder into /collab/upload
     	  String folder = analysisIds.get(index);
     	  S3job.getCommand().addArgument("docker run "
-    			  + "-v " + SHARED_WORKSPACE + "/downloads:/collab/upload "
+    			  + "-v `pwd`:/collab/upload "
     			  + "-v " + this.collabCertPath + ":/collab/storage/conf/client.jks "
     			  + "-e ACCESS_TOKEN=" + this.collabToken + " "
     			  + "-e CLIENT_STRICT_SSL=\"True\" "
