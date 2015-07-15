@@ -176,7 +176,8 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     	Job manageGit = this.getWorkflow().createBashJob("git_manage_" + src + "_" + dst);
     	String path = this.JSONlocation + "/" +  this.JSONrepoName + "/" + this.JSONfolderName;
     	manageGit.getCommand().addArgument("cd " + path + " \n");
-    	manageGit.getCommand().addArgument("if [[ ! -d " + dst + "]]; then mkdir " + dst + "; fi \n");
+    	manageGit.getCommand().addArgument("if [[ ! -d " + dst + " ]]; then mkdir " + dst + "; fi \n");
+    	manageGit.getCommand().addArgument("git pull \n");
     	manageGit.getCommand().addArgument("git mv " + path + "/" + src + "/" + this.JSONfileName + " " + path + "/" + dst + " \n");
     	manageGit.getCommand().addArgument("git stage . \n");
     	manageGit.getCommand().addArgument("git commit -m '" + this.gnosServer + "' \n");
