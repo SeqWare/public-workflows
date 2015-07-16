@@ -189,6 +189,8 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     	manageGit.getCommand().addArgument("trap 'git pull' EXIT \n");
     	manageGit.getCommand().addArgument("git mv " + path + "/" + src + "/" + this.JSONfileName + " " + path + "/" + dst + " \n");
     	manageGit.getCommand().addArgument("git stage . \n");
+    	manageGit.getCommand().addArgument("git config --global user.name \"ICGC AUTOMATION\" \n");
+    	manageGit.getCommand().addArgument("git config --global user.email nbyrne.oicr@gmail.com \n");
     	manageGit.getCommand().addArgument("git commit -m '" + this.gnosServer + "' \n");
     	manageGit.getCommand().addArgument("git push \n");
     	manageGit.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + " \n");
@@ -220,8 +222,6 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     	installerJob.getCommand().addArgument("cp " + this.gitHubPemFile + " ~/.ssh/id_rsa \n");
     	installerJob.getCommand().addArgument("chmod 600 ~/.ssh/id_rsa \n");
     	installerJob.getCommand().addArgument("cd " + this.JSONlocation + " \n");
-    	installerJob.getCommand().addArgument("git config --global user.name \"ICGC AUTOMATION\"");
-    	installerJob.getCommand().addArgument("git config --global user.email nbyrne.oicr@gmail.com");
     	installerJob.getCommand().addArgument("git clone " + this.JSONrepo + " \n");
     	installerJob.addParent(getReferenceDataJob);
     	return(installerJob);
