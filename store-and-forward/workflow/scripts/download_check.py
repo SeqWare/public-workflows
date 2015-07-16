@@ -33,8 +33,6 @@ def main(url, md5):
     hasher = hashlib.md5()
     hasher.update(data)
     myhash=hasher.hexdigest()
-    with open("compare","w") as f:
-	f.write(data)
 
     if md5 != myhash:
 	valid = False

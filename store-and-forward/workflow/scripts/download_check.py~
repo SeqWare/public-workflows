@@ -29,10 +29,12 @@ def main(url, md5):
 
     # Verify the md5sum of the file
     datasplit = data.split('\n')[2:]
-    data = "".join(datasplit)
+    data = "\n".join(datasplit)+"\n"
     hasher = hashlib.md5()
     hasher.update(data)
     myhash=hasher.hexdigest()
+    with open("compare","w") as f:
+	f.write(data)
 
     if md5 != myhash:
 	valid = False
@@ -47,4 +49,5 @@ if __name__ == '__main__':
     main(sys.argv[1], sys.argv[2])
 
 # USAGE: python download_check.py [https://metadataURL] [md5sum of xml]
+
 

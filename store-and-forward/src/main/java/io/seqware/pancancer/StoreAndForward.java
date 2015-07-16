@@ -153,11 +153,14 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
         // download data from GNOS
         Job getGNOSJob = createGNOSJob(move2download);
         
+        // Move the JSON file to verify
+        Job move2verify = gitMove(getGNOSJob, "downloading-jobs", "verification-jobs");   
+        
         // download verification
-        Job verifyDownload = createVerifyJob(getGNOSJob);
+        Job verifyDownload = createVerifyJob(move2verify);
         
         // Move the JSON file to upload
-        Job move2upload = gitMove(verifyDownload, "downloading-jobs", "uploading-jobs");
+        Job move2upload = gitMove(verifyDownload, "verification-jobs", "uploading-jobs");
         
         // upload data to S3
         Job s3Upload = S3toolJob(move2upload);
