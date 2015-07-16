@@ -56,6 +56,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     private String JSONrepoName = "s3-transfer-operations";
     private String JSONfolderName = null;
     private String JSONfileName = null;
+    private String JSONxmlHash = null;
     // Colabtool
     private String collabToken = null;
     private String collabCertPath = null;
@@ -97,6 +98,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
             this.JSONrepo = getProperty("JSONrepo");
             this.JSONfolderName = getProperty("JSONfolderName");
             this.JSONfileName = getProperty("JSONfileName");
+            this.JSONxmlHash = getProperty("JSONxmlHash");
 
             // record the date
             DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
@@ -288,7 +290,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     	Job verifyJob = this.getWorkflow().createBashJob("Download_Verify");
     	verifyJob.getCommand().addArgument("cd " + SHARED_WORKSPACE + "/downloads \n");
     	for (String url : this.downloadMetadataUrls) {
-    		verifyJob.getCommand().addArgument("python " + this.getWorkflowBaseDir() + "/scripts/download_check.py " + url + " \n");
+    		verifyJob.getCommand().addArgument("python " + this.getWorkflowBaseDir() + "/scripts/download_check.py " + url + " " + this.JSONxmlHash + " \n");
     	}
     	verifyJob.addParent(getReferenceDataJob);
     	return(verifyJob);

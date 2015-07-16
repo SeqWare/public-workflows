@@ -14,6 +14,7 @@ def main(url):
     response.close()
     XML = xml.dom.minidom.parseString(data);
     
+    
     # Create a list of expected files
     filelist = []
     for subelement in XML.getElementsByTagName('file'):
