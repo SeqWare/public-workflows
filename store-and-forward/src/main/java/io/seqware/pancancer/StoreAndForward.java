@@ -146,7 +146,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
         Job installDependenciesJob = pullRepo(createSharedWorkSpaceJob);
         
         // Move the JSON file to download
-        Job move2download = gitMove(installDependenciesJob, "running-jobs", "downloading-jobs");
+        Job move2download = gitMove(installDependenciesJob, "queued-jobs", "downloading-jobs");
         
         // download data from GNOS
         Job getGNOSJob = createGNOSJob(move2download);
@@ -175,6 +175,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     private Job gitMove(Job lastJob, String src, String dst) {
     	Job manageGit = this.getWorkflow().createBashJob("git_manage_" + src + "_" + dst);
     	String path = this.JSONlocation + "/" +  this.JSONrepoName + "/" + this.JSONfolderName;
+    	String gitroot = this.JSONlocation + "/" +  this.JSONrepoName;
     	manageGit.getCommand().addArgument("if [[ ! -d " + path + " ]]; then mkdir -p " + path + "; fi \n");
     	manageGit.getCommand().addArgument("cd " + path + " \n");
     	manageGit.getCommand().addArgument("if [[ ! -d " + dst + " ]]; then mkdir " + dst + "; fi \n");
