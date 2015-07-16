@@ -29,7 +29,7 @@ def main(url):
 
     # Verify the md5sum of the file
     datasplit = data.split('\n')[2:]
-    data = "".join(data)
+    data = "".join(datasplit)
     hasher = hashlib.md5()
     hasher.update(data)
     myhash=hash.hexdigest()
