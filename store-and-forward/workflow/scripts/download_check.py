@@ -32,11 +32,12 @@ def main(url, md5):
     data = "".join(datasplit)
     hasher = hashlib.md5()
     hasher.update(data)
-    myhash=hash.hexdigest()
+    myhash=hasher.hexdigest()
 
     if md5 != myhash:
 	valid = False
 	print "ERROR: The xml data downloaded from %s does not match the pregenerated data!" % sys.argv[1]
+	print >> sys.stderr, "ERROR: The xml data downloaded from %s does not match the pregenerated data!" % sys.argv[1]
         
     if valid:
         sys.exit(0)
