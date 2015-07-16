@@ -32,7 +32,7 @@ def main(url, md5):
     data = "".join(datasplit)
     hasher = hashlib.md5()
     hasher.update(data)
-    myhash=hash.hexdigest()
+    myhash=hasher.hexdigest()
 
     if md5 != myhash:
 	valid = False
