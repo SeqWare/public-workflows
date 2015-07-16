@@ -28,7 +28,7 @@ def main(url):
             valid = False
 
     # Verify the md5sum of the file
-    datasplit = data.split('\n')[1:]
+    datasplit = data.split('\n')[2:]
     data = "".join(data)
     hasher = hashlib.md5()
     hasher.update(data)
@@ -36,6 +36,7 @@ def main(url):
 
     if sys.argv[2] != myhash:
 	valid = False
+	print "ERROR: The xml data downloaded from %s does not match the pregenerated data!" % sys.argv[1]
         
     if valid:
         sys.exit(0)

@@ -14,7 +14,6 @@ def main(url):
     response.close()
     XML = xml.dom.minidom.parseString(data);
     
-    
     # Create a list of expected files
     filelist = []
     for subelement in XML.getElementsByTagName('file'):
@@ -37,6 +36,7 @@ def main(url):
 
     if sys.argv[2] != myhash:
 	valid = False
+	print "ERROR: The xml data downloaded from %s does not match the pregenerated data!" % sys.argv[1]
         
     if valid:
         sys.exit(0)
