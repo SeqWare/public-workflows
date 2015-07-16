@@ -165,7 +165,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
         // upload data to S3
         Job s3Upload = S3toolJob(move2upload);
 	
-        // Move the JSON file to upload
+        // Move the JSON file to finished
         Job move2finished = gitMove(s3Upload, "uploading-jobs", "finished-jobs");
         
         // now cleanup
