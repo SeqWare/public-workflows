@@ -57,6 +57,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     private String JSONfolderName = null;
     private String JSONfileName = null;
     private String JSONxmlHash = null;
+    private String gitHubPemFile = null;
     // Colabtool
     private String collabToken = null;
     private String collabCertPath = null;
@@ -99,6 +100,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
             this.JSONfolderName = getProperty("JSONfolderName");
             this.JSONfileName = getProperty("JSONfileName");
             this.JSONxmlHash = getProperty("JSONxmlHash");
+            this.gitHubPemFile = getProperty("gitHubPemFile");
 
             // record the date
             DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
@@ -188,7 +190,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     	manageGit.getCommand().addArgument("git mv " + path + "/" + src + "/" + this.JSONfileName + " " + path + "/" + dst + " \n");
     	manageGit.getCommand().addArgument("git stage . \n");
     	manageGit.getCommand().addArgument("git commit -m '" + this.gnosServer + "' \n");
-    	manageGit.getCommand().addArgument("# git push \n");
+    	manageGit.getCommand().addArgument("git push \n");
     	manageGit.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + " \n");
     	manageGit.addParent(lastJob);
     	return(manageGit);
@@ -214,6 +216,9 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     	Job installerJob = this.getWorkflow().createBashJob("install_dependencies");
     	installerJob.getCommand().addArgument("if [[ -d " + this.JSONlocation + " ]]; then  exit 0; fi \n");
     	installerJob.getCommand().addArgument("mkdir -p " + this.JSONlocation + " \n");
+    	installerJob.getCommand().addArgument("mkdir -p " + this.JSONlocation + " \n");
+    	installerJob.getCommand().addArgument("cp " + this.gitHubPemFile + " ~/.ssh/id_rsa \n");
+    	installerJob.getCommand().addArgument("chmod 600 ~/.ssh/id_rsa \n");
     	installerJob.getCommand().addArgument("cd " + this.JSONlocation + " \n");
     	installerJob.getCommand().addArgument("git clone " + this.JSONrepo + " \n");
     	installerJob.addParent(getReferenceDataJob);
