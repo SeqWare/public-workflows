@@ -28,7 +28,8 @@ def main(url, md5):
             valid = False
 
     # Verify the md5sum of the file
-    datasplit = data.split('\n')[2:]
+    datasplit = data.split('\n')
+    datasplit[1] = "<ResultSet>"
     data = "\n".join(datasplit)+"\n"
     hasher = hashlib.md5()
     hasher.update(data)
