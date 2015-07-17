@@ -223,7 +223,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     	installerJob.getCommand().addArgument("if [[ ! -d ~/.ssh/ ]]; then  mkdir ~/.ssh; fi \n");
     	installerJob.getCommand().addArgument("cp " + this.GITPemFile + " ~/.ssh/id_rsa \n");
     	installerJob.getCommand().addArgument("chmod 600 ~/.ssh/id_rsa \n");
-    	installerJob.getCommand().addArgument("echo 'StrictHostKeyChecking no' > ~/.ssh/config \n");
+    	// installerJob.getCommand().addArgument("echo 'StrictHostKeyChecking no' > ~/.ssh/config \n");
     	installerJob.getCommand().addArgument("if [[ -d " + this.JSONlocation + " ]]; then  exit 0; fi \n");
     	installerJob.getCommand().addArgument("mkdir -p " + this.JSONlocation + " \n");
     	installerJob.getCommand().addArgument("cd " + this.JSONlocation + " \n");
