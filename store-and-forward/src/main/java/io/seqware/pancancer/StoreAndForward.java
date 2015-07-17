@@ -190,11 +190,9 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     	manageGit.getCommand().addArgument("if [[ ! -d " + path + " ]]; then mkdir -p " + path + "; fi \n");
     	manageGit.getCommand().addArgument("cd " + path + " \n");
     	manageGit.getCommand().addArgument("trap 'git pull' EXIT \n");
-    	manageGit.getCommand().addArgument("if [[ ! -d " + dst + " ]]; then mkdir " + dst + "; git add " + dst + "; fi \n");
+    	manageGit.getCommand().addArgument("if [[ ! -d " + dst + " ]]; then mkdir " + dst + "; git add " + dst + "; git stage .; git push; fi \n");
     	manageGit.getCommand().addArgument("git mv " + path + "/" + src + "/" + this.JSONfileName + " " + path + "/" + dst + " \n");
     	manageGit.getCommand().addArgument("git stage . \n");
-    	manageGit.getCommand().addArgument("git config --global user.name " + this.GITname + " \n");
-    	manageGit.getCommand().addArgument("git config --global user.email " + this.GITemail + " \n");
     	manageGit.getCommand().addArgument("git commit -m '" + this.gnosServer + "' \n");
     	manageGit.getCommand().addArgument("git push \n");
     	manageGit.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + " \n");
@@ -229,6 +227,8 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     	installerJob.getCommand().addArgument("if [[ -d " + this.JSONlocation + " ]]; then  exit 0; fi \n");
     	installerJob.getCommand().addArgument("mkdir -p " + this.JSONlocation + " \n");
     	installerJob.getCommand().addArgument("cd " + this.JSONlocation + " \n");
+    	installerJob.getCommand().addArgument("git config --global user.name " + this.GITname + " \n");
+    	installerJob.getCommand().addArgument("git config --global user.email " + this.GITemail + " \n");
     	installerJob.getCommand().addArgument("git clone " + this.JSONrepo + " \n");
     	installerJob.addParent(getReferenceDataJob);
     	return(installerJob);
