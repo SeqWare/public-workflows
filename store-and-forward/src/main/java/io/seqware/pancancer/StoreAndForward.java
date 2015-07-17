@@ -219,9 +219,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     private Job pullRepo(Job getReferenceDataJob) {
     	Job installerJob = this.getWorkflow().createBashJob("install_dependencies");
     	installerJob.getCommand().addArgument("if [[ ! -d ~/.ssh/ ]]; then  mkdir ~/.ssh; fi \n");
-    	installerJob.getCommand().addArgument("echo 'StrictHostKeyChecking no' > ~/config \n");
     	installerJob.getCommand().addArgument("cp " + this.GITPemFile + " ~/.ssh/id_rsa \n");
-    	installerJob.getCommand().addArgument("cp ~/config ~/.ssh/config \n");
     	installerJob.getCommand().addArgument("chmod 600 ~/.ssh/id_rsa \n");
     	installerJob.getCommand().addArgument("echo 'StrictHostKeyChecking no' > ~/.ssh/config \n");
     	installerJob.getCommand().addArgument("if [[ -d " + this.JSONlocation + " ]]; then  exit 0; fi \n");
