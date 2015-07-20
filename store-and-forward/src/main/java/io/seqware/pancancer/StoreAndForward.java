@@ -243,7 +243,6 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
 	  for (String url : this.downloadUrls) {
 		  GNOSjob.getCommand().addArgument("echo '" + url + "' > individual_download_timing.txt \n");
 		  GNOSjob.getCommand().addArgument("date +%s > individual_download_timing.txt \n");
-		  GNOSjob.getCommand().addArgument("mv patched.xml " + this.analysisIds.get(index) + ".xml \n");
 		  GNOSjob.getCommand().addArgument("sudo docker run "
 					      // link in the input directory
 					      + "-v `pwd`:/workflow_data "
@@ -259,9 +258,6 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
 					      + " --file /root/gnos_icgc_keyfile.pem "
 					      + " --pem /root/gnos_icgc_keyfile.pem\" \n");
 		  GNOSjob.getCommand().addArgument("sudo chown -R seqware:seqware " + this.analysisIds.get(index) + " \n");
-		  GNOSjob.getCommand().addArgument("mv "
-				  + this.analysisIds.get(index) + ".xml "
-				  + this.analysisIds.get(index) + " \n");
 		  GNOSjob.getCommand().addArgument("date +%s > individual_download_timing.txt \n");
 		  index += 1;
 	  }
@@ -301,8 +297,14 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     private Job createVerifyJob(Job getReferenceDataJob) {
     	Job verifyJob = this.getWorkflow().createBashJob("Download_Verify");
     	verifyJob.getCommand().addArgument("cd " + SHARED_WORKSPACE + "/downloads \n");
+    	int index = 0;
     	for (String url : this.downloadMetadataUrls) {
     		verifyJob.getCommand().addArgument("python " + this.getWorkflowBaseDir() + "/scripts/download_check.py " + url + " " + this.JSONxmlHash + " \n");
+    		verifyJob.getCommand().addArgument("mv patched.xml " + this.analysisIds.get(index) + ".xml \n");
+    		verifyJob.getCommand().addArgument("mv "
+  				  + this.analysisIds.get(index) + ".xml "
+  				  + this.analysisIds.get(index) + " \n");
+    		index += 1;
     	}
     	verifyJob.addParent(getReferenceDataJob);
     	return(verifyJob);
