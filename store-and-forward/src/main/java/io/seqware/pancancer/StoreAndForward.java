@@ -243,9 +243,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
 	  for (String url : this.downloadUrls) {
 		  GNOSjob.getCommand().addArgument("echo '" + url + "' > individual_download_timing.txt \n");
 		  GNOSjob.getCommand().addArgument("date +%s > individual_download_timing.txt \n");
-		  GNOSjob.getCommand().addArgument("curl " 
-		  		  + this.downloadMetadataUrls.get(index) 
-		  		  + " > " + this.analysisIds.get(index) + ".xml \n");
+		  GNOSjob.getCommand().addArgument("mv patched.xml " + this.analysisIds.get(index) + ".xml \n");
 		  GNOSjob.getCommand().addArgument("sudo docker run "
 					      // link in the input directory
 					      + "-v `pwd`:/workflow_data "

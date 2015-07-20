@@ -35,6 +35,10 @@ def main(url, md5):
     hasher.update(data)
     myhash=hasher.hexdigest()
 
+    # Store the downloaded xml
+    with open("patched.xml","w") as f:
+	f.write(data)
+
     if md5 != myhash:
 	valid = False
 	print "ERROR: The xml data downloaded from %s does not match the pregenerated data!" % sys.argv[1]
