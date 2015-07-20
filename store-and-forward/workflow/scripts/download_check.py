@@ -30,7 +30,7 @@ def main(url, md5):
     # Verify the md5sum of the file
     datasplit = data.split('\n')
     datasplit[1] = "<ResultSet>"
-    data = "\n".join(datasplit).rtrim()
+    data = "\n".join(datasplit).rstrip()
     hasher = hashlib.md5()
     hasher.update(data)
     myhash=hasher.hexdigest()
