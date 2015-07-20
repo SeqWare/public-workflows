@@ -36,7 +36,7 @@ def main(url, md5):
     myhash=hasher.hexdigest()
 
     # Store the downloaded xml
-    with open("downloaded.xml","w") as f:
+    with open("patched.xml","w") as f:
 	f.write(data)
 
     if md5 != myhash:
