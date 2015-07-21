@@ -193,7 +193,7 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     	manageGit.getCommand().addArgument("if [[ ! -d " + dst + " ]]; then mkdir " + dst + "; git add " + dst + "; git stage .; git push; fi \n");
     	manageGit.getCommand().addArgument("git config --global user.name " + this.GITname + " \n");
     	manageGit.getCommand().addArgument("git config --global user.email " + this.GITemail + " \n");
-    	manageGit.getCommand().addArgument("git mv " + path + "/" + src + "/" + this.JSONfileName + " " + path + "/" + dst + " \n");
+    	manageGit.getCommand().addArgument("if [[ -d " + src + " ]]; then git mv " + path + "/" + src + "/" + this.JSONfileName + " " + path + "/" + dst + "; fi \n");
     	manageGit.getCommand().addArgument("git stage . \n");
     	manageGit.getCommand().addArgument("git commit -m '" + this.gnosServer + "' \n");
     	manageGit.getCommand().addArgument("git push \n");
