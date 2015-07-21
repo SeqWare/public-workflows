@@ -191,8 +191,10 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     	manageGit.getCommand().addArgument("git config --global user.email " + this.GITemail + " \n");
     	manageGit.getCommand().addArgument("if [[ ! -d " + path + " ]]; then mkdir -p " + path + "; fi \n");
     	manageGit.getCommand().addArgument("cd " + path + " \n");
-    	manageGit.getCommand().addArgument("trap 'git pull' EXIT \n");
-    	manageGit.getCommand().addArgument("if [[ ! -d " + dst + " ]]; then mkdir " + dst + "; git add " + dst + "; git stage .; git push; fi \n");
+    	manageGit.getCommand().addArgument("# This is not idempotent: git pull \n");
+    	manageGit.getCommand().addArgument("git fetch origin \n");
+    	manageGit.getCommand().addArgument("git reset --hard origin/master \n");
+    	manageGit.getCommand().addArgument("if [[ ! -d " + dst + " ]]; then mkdir " + dst + "; git add " + dst + "; fi \n");
     	manageGit.getCommand().addArgument("if [[ -d " + src + " ]]; then git mv " + path + "/" + src + "/" + this.JSONfileName + " " + path + "/" + dst + "; fi \n");
     	manageGit.getCommand().addArgument("git stage . \n");
     	manageGit.getCommand().addArgument("git commit -m '" + this.gnosServer + "' \n");
