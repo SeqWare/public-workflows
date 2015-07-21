@@ -187,12 +187,12 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     	Job manageGit = this.getWorkflow().createBashJob("git_manage_" + src + "_" + dst);
     	String path = this.JSONlocation + "/" +  this.JSONrepoName + "/" + this.JSONfolderName;
     	String gitroot = this.JSONlocation + "/" +  this.JSONrepoName;
+    	manageGit.getCommand().addArgument("git config --global user.name " + this.GITname + " \n");
+    	manageGit.getCommand().addArgument("git config --global user.email " + this.GITemail + " \n");
     	manageGit.getCommand().addArgument("if [[ ! -d " + path + " ]]; then mkdir -p " + path + "; fi \n");
     	manageGit.getCommand().addArgument("cd " + path + " \n");
     	manageGit.getCommand().addArgument("trap 'git pull' EXIT \n");
     	manageGit.getCommand().addArgument("if [[ ! -d " + dst + " ]]; then mkdir " + dst + "; git add " + dst + "; git stage .; git push; fi \n");
-    	manageGit.getCommand().addArgument("git config --global user.name " + this.GITname + " \n");
-    	manageGit.getCommand().addArgument("git config --global user.email " + this.GITemail + " \n");
     	manageGit.getCommand().addArgument("if [[ -d " + src + " ]]; then git mv " + path + "/" + src + "/" + this.JSONfileName + " " + path + "/" + dst + "; fi \n");
     	manageGit.getCommand().addArgument("git stage . \n");
     	manageGit.getCommand().addArgument("git commit -m '" + this.gnosServer + "' \n");
