@@ -199,7 +199,6 @@ public class StoreAndForward extends AbstractWorkflowDataModel {
     	manageGit.getCommand().addArgument("git stage . \n");
     	manageGit.getCommand().addArgument("git commit -m '" + this.gnosServer + "' \n");
     	manageGit.getCommand().addArgument("git push \n");
-    	manageGit.getCommand().addArgument("mkdir -m 0777 -p " + SHARED_WORKSPACE + " \n");
     	manageGit.addParent(lastJob);
     	return(manageGit);
     }
